@@ -201,13 +201,33 @@ h1 {
     transition: all 0.2s ease;
 }
 
+.matrix-label-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
 .matrix-label {
   text-align: center;
   font-weight: bold;
-  margin-top: 8px;
   font-family: monospace;
   font-size: 1.1em;
+  margin: 0;
 }
+
+.matrix-symbol-tag {
+    background-color: #e9ecef;
+    color: #6c757d;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9em;
+    border: 1px solid #ced4da;
+    line-height: 1;
+}
+
 
 .op-symbol {
     font-size: 2em;
@@ -225,9 +245,8 @@ h1 {
   transition: all 0.3s ease;
 }
 .math-block.active {
-  /* 使用新的半透明橙红色背景和橙红色边框 */
   border-color: var(--highlight-formula-border) !important;
-  box-shadow: 0 0 30px var(--highlight-bg) !important; /* 保持原有的阴影效果 */
+  box-shadow: 0 0 30px var(--highlight-bg) !important;
   transform: scale(1.01);
   background-color: var(--highlight-formula-bg);
 }
@@ -262,11 +281,37 @@ h1 {
     flex-wrap: wrap;
     margin: 20px 0;
     padding: 10px;
-    overflow-x: auto;
 }
 .katex-display {
     margin: 0 !important;
 }
+
+.matrix-scroll-wrapper {
+    overflow-x: auto;
+    padding: 10px;
+    max-width: 100%;
+    background-color: rgba(0,0,0,0.02);
+    border-radius: 8px;
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+/* [新增] 右侧符号矩阵的高亮框样式 */
+.symbolic-matrix-wrapper {
+    padding: 8px;
+    border-radius: 6px;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+.symbolic-matrix-wrapper.target {
+    border-color: var(--highlight-target-bg);
+    background-color: rgba(230, 57, 70, 0.1); /* 目标色半透明背景 */
+}
+.symbolic-matrix-wrapper.source {
+    border-color: var(--highlight-source-bg);
+    background-color: rgba(29, 53, 87, 0.1); /* 来源色半透明背景 */
+}
+
 
 /* Controls */
 .controls-container {

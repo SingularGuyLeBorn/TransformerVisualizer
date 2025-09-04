@@ -48,9 +48,12 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                     <Matrix name={`${headBaseName}.Q`} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                     <InlineMath math="\times" />
                     <Matrix name={`${headBaseName}.K`} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
-                     <InlineMath math="\rightarrow" />
+                     <InlineMath math="=" />
                     <Matrix name={`${headBaseName}.Scores`} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
-                    <InlineMath math="\xrightarrow{\text{scale \& softmax}}" />
+                    {/* 新增: 明确展示缩放步骤 */}
+                    <InlineMath math="\xrightarrow{/ \sqrt{d_k}}" />
+                    <Matrix name={`${headBaseName}.ScaledScores`} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
+                    <InlineMath math="\xrightarrow{\text{softmax}}" />
                     <Matrix name={`${headBaseName}.AttentionWeights`} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
                      <InlineMath math="\times" />
                     <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />

@@ -1,4 +1,3 @@
-/* START OF FILE: src/types.ts */
 // FILE: src/types.ts
 export type Matrix = number[][];
 export type Vector = number[];
@@ -41,23 +40,25 @@ export interface MultiHeadAttentionData {
 
 export interface FFNData {
     W1: Matrix;
-    b1: Vector;
+    b1: Vector; // bias is part of FFN data
     Intermediate: Matrix;
     Activated: Matrix;
     W2: Matrix;
-    b2: Vector;
+    b2: Vector; // bias is part of FFN data
     Output: Matrix;
 }
 
 export interface EncoderLayerData {
+    encoder_input: Matrix;
     mha: MultiHeadAttentionData;
-    add_norm_1_in_residual: Matrix;
-    add_norm_1_in_sublayer: Matrix;
-    add_norm_1_out: Matrix;
+    mha_output: Matrix;
+
+    add_norm_1_output: Matrix;
+
     ffn: FFNData;
-    add_norm_2_in_residual: Matrix;
-    add_norm_2_in_sublayer: Matrix;
-    add_norm_2_out: Matrix;
+    ffn_output: Matrix;
+
+    add_norm_2_output: Matrix;
 }
 
 export interface TransformerData {
@@ -67,4 +68,3 @@ export interface TransformerData {
     encoderLayers: EncoderLayerData[];
 }
 // END OF FILE: src/types.ts
-/* END OF FILE: src/types.ts */

@@ -1,4 +1,3 @@
-/* START OF FILE: src/hooks/useTransformer.ts */
 // FILE: src/hooks/useTransformer.ts
 import { useMemo } from 'react';
 import { Matrix, TransformerData, EncoderLayerData, FFNData, MultiHeadAttentionData, AttentionHeadData, Vector } from '../types';
@@ -6,7 +5,7 @@ import { Matrix, TransformerData, EncoderLayerData, FFNData, MultiHeadAttentionD
 // --- Utility Functions ---
 
 const createRandomMatrix = (rows: number, cols: number): Matrix => {
-  return Array.from({ length: rows }, () => 
+  return Array.from({ length: rows }, () =>
     Array.from({ length: cols }, () => parseFloat((Math.random() * 2 - 1).toFixed(2)))
   );
 };
@@ -16,7 +15,7 @@ const createRandomVector = (size: number): Vector => {
 }
 
 const addMatrices = (A: Matrix, B: Matrix): Matrix => {
-  return A.map((row, i) => 
+  return A.map((row, i) =>
     row.map((val, j) => parseFloat((val + B[i][j]).toFixed(2)))
   );
 };
@@ -89,8 +88,8 @@ export const useTransformer = (dims: Dims): TransformerData | null => {
 
         const inputEmbeddings = createRandomMatrix(seq_len, d_model);
         const posEncodings: Matrix = Array.from({ length: seq_len }, (_, pos) =>
-          Array.from({ length: d_model }, (_, i) => 
-            parseFloat((i % 2 === 0 
+          Array.from({ length: d_model }, (_, i) =>
+            parseFloat((i % 2 === 0
               ? Math.sin(pos / (10000 ** (i / d_model)))
               : Math.cos(pos / (10000 ** ((i - 1) / d_model)))).toFixed(2))
           )
@@ -101,6 +100,8 @@ export const useTransformer = (dims: Dims): TransformerData | null => {
         const encoderLayers: EncoderLayerData[] = [];
 
         for (let i = 0; i < n_layers; i++) {
+            const encoder_input = currentInput;
+
             // MHA
             const heads: AttentionHeadData[] = [];
             const headOutputs: Matrix[] = [];
@@ -109,9 +110,9 @@ export const useTransformer = (dims: Dims): TransformerData | null => {
                 const Wk = createRandomMatrix(d_model, d_k);
                 const Wv = createRandomMatrix(d_model, d_k);
 
-                const Q = multiplyMatrices(currentInput, Wq);
-                const K = multiplyMatrices(currentInput, Wk);
-                const V = multiplyMatrices(currentInput, Wv);
+                const Q = multiplyMatrices(encoder_input, Wq);
+                const K = multiplyMatrices(encoder_input, Wk);
+                const V = multiplyMatrices(encoder_input, Wv);
 
                 const K_T: Matrix = Array.from({ length: d_k }, (_, r) => Array.from({ length: seq_len }, (_, c) => K[c][r]));
                 const Scores = multiplyMatrices(Q, K_T);
@@ -125,43 +126,35 @@ export const useTransformer = (dims: Dims): TransformerData | null => {
             }
             const ConcatOutput = headOutputs.reduce((acc, current) => acc.map((row, rIdx) => [...row, ...current[rIdx]]), Array(seq_len).fill(0).map(() => []));
             const Wo = createRandomMatrix(d_model, d_model);
-            const mhaOutput = multiplyMatrices(ConcatOutput, Wo);
-            const mha: MultiHeadAttentionData = { heads, Wo, Output: mhaOutput };
+            const mha_output = multiplyMatrices(ConcatOutput, Wo);
+            const mha: MultiHeadAttentionData = { heads, Wo, Output: mha_output };
 
-            // Add & Norm 1
-            const add_norm_1_in_residual = currentInput;
-            const add_norm_1_in_sublayer = mha.Output;
-            const add_norm_1_sum = addMatrices(add_norm_1_in_residual, add_norm_1_in_sublayer);
-            const add_norm_1_out = layerNorm(add_norm_1_sum);
+            const add_norm_1_sum = addMatrices(encoder_input, mha_output);
+            const add_norm_1_output = layerNorm(add_norm_1_sum);
 
-            // FFN
             const W1 = createRandomMatrix(d_model, d_ff);
             const b1 = createRandomVector(d_ff);
-            const Intermediate = addBias(multiplyMatrices(add_norm_1_out, W1), b1);
+            const Intermediate = addBias(multiplyMatrices(add_norm_1_output, W1), b1);
             const Activated = applyReLU(Intermediate);
             const W2 = createRandomMatrix(d_ff, d_model);
             const b2 = createRandomVector(d_model);
-            const ffnOutput = addBias(multiplyMatrices(Activated, W2), b2);
-            const ffn: FFNData = { W1, b1, Intermediate, Activated, W2, b2, Output: ffnOutput };
+            const ffn_output = addBias(multiplyMatrices(Activated, W2), b2);
+            const ffn: FFNData = { W1, b1, Intermediate, Activated, W2, b2, Output: ffn_output };
 
-            // Add & Norm 2
-            const add_norm_2_in_residual = add_norm_1_out;
-            const add_norm_2_in_sublayer = ffn.Output;
-            const add_norm_2_sum = addMatrices(add_norm_2_in_residual, add_norm_2_in_sublayer);
-            const add_norm_2_out = layerNorm(add_norm_2_sum);
+            const add_norm_2_sum = addMatrices(add_norm_1_output, ffn_output);
+            const add_norm_2_output = layerNorm(add_norm_2_sum);
 
             encoderLayers.push({
+                encoder_input,
                 mha,
-                add_norm_1_in_residual,
-                add_norm_1_in_sublayer,
-                add_norm_1_out,
+                mha_output,
+                add_norm_1_output,
                 ffn,
-                add_norm_2_in_residual,
-                add_norm_2_in_sublayer,
-                add_norm_2_out
+                ffn_output,
+                add_norm_2_output
             });
 
-            currentInput = add_norm_2_out;
+            currentInput = add_norm_2_output;
         }
 
         return {
@@ -177,4 +170,3 @@ export const useTransformer = (dims: Dims): TransformerData | null => {
   }, [dims]);
 };
 // END OF FILE: src/hooks/useTransformer.ts
-/* END OF FILE: src/hooks/useTransformer.ts */

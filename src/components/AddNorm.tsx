@@ -5,27 +5,30 @@ import { Matrix } from './Matrix';
 import { InlineMath } from 'react-katex';
 
 interface AddNormProps {
-    baseName: string;
     inputResidual: MatrixType;
     inputSublayer: MatrixType;
     output: MatrixType;
+    residualMatrixName: string;
+    sublayerMatrixName: string;
+    outputMatrixName: string;
     highlight: HighlightState;
     onElementClick: (element: ElementIdentifier) => void;
+    activeId: 'add_norm_1' | 'add_norm_2';
 }
 
-export const AddNorm: React.FC<AddNormProps> = ({ baseName, inputResidual, inputSublayer, output, highlight, onElementClick }) => {
-    const isActive = highlight.activeComponent === 'add_norm'; // 检查是否为当前激活的组件
+export const AddNorm: React.FC<AddNormProps> = ({ inputResidual, inputSublayer, output, residualMatrixName, sublayerMatrixName, outputMatrixName, highlight, onElementClick, activeId }) => {
+    const isActive = highlight.activeComponent === activeId;
     return (
-         <div className={`diagram-component ${isActive ? 'active' : ''}`}> {/* 应用active类 */}
+         <div className={`diagram-component ${isActive ? 'active' : ''}`}>
             <div className="component-header">Add & LayerNorm</div>
             <div className="component-body">
                 <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'center'}}>
-                    <Matrix name={`${baseName}_in_residual`} data={inputResidual} highlight={highlight} onElementClick={onElementClick} />
+                    <Matrix name={residualMatrixName} data={inputResidual} highlight={highlight} onElementClick={onElementClick} />
                     <div className="op-symbol">+</div>
-                    <Matrix name={`${baseName}_in_sublayer`} data={inputSublayer} highlight={highlight} onElementClick={onElementClick} />
+                    <Matrix name={sublayerMatrixName} data={inputSublayer} highlight={highlight} onElementClick={onElementClick} />
                 </div>
                 <div className="arrow-down"><InlineMath math="\rightarrow \text{LayerNorm} \rightarrow" /></div>
-                <Matrix name={`${baseName}_out`} data={output} highlight={highlight} onElementClick={onElementClick} />
+                <Matrix name={outputMatrixName} data={output} highlight={highlight} onElementClick={onElementClick} />
             </div>
         </div>
     );

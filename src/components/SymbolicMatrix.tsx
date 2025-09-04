@@ -2,106 +2,117 @@
 import React from 'react';
 import { HighlightState } from '../types';
 import { BlockMath } from 'react-katex';
+import { getSymbolParts } from '../config/symbolMapping';
 
 interface SymbolicMatrixProps {
-  name: string; // The full unique name or a conceptual name if from Explanation
+  name: string;
   rows: number;
   cols: number;
-  prefix: string;
   highlight: HighlightState;
   transpose?: boolean;
 }
 
-export const SymbolicMatrix: React.FC<SymbolicMatrixProps> = ({ name, rows, cols, prefix, highlight, transpose = false }) => {
-
+export const SymbolicMatrix: React.FC<SymbolicMatrixProps> = ({ name, rows, cols, highlight, transpose = false }) => {
   const displayRows = transpose ? cols : rows;
   const displayCols = transpose ? rows : cols;
+
+  const symbol = getSymbolParts(name);
+
+  const MAX_DIM = 7;
+  const EDGE_COUNT = 2;
+  const WINDOW_RADIUS = 2;
+
+  const getVisibleIndices = (total: number, highlightIndices: number[]): number[] => {
+    if (total <= MAX_DIM) {
+      return Array.from({ length: total }, (_, i) => i);
+    }
+    const visible = new Set<number>();
+    for(let i=0; i < EDGE_COUNT; i++) visible.add(i);
+    for(let i=total - EDGE_COUNT; i < total; i++) visible.add(i);
+    highlightIndices.forEach(hIdx => {
+        if (hIdx === -1) return;
+        const start = Math.max(0, hIdx - WINDOW_RADIUS);
+        const end = Math.min(total - 1, hIdx + WINDOW_RADIUS);
+        for(let i = start; i <= end; i++) visible.add(i);
+    });
+    return Array.from(visible).sort((a,b) => a - b);
+  }
+
+  const thisSymbolicConceptualName = name.split('.').pop();
+
+  const highlightedTarget = (highlight.target?.name.split('.').pop() === thisSymbolicConceptualName) ? highlight.target : null;
+  const highlightedSources = highlight.sources.filter(s => s.name.split('.').pop() === thisSymbolicConceptualName);
+
+  const highlightRows = new Set<number>();
+  const highlightCols = new Set<number>();
+  if(highlightedTarget) {
+      highlightRows.add(transpose ? highlightedTarget.col : highlightedTarget.row);
+      highlightCols.add(transpose ? highlightedTarget.row : highlightedTarget.col);
+  }
+  highlightedSources.forEach(s => {
+      highlightRows.add(transpose ? s.col : s.row);
+      highlightCols.add(transpose ? s.row : s.col);
+  });
+
+  const visibleRows = getVisibleIndices(displayRows, Array.from(highlightRows));
+  const visibleCols = getVisibleIndices(displayCols, Array.from(highlightCols));
 
   const getElement = (r_idx: number, c_idx: number): string => {
       const originalRow = transpose ? c_idx : r_idx;
       const originalCol = transpose ? r_idx : c_idx;
 
-      // Extract the conceptual part of the name for symbolic display
-      const rawMatrixName = name.split('.').pop() || '';
-      const nameParts = rawMatrixName.match(/^([a-zA-Z_]+)(\d*)$/);
-      const nameSubscript = (nameParts && nameParts[2]) ? `,${nameParts[2]}` : '';
+      const elementBase = symbol.base.toLowerCase().replace(/'/g, '').replace(/_{.*}/, '');
+      const subscriptContent = [symbol.subscript, originalRow, originalCol].filter(s => s !== undefined).join(',');
 
-      let elementString = `${prefix}_{${originalRow},${originalCol}${nameSubscript}}`;
+      let elementString = `${elementBase}_{${subscriptContent}}`;
 
-      // --- Highlighting Logic for Explanation components ---
       let isTarget = false;
+      if (highlightedTarget && highlightedTarget.row === originalRow && highlightedTarget.col === originalCol) isTarget = true;
+
       let isSource = false;
+      if (highlightedSources.some(s => {
+          if (s.highlightRow && !s.highlightCol) return s.row === originalRow;
+          if (s.highlightCol && !s.highlightRow) return s.col === originalCol;
+          return s.row === originalRow && s.col === originalCol;
+      })) isSource = true;
 
-      const thisSymbolicConceptualName = name.split('.').pop();
-
-      // 判断是否是目标元素 (Target)
-      if (highlight.target) {
-          const targetConceptualName = highlight.target.name.split('.').pop();
-          if (targetConceptualName === thisSymbolicConceptualName &&
-              highlight.target.row === originalRow && highlight.target.col === originalCol) {
-              isTarget = true;
-          }
-      }
-
-      // 判断是否是源元素 (Source) - [核心修复]
-      if (highlight.sources.some(s => {
-          const sourceConceptualName = s.name.split('.').pop();
-          if (sourceConceptualName !== thisSymbolicConceptualName) {
-              return false; // 如果概念名称不匹配，则肯定不是这个源
-          }
-
-          // 根据高亮类型进行判断
-          if (s.highlightRow && !s.highlightCol) { // 只高亮行
-              return s.row === originalRow;
-          } else if (s.highlightCol && !s.highlightRow) { // 只高亮列
-              return s.col === originalCol;
-          } else { // 默认情况：高亮单个元素
-              return s.row === originalRow && s.col === originalCol;
-          }
-      })) {
-          isSource = true;
-      }
-      // --- End Highlighting Logic ---
-
-      if (isTarget) {
-        elementString = `\\textcolor{#e63946}{${elementString}}`;
-      } else if (isSource) {
-        elementString = `\\textcolor{#1d3557}{${elementString}}`;
-      }
+      if (isTarget) return `{\\color{#e63946}${elementString}}`;
+      if (isSource) return `{\\color{#1d3557}${elementString}}`;
       return elementString;
   }
 
-  let matrixRows: string[] = [];
-  for (let r = 0; r < displayRows; r++) {
-      let matrixCols: string[] = [];
-      for (let c = 0; c < displayCols; c++) {
-          matrixCols.push(getElement(r, c));
+  let matrixRowsStr: string[] = [];
+  let lastRow = -1;
+  visibleRows.forEach(r => {
+      if (r > lastRow + 1) {
+         const dots = visibleCols.map((c, i) => (i > 0 && visibleCols[i-1] !== c-1) ? '\\ddots' : '\\vdots').join(' & ');
+         matrixRowsStr.push(dots);
       }
-      matrixRows.push(matrixCols.join(' & '));
-  }
+      let matrixColsStr: string[] = [];
+      let lastCol = -1;
+      visibleCols.forEach(c => {
+          if(c > lastCol + 1) matrixColsStr.push('\\dots');
+          matrixColsStr.push(getElement(r,c));
+          lastCol = c;
+      });
+      matrixRowsStr.push(matrixColsStr.join(' & '));
+      lastRow = r;
+  });
 
-  const matrixString = matrixRows.join(' \\\\ ');
+  const matrixString = matrixRowsStr.join(' \\\\ ');
   const bmatrix = `\\begin{pmatrix} ${matrixString} \\end{pmatrix}`;
 
-  // The displayed name for the formula itself (e.g., Q_{...})
-  const rawNameForFormula = name.split('.').pop() || name; // Use the last part for display name
-  const namePartsForFormula = rawNameForFormula.match(/^([a-zA-Z_]+)(\d*)$/);
-  let baseNameForFormula;
-  let nameSubscriptForFormula;
+  // [最终修复] 移除复杂的标签生成逻辑，只渲染矩阵本身
+  const finalFormula = bmatrix;
 
-  if (namePartsForFormula && namePartsForFormula[2]) {
-      baseNameForFormula = namePartsForFormula[1];
-      nameSubscriptForFormula = namePartsForFormula[2];
-  } else {
-      baseNameForFormula = rawNameForFormula.replace(/_/g, '\\_');
-      nameSubscriptForFormula = null;
-  }
+  const isSourceComponent = highlight.sources.some(s => s.name === name);
+  const isTargetComponent = highlight.target?.name === name;
+  const wrapperClass = `symbolic-matrix-wrapper ${isTargetComponent ? 'target' : ''} ${isSourceComponent ? 'source' : ''}`;
 
-  const dimsSubscript = `${displayRows}\\times${displayCols}`;
-  const finalSubscript = nameSubscriptForFormula ? `${nameSubscriptForFormula},${dimsSubscript}` : dimsSubscript;
-
-  const finalFormula = `${baseNameForFormula}_{${finalSubscript}}${transpose ? '^T' : ''} = ${bmatrix}`;
-
-  return <BlockMath math={finalFormula} />;
+  return (
+    <div className={wrapperClass}>
+        <BlockMath math={finalFormula} />
+    </div>
+  );
 };
 // END OF FILE: src/components/SymbolicMatrix.tsx

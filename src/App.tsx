@@ -5,6 +5,7 @@ import { Viz } from './components/Viz';
 import { Explanation } from './components/Explanation';
 import { useTransformer } from './hooks/useTransformer';
 import { ElementIdentifier, HighlightSource, HighlightState, TransformerData } from './types';
+import { MATRIX_NAMES } from './config/matrixNames';
 
 function App() {
   const [dims, setDims] = useState({
@@ -18,7 +19,6 @@ function App() {
 
   const transformerData: TransformerData | null = useTransformer(dims);
 
-  // ENHANCEMENT: Complete rewrite of the highlighting logic for bi-directional analysis.
   const handleElementClick = useCallback((element: ElementIdentifier) => {
       if (!transformerData) return;
 
@@ -28,100 +28,111 @@ function App() {
       let newSources: HighlightSource[] = [];
       let newTarget: ElementIdentifier | null = element;
 
-      // FIX: Active component logic is now generic to support multiple layers
-      // and correctly map to the single explanation block on the right.
       let activeComponent: string | null = null;
-      const componentType = parts.length > 2 ? parts[2] : parts[0]; // e.g., mha, ffn, inputEmbeddings
+      const layerIdx = parts.length > 1 && parts[0] === 'encoder' ? parseInt(parts[1], 10) : 0;
+      const LN = MATRIX_NAMES.layer(layerIdx); // Layer Names
+      const HN = MATRIX_NAMES.head(layerIdx, 0); // Head Names for head 0
 
-      if (['inputEmbeddings', 'posEncodings', 'encoderInput'].includes(componentType)) {
-          activeComponent = 'input_embed';
-      } else if (componentType === 'mha') {
-          activeComponent = 'mha';
-      } else if (componentType === 'add_norm_1' || componentType === 'add_norm_2') {
-          activeComponent = 'add_norm';
-      } else if (componentType === 'ffn') {
+      // [核心修复] 修正重复的 case 标签，并确保 add_norm_1_output 正确映射
+      switch (name) {
+          case MATRIX_NAMES.inputEmbeddings:
+          case MATRIX_NAMES.posEncodings:
+          case MATRIX_NAMES.encoderInput:
+              activeComponent = 'input_embed';
+              break;
+          case LN.encoder_input:
+              activeComponent = 'mha';
+              break;
+          case LN.add_norm_1_output:
+              // 如果点击的是 add_norm_1_output, 它既是 AddNorm1 的输出，也是 FFN 的输入
+              // 默认激活 AddNorm1，因为它是直接产生者
+              activeComponent = 'add_norm_1';
+              break;
+          case LN.ffn_output:
+              activeComponent = 'ffn';
+              break;
+          case LN.add_norm_2_output:
+              activeComponent = 'add_norm_2';
+              break;
+          default:
+              if (name.includes('.mha')) activeComponent = 'mha';
+              if (name.includes('.ffn')) activeComponent = 'ffn';
+      }
+
+      // 当点击 FFN 内部组件时，确保激活 ffn 区块
+      if (name.startsWith(`encoder.${layerIdx}.ffn`)) {
           activeComponent = 'ffn';
       }
 
-
-      const layerIdx = parts.length > 1 && parts[0] === 'encoder' ? parseInt(parts[1], 10) : 0;
-      const matrixName = parts[parts.length -1];
       const d_k = dims.d_model / dims.h;
 
-      // --- BACKWARD TRACING: "How was I computed?" (Element-centric style) ---
-      if (name === 'encoderInput') {
-          newSources.push({ name: 'inputEmbeddings', row, col });
-          newSources.push({ name: 'posEncodings', row, col });
-      } else if (componentType === 'mha') {
-          const headIdx = parseInt(parts[3].replace('h', ''), 10);
-          const headBasePath = `encoder.${layerIdx}.mha.h${headIdx}`;
-          // The input to MHA is the output of the *previous* Add & Norm layer, or the initial encoder input
-          const mhaInputName = layerIdx === 0
-              ? `encoderInput`
-              : `encoder.${layerIdx-1}.add_norm_2_out`;
-
-          // If we click MHA input, we trace back to Add & Norm 1 output
-          if (name.endsWith('add_norm_1_in_residual') && name.startsWith(`encoder.${layerIdx}.mha`)) {
-              const prevLayerOutput = layerIdx > 0 ? `encoder.${layerIdx-1}.add_norm_2_out` : 'encoderInput';
-              newSources.push({ name: prevLayerOutput, row, col });
+      // --- Backward Tracing Logic ---
+      if (name === MATRIX_NAMES.encoderInput) {
+          newSources.push({ name: MATRIX_NAMES.inputEmbeddings, row, col });
+          newSources.push({ name: MATRIX_NAMES.posEncodings, row, col });
+      }
+      // --- MHA Component ---
+      else if (name === HN.Q || name === HN.K || name === HN.V) {
+          const matrixType = name.split('.').pop()!;
+          // [核心修复] 修正大小写错误 Wq vs wq
+          const weightName = HN[matrixType as 'Q' | 'K' | 'V'];
+          for (let k = 0; k < dims.d_model; k++) {
+              newSources.push({ name: LN.encoder_input, row, col: k, highlightRow: true });
+              newSources.push({ name: weightName.replace(matrixType, `W${matrixType.toLowerCase()}`), row: k, col: col, highlightCol: true });
           }
-
-          if (['Q', 'K', 'V'].includes(matrixName)) {
-              const weightName = `${headBasePath}.W${matrixName.toLowerCase()}`;
-              const mhaInput = `encoder.${layerIdx}.add_norm_1_in_residual`; // MHA input is residual from Add&Norm1
-              for (let k = 0; k < dims.d_model; k++) {
-                  newSources.push({ name: mhaInput, row, col: k, highlightRow: true });
-                  newSources.push({ name: weightName, row: k, col: col, highlightCol: true });
-              }
-          } else if (matrixName === 'Scores') {
-              // FIX: Use highlightRow to highlight the entire vectors in Q and K.
-              // This is more intuitive than highlighting individual cells.
-              newSources.push({ name: `${headBasePath}.Q`, row: row, col: -1, highlightRow: true });
-              newSources.push({ name: `${headBasePath}.K`, row: col, col: -1, highlightRow: true }); // K is transposed, so its row `col` becomes a column.
-          } else if (matrixName === 'AttentionWeights') {
-              // 修正：当点击AttentionWeights时，高亮其softmax输入ScaledScores
-               for (let k = 0; k < dims.seq_len; k++) {
-                   newSources.push({ name: `${headBasePath}.ScaledScores`, row, col: k, highlightRow: true });
-               }
-          } else if (matrixName === 'HeadOutput') {
-              for (let k = 0; k < dims.seq_len; k++) {
-                   newSources.push({ name: `${headBasePath}.AttentionWeights`, row, col: k, highlightRow: true });
-              }
-              for (let k = 0; k < d_k; k++) {
-                   newSources.push({ name: `${headBasePath}.V`, row: -1, col: k, highlightCol: true }); // All rows of V contribute to the output
-              }
-          } else if (matrixName === 'Output') {
-              const woName = `encoder.${layerIdx}.mha.Wo`;
-              for (let k = 0; k < dims.d_model; k++) { // d_model = h * d_k
-                  const headIdx = Math.floor(k / d_k);
-                  const headCol = k % d_k;
-                  newSources.push({ name: `encoder.${layerIdx}.mha.h${headIdx}.HeadOutput`, row, col: -1, highlightRow: true });
-                  newSources.push({ name: woName, row: k, col: col, highlightCol: true });
-              }
+      } else if (name === HN.Scores) {
+          newSources.push({ name: HN.Q, row: row, col: -1, highlightRow: true });
+          newSources.push({ name: HN.K, row: col, col: -1, highlightRow: true });
+      } else if (name === HN.ScaledScores) {
+          newSources.push({ name: HN.Scores, row, col });
+      } else if (name === HN.AttentionWeights) {
+           for (let k = 0; k < dims.seq_len; k++) {
+               newSources.push({ name: HN.ScaledScores, row, col: k, highlightRow: true });
+           }
+      } else if (name === HN.HeadOutput) {
+          for (let k = 0; k < dims.seq_len; k++) {
+               newSources.push({ name: HN.AttentionWeights, row, col: k, highlightRow: true });
           }
-      } else if (componentType === 'add_norm_1' || componentType === 'add_norm_2') {
-          if (matrixName === 'out') {
-              const baseName = parts.slice(0,3).join('.');
-              // Element-wise addition, perfect 1-to-1 mapping
-              newSources.push({ name: `${baseName}_in_residual`, row, col });
-              newSources.push({ name: `${baseName}_in_sublayer`, row, col });
+          for (let k = 0; k < d_k; k++) {
+               newSources.push({ name: HN.V, row: -1, col: k, highlightCol: true });
           }
-      } else if (componentType === 'ffn') {
-          const ffnInputName = `encoder.${layerIdx}.add_norm_1_out`;
-          if (matrixName === 'Intermediate' || matrixName === 'Activated') {
-              const w1Name = `encoder.${layerIdx}.ffn.W1`;
-              for(let k=0; k < dims.d_model; k++) {
-                  newSources.push({ name: ffnInputName, row, col: k, highlightRow: true });
-                  newSources.push({ name: w1Name, row: k, col: col, highlightCol: true });
-              }
-          } else if (matrixName === 'Output') {
-              const activatedName = `encoder.${layerIdx}.ffn.Activated`;
-              const w2Name = `encoder.${layerIdx}.ffn.W2`;
-              for(let k=0; k < dims.d_ff; k++) {
-                  newSources.push({ name: activatedName, row, col: k, highlightRow: true });
-                  newSources.push({ name: w2Name, row: k, col: col, highlightCol: true });
-              }
+      } else if (name === LN.mha_output) {
+          for (let k = 0; k < dims.d_model; k++) {
+              const headIdx = Math.floor(k / d_k);
+              const headName = MATRIX_NAMES.head(layerIdx, headIdx).HeadOutput;
+              newSources.push({ name: headName, row, col: -1, highlightRow: true });
+              newSources.push({ name: LN.Wo, row: k, col: col, highlightCol: true });
           }
+      }
+      // --- Add & Norm 1 ---
+      else if (name === LN.add_norm_1_output) {
+          newSources.push({ name: LN.encoder_input, row, col });
+          newSources.push({ name: LN.mha_output, row, col });
+      }
+      // --- FFN Component ---
+      else if (name === LN.Intermediate || name === LN.Activated) {
+           for(let k=0; k < dims.d_model; k++) {
+               newSources.push({ name: LN.add_norm_1_output, row, col: k, highlightRow: true });
+               newSources.push({ name: LN.W1, row: k, col: col, highlightCol: true });
+           }
+           // Also add bias as a source
+           for(let k=0; k < dims.d_ff; k++) {
+               newSources.push({ name: LN.b1, row: 0, col: k, highlightRow: true});
+           }
+      } else if (name === LN.ffn_output) {
+           for(let k=0; k < dims.d_ff; k++) {
+               newSources.push({ name: LN.Activated, row, col: k, highlightRow: true });
+               newSources.push({ name: LN.W2, row: k, col: col, highlightCol: true });
+           }
+            // Also add bias as a source
+           for(let k=0; k < dims.d_model; k++) {
+                newSources.push({ name: LN.b2, row: 0, col: k, highlightRow: true});
+           }
+      }
+      // --- Add & Norm 2 ---
+      else if (name === LN.add_norm_2_output) {
+          newSources.push({ name: LN.add_norm_1_output, row, col });
+          newSources.push({ name: LN.ffn_output, row, col });
       }
 
       const newHighlightState: HighlightState = { target: newTarget, sources: newSources, activeComponent };

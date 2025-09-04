@@ -1,4 +1,3 @@
-/* START OF FILE: src/components/EncoderLayer.tsx */
 // FILE: src/components/EncoderLayer.tsx
 import React from 'react';
 import { EncoderLayerData, HighlightState, ElementIdentifier } from '../types';
@@ -30,12 +29,15 @@ export const EncoderLayer: React.FC<EncoderLayerProps> = ({ layerIndex, data, hi
                 />
 
                 <AddNorm
-                    baseName={`${baseName}.add_norm_1`}
-                    inputResidual={data.add_norm_1_in_residual}
-                    inputSublayer={data.add_norm_1_in_sublayer}
-                    output={data.add_norm_1_out}
+                    inputResidual={data.encoder_input}
+                    inputSublayer={data.mha_output}
+                    output={data.add_norm_1_output}
+                    residualMatrixName={`${baseName}.encoder_input`}
+                    sublayerMatrixName={`${baseName}.mha_output`}
+                    outputMatrixName={`${baseName}.add_norm_1_output`}
                     highlight={highlight}
                     onElementClick={onElementClick}
+                    activeId="add_norm_1"
                 />
 
                 <FeedForward
@@ -46,12 +48,15 @@ export const EncoderLayer: React.FC<EncoderLayerProps> = ({ layerIndex, data, hi
                 />
 
                 <AddNorm
-                    baseName={`${baseName}.add_norm_2`}
-                    inputResidual={data.add_norm_2_in_residual}
-                    inputSublayer={data.add_norm_2_in_sublayer}
-                    output={data.add_norm_2_out}
+                    inputResidual={data.add_norm_1_output}
+                    inputSublayer={data.ffn_output}
+                    output={data.add_norm_2_output}
+                    residualMatrixName={`${baseName}.add_norm_1_output`}
+                    sublayerMatrixName={`${baseName}.ffn_output`}
+                    outputMatrixName={`${baseName}.add_norm_2_output`}
                     highlight={highlight}
                     onElementClick={onElementClick}
+                    activeId="add_norm_2"
                 />
             </div>
         </div>
@@ -59,4 +64,3 @@ export const EncoderLayer: React.FC<EncoderLayerProps> = ({ layerIndex, data, hi
   );
 };
 // END OF FILE: src/components/EncoderLayer.tsx
-/* END OF FILE: src/components/EncoderLayer.tsx */

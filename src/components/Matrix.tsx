@@ -1,9 +1,9 @@
-/* START OF FILE: src/components/Matrix.tsx */
 // FILE: src/components/Matrix.tsx
 import React from 'react';
 import { Element } from './Element';
 import { Matrix as MatrixType, HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
+import { getSymbolParts } from '../config/symbolMapping';
 
 interface MatrixProps {
   name: string;
@@ -31,35 +31,28 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
        const gap = 3;
        let style: React.CSSProperties = {};
 
-       // The source `s` refers to the original data matrix.
-       // `isTransposed` refers to how this component is displaying the data.
-       // `rows` and `cols` are the *visual* dimensions of this component.
        const highlightDataRow = s.highlightRow ?? false;
        const highlightDataCol = s.highlightCol ?? false;
 
-       // FIX: This logic correctly renders highlights on transposed matrices
-       // by swapping row/column highlighting logic as needed.
        if (isTransposed) {
-           // A data row is a visual column. A data col is a visual row.
-           if (highlightDataRow) { // Highlight a visual column
+           if (highlightDataRow) {
                style.width = `${elementWidth}px`;
                style.height = `calc(${rows} * (${elementHeight}px + ${gap}px) - ${gap}px)`;
                style.top = `5px`;
-               style.left = `${s.row * (elementWidth + gap) + 5}px`; // The data row index is the visual column index.
-           } else if (highlightDataCol) { // Highlight a visual row
+               style.left = `${s.row * (elementWidth + gap) + 5}px`;
+           } else if (highlightDataCol) {
                style.width = `calc(${cols} * (${elementWidth}px + ${gap}px) - ${gap}px)`;
                style.height = `${elementHeight}px`;
-               style.top = `${s.col * (elementHeight + gap) + 5}px`; // The data col index is the visual row index.
+               style.top = `${s.col * (elementHeight + gap) + 5}px`;
                style.left = `5px`;
            }
        } else {
-           // Standard display
-           if (highlightDataRow) { // Highlight a visual row
+           if (highlightDataRow) {
                style.width = `calc(${cols} * (${elementWidth}px + ${gap}px) - ${gap}px)`;
                style.height = `${elementHeight}px`;
                style.top = `${s.row * (elementHeight + gap) + 5}px`;
                style.left = `5px`;
-           } else if (highlightDataCol) { // Highlight a visual column
+           } else if (highlightDataCol) {
                style.width = `${elementWidth}px`;
                style.height = `calc(${rows} * (${elementHeight}px + ${gap}px) - ${gap}px)`;
                style.top = `5px`;
@@ -69,6 +62,31 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
        return <div key={`${s.name}-${s.row}-${s.col}-${i}`} className="vector-highlight-overlay" style={style} />;
     });
 
+  const getLabelText = (fullName: string): string => {
+      const parts = fullName.split('.');
+      const lastPart = parts[parts.length - 1];
+      const simpleNames = ['Q', 'K', 'V', 'Scores', 'ScaledScores', 'AttentionWeights', 'HeadOutput', 'Wq', 'Wk', 'Wv', 'Wo', 'W1', 'W2', 'b1', 'b2'];
+      if (simpleNames.includes(lastPart)) {
+          return lastPart;
+      }
+      return `\\text{${lastPart.replace(/_/g, '\\_')}}`;
+  }
+
+  const labelText = getLabelText(name);
+
+  const symbolParts = getSymbolParts(name);
+  let mathSymbol = symbolParts.base;
+  if(symbolParts.superscript) mathSymbol = `${mathSymbol}^{${symbolParts.superscript}}`;
+  if(symbolParts.subscript) mathSymbol = `${mathSymbol}_{${symbolParts.subscript}}`;
+
+  let symbolTag = null;
+  if (mathSymbol && name !== 'inputEmbeddings' && name !== 'posEncodings') {
+      symbolTag = (
+        <div className="matrix-symbol-tag">
+            <InlineMath math={mathSymbol} />
+        </div>
+      );
+  }
 
   return (
     <div className="matrix-wrapper">
@@ -98,9 +116,11 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
           ))}
         </div>
       </div>
-      <div className="matrix-label"><InlineMath>{`${name.split('.').pop()}${isTransposed ? '^T' : ''}`}</InlineMath></div>
+      <div className="matrix-label-container">
+        <div className="matrix-label"><InlineMath>{`${labelText}${isTransposed ? '^T' : ''}`}</InlineMath></div>
+        {symbolTag}
+      </div>
     </div>
   );
 };
 // END OF FILE: src/components/Matrix.tsx
-/* END OF FILE: src/components/Matrix.tsx */

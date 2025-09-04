@@ -1,10 +1,12 @@
-/* START OF FILE: src/components/Explanation.tsx */
 // FILE: src/components/Explanation.tsx
 import React from 'react';
 import 'katex/dist/katex.min.css';
 import { BlockMath, InlineMath } from 'react-katex';
 import { SymbolicMatrix } from './SymbolicMatrix';
+import { SymbolicVector } from './SymbolicVector';
 import { HighlightState } from '../types';
+import { MATRIX_NAMES } from '../config/matrixNames';
+import { getSymbolParts } from '../config/symbolMapping';
 
 interface ExplanationProps {
     dims: { d_model: number; h: number, seq_len: number, n_layers: number, d_ff: number };
@@ -19,7 +21,7 @@ interface MathBlockProps {
 }
 
 const MathBlock: React.FC<MathBlockProps> = ({ id, title, children, highlight }) => {
-    const isActive = highlight.activeComponent ? id.includes(highlight.activeComponent) : false;
+    const isActive = highlight.activeComponent === id;
     return (
         <div id={`math_${id}`} className={`math-block ${isActive ? 'active' : ''}`}>
             <h3>{title}</h3>
@@ -29,79 +31,119 @@ const MathBlock: React.FC<MathBlockProps> = ({ id, title, children, highlight })
 };
 
 export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight }) => {
-    const d_k = dims.d_model / dims.h;
+    const LN = MATRIX_NAMES.layer(0);
+    const HN = MATRIX_NAMES.head(0, 0);
 
-    // ENHANCEMENT: The names passed to this function are now the full, unique identifiers
-    // This allows the SymbolicMatrix component to correctly sync with the highlight state.
-    const renderMatrixProduct = (
-        A_name: string, B_name: string, C_name: string,
-        A_prefix: string, B_prefix: string, C_prefix: string,
-        a_rows: number, a_cols: number,
-        b_rows: number, b_cols: number,
-        b_transpose: boolean = false
-    ) => {
-      return (
-         <div className="formula-display">
-            <SymbolicMatrix name={A_name} prefix={A_prefix} rows={a_rows} cols={a_cols} highlight={highlight} />
-            <BlockMath math="\times" />
-            <SymbolicMatrix name={B_name} prefix={B_prefix} rows={b_rows} cols={b_cols} highlight={highlight} transpose={b_transpose} />
-            <BlockMath math="=" />
-            <SymbolicMatrix name={C_name} prefix={C_prefix} rows={a_rows} cols={b_cols} highlight={highlight} />
-        </div>
-      )
+    // Helper to build KaTeX labels manually for consistency and correctness
+    const buildLabel = (name: string, rows: number, cols: number) => {
+        const symbol = getSymbolParts(name);
+        let label = symbol.base;
+        if (symbol.superscript) label += `^{${symbol.superscript}}`;
+        const finalSubscript = [symbol.subscript, `${rows}\\times${cols}`].filter(Boolean).join(',');
+        if (finalSubscript) label += `_{${finalSubscript}}`;
+        return label;
     }
-
-    // Define full names for layer 0 components to ensure correct highlighting
-    const baseMhaName = 'encoder.0.mha.h0';
-    const baseFfnName = 'encoder.0.ffn';
-    const baseAddNorm1Name = 'encoder.0.add_norm_1';
 
     return (
         <div>
              <MathBlock id="input_embed" title="输入嵌入 (Input Embedding)" highlight={highlight}>
-                <BlockMath math={`Z_{0;${dims.seq_len}\\times${dims.d_model}} = \\text{Embedding}(X) + \\text{PE}(X)`} />
                 <p>此步骤将输入的文本序列转换为模型可以处理的、包含位置信息的数值向量。我们以一个序列 (长度={dims.seq_len}) 为例，当前模型维度 <InlineMath math={`d_{model}=${dims.d_model}`} />。</p>
+                <BlockMath math={`${getSymbolParts(LN.encoder_input).base} = \\text{Embedding}(X) + \\text{PE}(X)`} />
                 <div className="formula-display">
-                    <SymbolicMatrix name="inputEmbeddings" rows={dims.seq_len} cols={dims.d_model} prefix="e" highlight={highlight} />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={MATRIX_NAMES.inputEmbeddings} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} /></div>
                     <BlockMath math="+" />
-                    <SymbolicMatrix name="posEncodings" rows={dims.seq_len} cols={dims.d_model} prefix="pe" highlight={highlight} />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={MATRIX_NAMES.posEncodings} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} /></div>
                     <BlockMath math="=" />
-                    <SymbolicMatrix name="encoderInput" rows={dims.seq_len} cols={dims.d_model} prefix="z" highlight={highlight} />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={MATRIX_NAMES.encoderInput} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} /></div>
                 </div>
              </MathBlock>
 
-             <MathBlock id="encoder.0.mha" title="编码器：多头注意力 (Multi-Head Attention)" highlight={highlight}>
-                <BlockMath math={`\\text{MultiHead}(Z) = \\text{Concat}(\\text{head}_0, ..., \\text{head}_{${dims.h-1}})W^O`} />
+             <MathBlock id="mha" title="编码器：多头注意力 (Multi-Head Attention)" highlight={highlight}>
+                <p>多头注意力的核心思想是将输入（<InlineMath math="Z"/>）拆分到 <InlineMath math={`h=${dims.h}`}/> 个“子空间”中并行处理，最后再将结果融合。这允许模型从不同角度关注信息。</p>
                 <h5>为单个头生成 Q, K, V</h5>
-                <BlockMath math={`Q = Z W^Q, \\quad K = Z W^K, \\quad V = Z W^V`} />
-                {renderMatrixProduct(`${baseAddNorm1Name}_in_residual`, `${baseMhaName}.Wq`, `${baseMhaName}.Q`, 'z', 'w^q', 'q', dims.seq_len, dims.d_model, dims.d_model, d_k)}
+                <p>输入矩阵 <InlineMath math="Z"/> 被并行地送入 {dims.h} 个独立的注意力头。每个头都拥有三块自己专属、可学习的权重矩阵。</p>
+
+                <div className="formula-display">
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.encoder_input} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} /></div>
+                    <BlockMath math="\times" />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Wq} rows={dims.d_model} cols={dims.d_model/dims.h} highlight={highlight} /></div>
+                    <BlockMath math="=" />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Q} rows={dims.seq_len} cols={dims.d_model/dims.h} highlight={highlight} /></div>
+                </div>
+
                 <h5>计算注意力分数</h5>
-                <BlockMath math="\\text{Scores} = Q K^T" />
-                {renderMatrixProduct(`${baseMhaName}.Q`, `${baseMhaName}.K`, `${baseMhaName}.Scores`, 'q', 'k', 's', dims.seq_len, d_k, d_k, dims.seq_len, true)}
+                <p>通过将 Query 矩阵与转置后的 Key 矩阵相乘，我们得到一个注意力分数矩阵 <InlineMath math="S"/>。</p>
+                <div className="formula-display">
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Q} rows={dims.seq_len} cols={dims.d_model/dims.h} highlight={highlight} /></div>
+                    <BlockMath math="\times" />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.K} rows={dims.d_model/dims.h} cols={dims.seq_len} highlight={highlight} transpose={true}/></div>
+                    <BlockMath math="=" />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Scores} rows={dims.seq_len} cols={dims.seq_len} highlight={highlight} /></div>
+                </div>
+
                 <h5>缩放、Softmax 和加权求和</h5>
-                <BlockMath math={`\\text{head}_i = \\text{softmax}\\left(\\frac{\\text{Scores}}{\\sqrt{d_k}}\\right)V`} />
+                <p>为防止梯度过小，将分数矩阵 <InlineMath math="S"/> 中的所有元素都除以一个缩放因子 <InlineMath math={`\\sqrt{d_k}`}/>。然后，对缩放后的分数矩阵<b>逐行</b>应用 Softmax 函数，将其转换为概率分布（权重 <InlineMath math="A"/>）。</p>
+                <div className="formula-display">
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Scores} rows={dims.seq_len} cols={dims.seq_len} highlight={highlight}/></div>
+                    <BlockMath math={`\\xrightarrow{/\\sqrt{d_k}}`} />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.ScaledScores} rows={dims.seq_len} cols={dims.seq_len} highlight={highlight}/></div>
+                    <BlockMath math={`\\xrightarrow{\\text{softmax}}`} />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.AttentionWeights} rows={dims.seq_len} cols={dims.seq_len} highlight={highlight}/></div>
+                </div>
+
+                <h5>拼接与最终投影</h5>
+                <p>所有 {dims.h} 个头的输出矩阵被拼接在一起，然后通过一个最终的线性层进行融合，得到该多头注意力块的最终输出 <InlineMath math="M"/>。</p>
              </MathBlock>
 
-             <MathBlock id="encoder.0.add_norm_1" title="残差连接与层归一化 (Add & Norm)" highlight={highlight}>
-                <BlockMath math="X_{out} = \\text{LayerNorm}(X_{in} + \\text{Sublayer}(X_{in}))" />
+             <MathBlock id="add_norm_1" title="残差连接与层归一化 (1)" highlight={highlight}>
+                <p>此步骤包含两个关键操作：残差连接 (Add) 和层归一化 (LayerNorm)，旨在改善深度网络的训练过程并增强信息流动。</p>
                 <div className="formula-display">
-                    <SymbolicMatrix name={`${baseAddNorm1Name}_in_residual`} prefix="x" rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
+                    <SymbolicMatrix name={LN.encoder_input} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
                     <BlockMath math="+" />
-                    <SymbolicMatrix name={`${baseAddNorm1Name}_in_sublayer`} prefix="m" rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
+                    <SymbolicMatrix name={LN.mha_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
                     <BlockMath math="\xrightarrow{\text{LayerNorm}}" />
-                    <SymbolicMatrix name={`${baseAddNorm1Name}_out`} prefix="y" rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
+                    <SymbolicMatrix name={LN.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
                 </div>
              </MathBlock>
 
-              <MathBlock id="encoder.0.ffn" title="前馈神经网络 (Feed-Forward Network)" highlight={highlight}>
-                <BlockMath math="\text{FFN}(X) = \text{ReLU}(XW_1 + b_1)W_2 + b_2" />
+              <MathBlock id="ffn" title="前馈神经网络 (Feed-Forward Network)" highlight={highlight}>
+                <p>前馈网络是一个简单的两层全连接神经网络，它被独立地应用于序列中的每一个位置（即每一个词元向量）。</p>
                 <h5>1. 第一次线性变换 (维度扩展)</h5>
-                {renderMatrixProduct(`${baseAddNorm1Name}_out`, `${baseFfnName}.W1`, `${baseFfnName}.Intermediate`, 'x', 'w', 'h', dims.seq_len, dims.d_model, dims.d_model, dims.d_ff)}
+                <p>输入矩阵 <InlineMath math="Z'"/> 首先会经过一个线性层，将其维度从 <InlineMath math={`d_{model}=${dims.d_model}`}/> 扩展到一个更大的中间维度 <InlineMath math={`d_{ff}=${dims.d_ff}`}/>。</p>
+                <div className="formula-display">
+                    <SymbolicMatrix name={LN.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight}/>
+                    <BlockMath math="\times"/>
+                    <SymbolicMatrix name={LN.W1} rows={dims.d_model} cols={dims.d_ff} highlight={highlight}/>
+                    <BlockMath math="+"/>
+                    <SymbolicVector name={LN.b1} data={Array(dims.d_ff).fill(0)} highlight={highlight}/>
+                    <BlockMath math="\xrightarrow{ReLU}"/>
+                    <SymbolicMatrix name={LN.Activated} rows={dims.seq_len} cols={dims.d_ff} highlight={highlight}/>
+                </div>
+
                 <h5>2. 第二次线性变换 (维度投影)</h5>
-                {renderMatrixProduct(`${baseFfnName}.Activated`, `${baseFfnName}.W2`, `${baseFfnName}.Output`, 'h', 'w', 'y', dims.seq_len, dims.d_ff, dims.d_ff, dims.d_model)}
+                <p>最后，将经过激活函数处理的矩阵再通过第二个线性层，将其从中间维度 <InlineMath math={`d_{ff}`}/> 投影回原始的模型维度 <InlineMath math={`d_{model}`}/>。</p>
+                <div className="formula-display">
+                    <SymbolicMatrix name={LN.Activated} rows={dims.seq_len} cols={dims.d_ff} highlight={highlight}/>
+                    <BlockMath math="\times"/>
+                    <SymbolicMatrix name={LN.W2} rows={dims.d_ff} cols={dims.d_model} highlight={highlight}/>
+                    <BlockMath math="+"/>
+                    <SymbolicVector name={LN.b2} data={Array(dims.d_model).fill(0)} highlight={highlight}/>
+                    <BlockMath math="="/>
+                    <SymbolicMatrix name={LN.ffn_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight}/>
+                </div>
+             </MathBlock>
+
+             <MathBlock id="add_norm_2" title="残差连接与层归一化 (2)" highlight={highlight}>
+                <p>与第一个 "Add & Norm" 层类似，此步骤将 FFN 子层的输出信息与该子层的输入信息直接结合，然后进行层归一化。</p>
+                <div className="formula-display">
+                    <SymbolicMatrix name={LN.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
+                    <BlockMath math="+" />
+                    <SymbolicMatrix name={LN.ffn_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
+                    <BlockMath math="\xrightarrow{\text{LayerNorm}}" />
+                    <SymbolicMatrix name={LN.add_norm_2_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
+                </div>
              </MathBlock>
         </div>
     );
 };
 // END OF FILE: src/components/Explanation.tsx
-/* END OF FILE: src/components/Explanation.tsx */
