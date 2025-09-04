@@ -73,12 +73,11 @@ function App() {
       }
       // --- MHA Component ---
       else if (name === HN.Q || name === HN.K || name === HN.V) {
-          const matrixType = name.split('.').pop()!;
-          // [核心修复] 修正大小写错误 Wq vs wq
-          const weightName = HN[matrixType as 'Q' | 'K' | 'V'];
+          const matrixType = name.split('.').pop()!; // 'Q', 'K', or 'V'
+          const weightName = HN[`W${matrixType.toLowerCase()}` as 'Wq' | 'Wk' | 'Wv'];
           for (let k = 0; k < dims.d_model; k++) {
               newSources.push({ name: LN.encoder_input, row, col: k, highlightRow: true });
-              newSources.push({ name: weightName.replace(matrixType, `W${matrixType.toLowerCase()}`), row: k, col: col, highlightCol: true });
+              newSources.push({ name: weightName, row: k, col, highlightCol: true });
           }
       } else if (name === HN.Scores) {
           newSources.push({ name: HN.Q, row: row, col: -1, highlightRow: true });

@@ -35,7 +35,7 @@ export interface AttentionHeadData {
 export interface MultiHeadAttentionData {
     heads: AttentionHeadData[];
     Wo: Matrix;
-    Output: Matrix;
+    output: Matrix;
 }
 
 export interface FFNData {

@@ -3,6 +3,7 @@ import React from 'react';
 import { MultiHeadAttentionData, HighlightState, ElementIdentifier } from '../types';
 import { Matrix } from './Matrix';
 import { InlineMath } from 'react-katex';
+import { MATRIX_NAMES } from '../config/matrixNames';
 
 interface MHAProps {
     baseName: string;
@@ -16,6 +17,9 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
     const headData = data.heads[0];
     const headBaseName = `${baseName}.h0`;
     const isActive = highlight.activeComponent === 'mha'; // 检查是否为当前激活的组件
+    
+    const layerIndex = parseInt(baseName.split('.')[1], 10);
+    const LN = MATRIX_NAMES.layer(layerIndex);
 
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}> {/* 应用active类 */}
@@ -69,7 +73,7 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                    <InlineMath math="..." />
                    <Matrix name={`${baseName}.Wo`} data={data.Wo} highlight={highlight} onElementClick={onElementClick} />
                    <InlineMath math="=" />
-                   <Matrix name={`${baseName}.Output`} data={data.Output} highlight={highlight} onElementClick={onElementClick} />
+                   <Matrix name={LN.mha_output} data={data.output} highlight={highlight} onElementClick={onElementClick} />
                 </div>
             </div>
         </div>

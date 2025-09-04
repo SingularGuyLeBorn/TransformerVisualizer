@@ -62,31 +62,27 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
        return <div key={`${s.name}-${s.row}-${s.col}-${i}`} className="vector-highlight-overlay" style={style} />;
     });
 
-  const getLabelText = (fullName: string): string => {
-      const parts = fullName.split('.');
-      const lastPart = parts[parts.length - 1];
-      const simpleNames = ['Q', 'K', 'V', 'Scores', 'ScaledScores', 'AttentionWeights', 'HeadOutput', 'Wq', 'Wk', 'Wv', 'Wo', 'W1', 'W2', 'b1', 'b2'];
-      if (simpleNames.includes(lastPart)) {
-          return lastPart;
-      }
-      return `\\text{${lastPart.replace(/_/g, '\\_')}}`;
-  }
-
-  const labelText = getLabelText(name);
-
   const symbolParts = getSymbolParts(name);
   let mathSymbol = symbolParts.base;
   if(symbolParts.superscript) mathSymbol = `${mathSymbol}^{${symbolParts.superscript}}`;
   if(symbolParts.subscript) mathSymbol = `${mathSymbol}_{${symbolParts.subscript}}`;
+  if(isTransposed) mathSymbol = `${mathSymbol}^T`;
 
+  // Use the full math symbol for the main label
+  const labelText = mathSymbol;
+
+  // The smaller tag now shows the conceptual name, e.g. "Wq" or "Scores"
+  const conceptualName = name.split('.').pop() || '';
+  const simpleNames = ['Q', 'K', 'V', 'Scores', 'ScaledScores', 'AttentionWeights', 'HeadOutput', 'Wq', 'Wk', 'Wv', 'Wo', 'W1', 'W2', 'b1', 'b2', 'output'];
   let symbolTag = null;
-  if (mathSymbol && name !== 'inputEmbeddings' && name !== 'posEncodings') {
+  if (simpleNames.includes(conceptualName) && name !== 'inputEmbeddings' && name !== 'posEncodings') {
       symbolTag = (
         <div className="matrix-symbol-tag">
-            <InlineMath math={mathSymbol} />
+            {conceptualName}
         </div>
       );
   }
+
 
   return (
     <div className="matrix-wrapper">
@@ -117,7 +113,7 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
         </div>
       </div>
       <div className="matrix-label-container">
-        <div className="matrix-label"><InlineMath>{`${labelText}${isTransposed ? '^T' : ''}`}</InlineMath></div>
+        <div className="matrix-label"><InlineMath>{labelText}</InlineMath></div>
         {symbolTag}
       </div>
     </div>

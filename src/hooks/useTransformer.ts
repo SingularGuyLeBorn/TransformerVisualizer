@@ -127,7 +127,7 @@ export const useTransformer = (dims: Dims): TransformerData | null => {
             const ConcatOutput = headOutputs.reduce((acc, current) => acc.map((row, rIdx) => [...row, ...current[rIdx]]), Array(seq_len).fill(0).map(() => []));
             const Wo = createRandomMatrix(d_model, d_model);
             const mha_output = multiplyMatrices(ConcatOutput, Wo);
-            const mha: MultiHeadAttentionData = { heads, Wo, Output: mha_output };
+            const mha: MultiHeadAttentionData = { heads, Wo, output: mha_output };
 
             const add_norm_1_sum = addMatrices(encoder_input, mha_output);
             const add_norm_1_output = layerNorm(add_norm_1_sum);

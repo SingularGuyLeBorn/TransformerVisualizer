@@ -13,7 +13,7 @@ export const MATRIX_NAMES = {
         encoder_input: `encoder.${layerIndex}.encoder_input`,
 
         // MHA
-        mha_output: `encoder.${layerIndex}.mha_output`,
+        mha_output: `encoder.${layerIndex}.mha.output`,
         Wo: `encoder.${layerIndex}.mha.Wo`,
 
         // Add & Norm 1
@@ -26,7 +26,7 @@ export const MATRIX_NAMES = {
         Activated: `encoder.${layerIndex}.ffn.Activated`,
         W2: `encoder.${layerIndex}.ffn.W2`,
         b2: `encoder.${layerIndex}.ffn.b2`,
-        ffn_output: `encoder.${layerIndex}.ffn_output`,
+        ffn_output: `encoder.${layerIndex}.ffn.output`,
 
         // Add & Norm 2
         add_norm_2_output: `encoder.${layerIndex}.add_norm_2_output`,

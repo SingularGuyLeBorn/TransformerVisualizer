@@ -62,7 +62,7 @@ export const SymbolicMatrix: React.FC<SymbolicMatrixProps> = ({ name, rows, cols
       const originalCol = transpose ? r_idx : c_idx;
 
       const elementBase = symbol.base.toLowerCase().replace(/'/g, '').replace(/_{.*}/, '');
-      const subscriptContent = [symbol.subscript, originalRow, originalCol].filter(s => s !== undefined).join(',');
+      const subscriptContent = [symbol.subscript, originalRow, originalCol].filter(s => s !== undefined && s !== null).join(',');
 
       let elementString = `${elementBase}_{${subscriptContent}}`;
 
@@ -101,12 +101,35 @@ export const SymbolicMatrix: React.FC<SymbolicMatrixProps> = ({ name, rows, cols
 
   const matrixString = matrixRowsStr.join(' \\\\ ');
   const bmatrix = `\\begin{pmatrix} ${matrixString} \\end{pmatrix}`;
+  
+  // Logic to correctly combine subscripts for the main matrix label
+  let mathSymbol = symbol.base;
+  if (symbol.superscript) mathSymbol += `^{${symbol.superscript}}`;
+  if (transpose) mathSymbol += '^T';
+  
+  const existingSubscriptMatch = mathSymbol.match(/_{([^}]*)}/);
+  let finalSubscriptContent = [symbol.subscript, `${displayRows} \\times ${displayCols}`].filter(Boolean).join(',');
 
-  // [最终修复] 移除复杂的标签生成逻辑，只渲染矩阵本身
-  const finalFormula = bmatrix;
-
+  if (existingSubscriptMatch) {
+      const baseWithoutSub = mathSymbol.replace(existingSubscriptMatch[0], '');
+      const combinedSub = [existingSubscriptMatch[1], `${displayRows} \\times ${displayCols}`].filter(Boolean).join(',');
+      mathSymbol = `${baseWithoutSub}_{${combinedSub}}`;
+  } else {
+      mathSymbol += `_{${finalSubscriptContent}}`;
+  }
+  
   const isSourceComponent = highlight.sources.some(s => s.name === name);
   const isTargetComponent = highlight.target?.name === name;
+
+  let labelPart = mathSymbol;
+  if(isTargetComponent) {
+      // Use KaTeX-supported \colorbox{color}{content}
+      labelPart = `{\\colorbox{#fde8e9}{\\color{black}$\\displaystyle ${mathSymbol}$}}`;
+  } else if (isSourceComponent) {
+      labelPart = `{\\colorbox{#e8f0f8}{\\color{black}$\\displaystyle ${mathSymbol}$}}`;
+  }
+
+  const finalFormula = `${labelPart} = ${bmatrix}`;
   const wrapperClass = `symbolic-matrix-wrapper ${isTargetComponent ? 'target' : ''} ${isSourceComponent ? 'source' : ''}`;
 
   return (

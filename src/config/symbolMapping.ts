@@ -17,10 +17,10 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
     encoder_input: { base: 'Z' }, // Alias for layers
 
     // MHA Weights
-    Wq: { base: 'W', superscript: 'Q', subscript: 'q' },
-    Wk: { base: 'W', superscript: 'K', subscript: 'k' },
-    Wv: { base: 'W', superscript: 'V', subscript: 'v' },
-    Wo: { base: 'W', superscript: 'O', subscript: 'o' },
+    Wq: { base: 'W', superscript: 'Q' },
+    Wk: { base: 'W', superscript: 'K' },
+    Wv: { base: 'W', superscript: 'V' },
+    Wo: { base: 'W', superscript: 'O' },
 
     // MHA Tensors
     Q: { base: 'Q' },
@@ -31,7 +31,9 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
     AttentionWeights: { base: 'A' },
     HeadOutput: { base: 'H' },
     ConcatOutput: { base: 'H_{cat}'},
+    output: { base: 'M' }, // Corresponds to mha_output
     mha_output: { base: 'M' },
+
 
     // Add & Norm
     add_norm_1_output: { base: "Z'" },
