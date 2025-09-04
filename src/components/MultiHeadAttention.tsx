@@ -1,4 +1,3 @@
-/* START OF FILE: src/components/MultiHeadAttention.tsx */
 // FILE: src/components/MultiHeadAttention.tsx
 import React from 'react';
 import { MultiHeadAttentionData, HighlightState, ElementIdentifier } from '../types';
@@ -51,7 +50,7 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                      <InlineMath math="\rightarrow" />
                     <Matrix name={`${headBaseName}.Scores`} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
                     {/* FIX: Escaped the '&' character to '\\&' to prevent KaTeX parse error. */}
-                    <InlineMath math="\xrightarrow{\text{scale \\& softmax}}" />
+                    <InlineMath math="\xrightarrow{\text{scale + softmax}}" />
                     <Matrix name={`${headBaseName}.AttentionWeights`} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
                      <InlineMath math="\times" />
                     <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
@@ -74,4 +73,3 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
     );
 };
 // END OF FILE: src/components/MultiHeadAttention.tsx
-/* END OF FILE: src/components/MultiHeadAttention.tsx */
