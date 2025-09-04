@@ -1,0 +1,72 @@
+/* START OF FILE: src/components/Controls.tsx */
+// FILE: src/components/Controls.tsx
+import React from 'react';
+
+interface ControlsProps {
+  dims: { d_model: number; h: number, seq_len: number, n_layers: number, d_ff: number };
+  setDims: (dims: { d_model: number; h: number, seq_len: number, n_layers: number, d_ff: number }) => void;
+}
+
+export const Controls: React.FC<ControlsProps> = ({ dims, setDims }) => {
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    let newDims = { ...dims, [id]: parseInt(value, 10) || 1 };
+
+    // Ensure d_model is divisible by h
+    if (id === 'h') {
+        if (newDims.d_model % newDims.h !== 0) {
+             newDims.d_model = Math.max(newDims.h, Math.ceil(newDims.d_model / newDims.h) * newDims.h);
+        }
+    }
+    if (id === 'd_model') {
+         if (newDims.d_model % newDims.h !== 0) {
+             let best_h = 1;
+             for (let i = 1; i <= newDims.d_model; i++) {
+                 if (newDims.d_model % i === 0) {
+                    if (Math.abs(i - newDims.h) < Math.abs(best_h - newDims.h)) {
+                       best_h = i;
+                    }
+                 }
+             }
+             newDims.h = best_h;
+         }
+    }
+
+    // Ensure d_ff is a multiple of d_model
+    if(id === 'd_model') {
+        newDims.d_ff = newDims.d_model * 4;
+    }
+
+    setDims(newDims);
+  };
+
+  const d_k = dims.d_model % dims.h === 0 ? dims.d_model / dims.h : 'N/A';
+
+  return (
+    <div className="controls-container">
+      <div className="control-group">
+        <label htmlFor="seq_len">序列长度 (seq_len)</label>
+        <input type="number" id="seq_len" value={dims.seq_len} onChange={handleInputChange} min="2" max="5" />
+      </div>
+      <div className="control-group">
+        <label htmlFor="d_model">模型维度 (d_model)</label>
+        <input type="number" id="d_model" value={dims.d_model} onChange={handleInputChange} step={1} min={2} max="16"/>
+      </div>
+      <div className="control-group">
+        <label htmlFor="h">注意力头数 (h)</label>
+        <input type="number" id="h" value={dims.h} onChange={handleInputChange} min="1" max={dims.d_model}/>
+      </div>
+      <div className="control-group">
+        <label htmlFor="n_layers">层数 (N)</label>
+        <input type="number" id="n_layers" value={dims.n_layers} onChange={handleInputChange} min="1" max="3"/>
+      </div>
+       <div className="control-group">
+        <label>键/查询维度 (d_k)</label>
+        <div className="d_k-value">{d_k}</div>
+      </div>
+    </div>
+  );
+};
+// END OF FILE: src/components/Controls.tsx
+/* END OF FILE: src/components/Controls.tsx */

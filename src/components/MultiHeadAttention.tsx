@@ -1,0 +1,77 @@
+/* START OF FILE: src/components/MultiHeadAttention.tsx */
+// FILE: src/components/MultiHeadAttention.tsx
+import React from 'react';
+import { MultiHeadAttentionData, HighlightState, ElementIdentifier } from '../types';
+import { Matrix } from './Matrix';
+import { InlineMath } from 'react-katex';
+
+interface MHAProps {
+    baseName: string;
+    data: MultiHeadAttentionData;
+    highlight: HighlightState;
+    onElementClick: (element: ElementIdentifier) => void;
+}
+
+export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlight, onElementClick }) => {
+    // Simplified to show only the first head's details for clarity
+    const headData = data.heads[0];
+    const headBaseName = `${baseName}.h0`;
+
+    return (
+        <div className="diagram-component">
+            <div className="component-header">Multi-Head Attention</div>
+            <div className="component-body">
+                <p>Input (from previous layer)</p>
+                <div className="arrow-down">↓</div>
+
+                {/* Q, K, V Generation */}
+                <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '15px'}}>
+                   <span>Q = Z × Wq →</span>
+                   <Matrix name={`${headBaseName}.Wq`} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
+                   <Matrix name={`${headBaseName}.Q`} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                </div>
+                 <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '15px', marginTop: '10px'}}>
+                   <span>K = Z × Wk →</span>
+                   <Matrix name={`${headBaseName}.Wk`} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
+                   <Matrix name={`${headBaseName}.K`} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
+                </div>
+                 <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '15px', marginTop: '10px'}}>
+                   <span>V = Z × Wv →</span>
+                   <Matrix name={`${headBaseName}.Wv`} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
+                   <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                </div>
+
+                <div className="arrow-down">↓</div>
+                <p>Scaled Dot-Product Attention (Head 1)</p>
+
+                <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'center'}}>
+                    <Matrix name={`${headBaseName}.Q`} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                    <InlineMath math="\times" />
+                    <Matrix name={`${headBaseName}.K`} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
+                     <InlineMath math="\rightarrow" />
+                    <Matrix name={`${headBaseName}.Scores`} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
+                    {/* FIX: Escaped the '&' character to '\\&' to prevent KaTeX parse error. */}
+                    <InlineMath math="\xrightarrow{\text{scale \\& softmax}}" />
+                    <Matrix name={`${headBaseName}.AttentionWeights`} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
+                     <InlineMath math="\times" />
+                    <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                     <InlineMath math="=" />
+                    <Matrix name={`${headBaseName}.HeadOutput`} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick}/>
+                </div>
+
+                <div className="arrow-down">↓</div>
+                <p>Concat & Final Projection</p>
+
+                 <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'center'}}>
+                   <Matrix name={`${headBaseName}.HeadOutput`} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick} />
+                   <InlineMath math="..." />
+                   <Matrix name={`${baseName}.Wo`} data={data.Wo} highlight={highlight} onElementClick={onElementClick} />
+                   <InlineMath math="=" />
+                   <Matrix name={`${baseName}.Output`} data={data.Output} highlight={highlight} onElementClick={onElementClick} />
+                </div>
+            </div>
+        </div>
+    );
+};
+// END OF FILE: src/components/MultiHeadAttention.tsx
+/* END OF FILE: src/components/MultiHeadAttention.tsx */

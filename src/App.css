@@ -1,0 +1,300 @@
+/* START OF FILE: src/App.css */
+/* FILE: src/App.css */
+:root {
+  --highlight-color: #c0392b;
+  --highlight-bg: rgba(192, 57, 43, 0.08);
+  --border-color: #dcdfe6;
+  --bg-color: #f5f7fa;
+  --text-color: #303133;
+  --arrow-color: #888;
+  --component-bg: #ffffff;
+  --component-header-bg: #f8f9fa;
+  --residual-bg: #f0f4c3;
+  --residual-border: #dce775;
+
+  /* Highlighting */
+  --highlight-target-bg: #e63946;
+  --highlight-target-color: #ffffff;
+  --highlight-source-bg: #1d3557;
+  --highlight-source-color: #f1faee;
+  --highlight-formula-bg: #fefae0;
+  --highlight-formula-border: #fca311;
+  --highlight-vector-bg: rgba(69, 123, 157, 0.2);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  margin: 0;
+  font-size: 15px;
+}
+
+#root {
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+h1 {
+  text-align: center;
+  color: #000;
+  margin: 0;
+  padding: 20px 0;
+  background-color: var(--component-bg);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0; /* Prevent title from shrinking */
+}
+
+.main-layout {
+  display: flex;
+  gap: 20px;
+  flex-grow: 1; /* Allow layout to fill remaining space */
+  overflow: hidden;
+  padding: 20px;
+  min-height: 0; /* Important for flex children scrolling */
+}
+
+.column {
+  flex: 1;
+  background: var(--component-bg);
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  overflow-y: auto; /* THIS IS THE KEY FOR SCROLLING */
+  min-height: 0;
+}
+
+.column-content {
+  padding: 20px;
+}
+
+.column.left-column {
+  flex: 1.4;
+}
+
+.column h2 {
+  font-size: 1.6em;
+  margin: -20px -20px 20px -20px;
+  padding: 20px 20px 15px 20px;
+  text-align: center;
+  color: #000;
+  position: sticky;
+  top: -21px; /* Adjust to hide top border */
+  background: inherit;
+  z-index: 10;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 12px 12px 0 0;
+}
+
+/* --- Left Column: Viz --- */
+.diagram-component {
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  margin-bottom: 15px;
+  background-color: #fdfdfd;
+  transition: all 0.3s ease;
+}
+
+.component-header {
+  background-color: var(--component-header-bg);
+  padding: 8px 15px;
+  font-weight: bold;
+  font-size: 1.1em;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 8px 8px 0 0;
+}
+.component-body {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.arrow-down {
+  width: 100%;
+  text-align: center;
+  font-size: 24px;
+  color: var(--arrow-color);
+  margin: 5px 0;
+}
+
+/* --- Matrix Styles --- */
+.matrix-wrapper {
+    position: relative;
+}
+.matrix-container {
+  display: inline-block;
+  border: 1px solid #ccc;
+  padding: 5px;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+  position: relative;
+}
+.matrix-grid {
+  display: grid;
+  gap: 3px;
+}
+
+.matrix-element {
+  width: 45px;
+  height: 25px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 2px;
+  font-family: monospace;
+  font-size: 0.8em;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  z-index: 2;
+}
+
+.matrix-element:hover {
+  transform: scale(1.1);
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0,123,255,0.5);
+  z-index: 5;
+}
+
+.matrix-element.source {
+  background-color: var(--highlight-source-bg);
+  color: var(--highlight-source-color);
+  border-color: var(--highlight-source-bg);
+}
+.matrix-element.target {
+  background-color: var(--highlight-target-bg);
+  color: var(--highlight-target-color);
+  border-color: var(--highlight-target-bg);
+}
+
+.vector-highlight-overlay {
+    position: absolute;
+    background-color: var(--highlight-vector-bg);
+    border: 1px solid var(--highlight-source-bg);
+    border-radius: 3px;
+    z-index: 1;
+    pointer-events: none;
+    transition: all 0.2s ease;
+}
+
+.matrix-label {
+  text-align: center;
+  font-weight: bold;
+  margin-top: 8px;
+  font-family: monospace;
+  font-size: 1.1em;
+}
+
+.op-symbol {
+    font-size: 2em;
+    font-weight: bold;
+    color: #909399;
+}
+
+/* --- Right Column: Explanation --- */
+.math-block {
+  margin-bottom: 25px;
+  padding: 20px;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  background: #fff;
+  transition: all 0.3s ease;
+}
+.math-block.active {
+  border-color: var(--highlight-formula-border) !important;
+  box-shadow: 0 0 30px var(--highlight-bg) !important;
+  transform: scale(1.01);
+  background-color: var(--highlight-formula-bg);
+}
+.math-block h3 {
+  margin: -20px -20px 15px -20px;
+  padding: 15px 20px;
+  font-size: 1.25em;
+  color: #000;
+  border-bottom: 1px solid #eee;
+  border-radius: 12px 12px 0 0;
+  background-color: var(--component-header-bg);
+}
+.math-block p, .math-block li, .math-block h5 {
+    line-height: 1.7;
+    margin: 1em 0;
+}
+.math-block h5 {
+    font-size: 1.1em;
+}
+.math-block code {
+   background-color: #e9ecef;
+   padding: 2px 5px;
+   border-radius: 4px;
+   font-family: monospace;
+}
+
+.formula-display {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin: 20px 0;
+    padding: 10px;
+    overflow-x: auto;
+}
+.katex-display {
+    margin: 0 !important;
+}
+
+/* Controls */
+.controls-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: var(--component-bg);
+  border-bottom: 1px solid var(--border-color);
+  gap: 30px;
+  flex-shrink: 0; /* Prevent controls from shrinking */
+}
+.control-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.control-group label {
+  font-size: 0.9em;
+  margin-bottom: 5px;
+  color: #606266;
+}
+.control-group input {
+  width: 60px;
+  padding: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  text-align: center;
+  font-size: 1em;
+}
+.d_k-value {
+    width: 60px;
+    padding: 6px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 1em;
+    font-weight: bold;
+    background-color: #f0f2f5;
+}
+/* END OF FILE: src/App.css */
+/* END OF FILE: src/App.css */
