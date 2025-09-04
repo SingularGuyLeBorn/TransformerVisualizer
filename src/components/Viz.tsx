@@ -1,4 +1,3 @@
-/* START OF FILE: src/components/Viz.tsx */
 // FILE: src/components/Viz.tsx
 import React from 'react';
 import { TransformerData, HighlightState, ElementIdentifier } from '../types';
@@ -13,9 +12,11 @@ interface VizProps {
 }
 
 export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => {
+    const isInputEmbedActive = highlight.activeComponent === 'input_embed';
     return (
         <div>
-            <div className="diagram-component">
+            {/* Input Embedding & Positional Encoding 组件高亮 */}
+            <div className={`diagram-component ${isInputEmbedActive ? 'active' : ''}`}>
                 <div className="component-header">Input Embedding & Positional Encoding</div>
                 <div className="component-body">
                     <Matrix name="inputEmbeddings" data={data.inputEmbeddings} highlight={highlight} onElementClick={onElementClick} />
@@ -26,7 +27,8 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
 
             <div className="arrow-down">↓</div>
 
-            <div className="diagram-component">
+            {/* Encoder Input 组件高亮 */}
+            <div className={`diagram-component ${isInputEmbedActive ? 'active' : ''}`}>
                 <div className="component-header">Encoder Input (<InlineMath math="Z_0" />)</div>
                 <div className="component-body">
                      <Matrix name="encoderInput" data={data.encoderInput} highlight={highlight} onElementClick={onElementClick} />
@@ -46,4 +48,3 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
     );
 };
 // END OF FILE: src/components/Viz.tsx
-/* END OF FILE: src/components/Viz.tsx */

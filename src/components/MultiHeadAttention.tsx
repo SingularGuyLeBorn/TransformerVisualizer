@@ -15,9 +15,10 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
     // Simplified to show only the first head's details for clarity
     const headData = data.heads[0];
     const headBaseName = `${baseName}.h0`;
+    const isActive = highlight.activeComponent === 'mha'; // 检查是否为当前激活的组件
 
     return (
-        <div className="diagram-component">
+        <div className={`diagram-component ${isActive ? 'active' : ''}`}> {/* 应用active类 */}
             <div className="component-header">Multi-Head Attention</div>
             <div className="component-body">
                 <p>Input (from previous layer)</p>
@@ -49,8 +50,7 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                     <Matrix name={`${headBaseName}.K`} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
                      <InlineMath math="\rightarrow" />
                     <Matrix name={`${headBaseName}.Scores`} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
-                    {/* FIX: Escaped the '&' character to '\\&' to prevent KaTeX parse error. */}
-                    <InlineMath math="\xrightarrow{\text{scale + softmax}}" />
+                    <InlineMath math="\xrightarrow{\text{scale \& softmax}}" />
                     <Matrix name={`${headBaseName}.AttentionWeights`} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
                      <InlineMath math="\times" />
                     <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />

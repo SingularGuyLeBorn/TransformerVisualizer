@@ -1,4 +1,3 @@
-/* START OF FILE: src/App.tsx */
 // FILE: src/App.tsx
 import React, { useState, useCallback } from 'react';
 import { Controls } from './components/Controls';
@@ -80,9 +79,9 @@ function App() {
               newSources.push({ name: `${headBasePath}.Q`, row: row, col: -1, highlightRow: true });
               newSources.push({ name: `${headBasePath}.K`, row: col, col: -1, highlightRow: true }); // K is transposed, so its row `col` becomes a column.
           } else if (matrixName === 'AttentionWeights') {
-              // An attention weight is calculated from the entire corresponding row in Scores
+              // 修正：当点击AttentionWeights时，高亮其softmax输入ScaledScores
                for (let k = 0; k < dims.seq_len; k++) {
-                   newSources.push({ name: `${headBasePath}.Scores`, row, col: k, highlightRow: true});
+                   newSources.push({ name: `${headBasePath}.ScaledScores`, row, col: k, highlightRow: true });
                }
           } else if (matrixName === 'HeadOutput') {
               for (let k = 0; k < dims.seq_len; k++) {
@@ -172,4 +171,3 @@ function App() {
 
 export default App;
 // END OF FILE: src/App.tsx
-/* END OF FILE: src/App.tsx */

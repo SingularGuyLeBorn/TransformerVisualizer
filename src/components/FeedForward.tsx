@@ -1,4 +1,3 @@
-/* START OF FILE: src/components/FeedForward.tsx */
 // FILE: src/components/FeedForward.tsx
 import React from 'react';
 import { FFNData, HighlightState, ElementIdentifier } from '../types';
@@ -13,8 +12,9 @@ interface FFNProps {
 }
 
 export const FeedForward: React.FC<FFNProps> = ({ baseName, data, highlight, onElementClick }) => {
+    const isActive = highlight.activeComponent === 'ffn'; // 检查是否为当前激活的组件
     return (
-        <div className="diagram-component">
+        <div className={`diagram-component ${isActive ? 'active' : ''}`}> {/* 应用active类 */}
             <div className="component-header">Feed-Forward Network</div>
             <div className="component-body">
                 <p>Input (from Add & Norm)</p>
@@ -34,4 +34,3 @@ export const FeedForward: React.FC<FFNProps> = ({ baseName, data, highlight, onE
     );
 };
 // END OF FILE: src/components/FeedForward.tsx
-/* END OF FILE: src/components/FeedForward.tsx */

@@ -17,8 +17,9 @@
   --highlight-target-color: #ffffff;
   --highlight-source-bg: #1d3557;
   --highlight-source-color: #f1faee;
-  --highlight-formula-bg: #fefae0;
-  --highlight-formula-border: #fca311;
+  /* 调整为半透明橙红色调 */
+  --highlight-formula-bg: rgba(252, 163, 17, 0.15); /* 橙红色（#fca311）的15%透明度 */
+  --highlight-formula-border: #fca311; /* 橙红色 */
   --highlight-vector-bg: rgba(69, 123, 157, 0.2);
 }
 
@@ -104,6 +105,12 @@ h1 {
   background-color: #fdfdfd;
   transition: all 0.3s ease;
 }
+/* 新增：左侧组件激活时的样式 */
+.diagram-component.active {
+    border-color: var(--highlight-formula-border) !important;
+    box-shadow: 0 0 30px var(--highlight-formula-bg) !important;
+    transform: scale(1.01);
+}
 
 .component-header {
   background-color: var(--component-header-bg);
@@ -161,6 +168,7 @@ h1 {
   transition: all 0.2s ease-in-out;
   position: relative;
   z-index: 2;
+  font-weight: normal; /* 确保不加粗 */
 }
 
 .matrix-element:hover {
@@ -174,11 +182,13 @@ h1 {
   background-color: var(--highlight-source-bg);
   color: var(--highlight-source-color);
   border-color: var(--highlight-source-bg);
+  font-weight: normal; /* 确保不加粗 */
 }
 .matrix-element.target {
   background-color: var(--highlight-target-bg);
   color: var(--highlight-target-color);
   border-color: var(--highlight-target-bg);
+  font-weight: normal; /* 确保不加粗 */
 }
 
 .vector-highlight-overlay {
@@ -215,8 +225,9 @@ h1 {
   transition: all 0.3s ease;
 }
 .math-block.active {
+  /* 使用新的半透明橙红色背景和橙红色边框 */
   border-color: var(--highlight-formula-border) !important;
-  box-shadow: 0 0 30px var(--highlight-bg) !important;
+  box-shadow: 0 0 30px var(--highlight-bg) !important; /* 保持原有的阴影效果 */
   transform: scale(1.01);
   background-color: var(--highlight-formula-bg);
 }
@@ -296,5 +307,4 @@ h1 {
     font-weight: bold;
     background-color: #f0f2f5;
 }
-/* END OF FILE: src/App.css */
 /* END OF FILE: src/App.css */

@@ -1,4 +1,3 @@
-/* START OF FILE: src/components/AddNorm.tsx */
 // FILE: src/components/AddNorm.tsx
 import React from 'react';
 import { Matrix as MatrixType, HighlightState, ElementIdentifier } from '../types';
@@ -15,8 +14,9 @@ interface AddNormProps {
 }
 
 export const AddNorm: React.FC<AddNormProps> = ({ baseName, inputResidual, inputSublayer, output, highlight, onElementClick }) => {
+    const isActive = highlight.activeComponent === 'add_norm'; // 检查是否为当前激活的组件
     return (
-         <div className="diagram-component">
+         <div className={`diagram-component ${isActive ? 'active' : ''}`}> {/* 应用active类 */}
             <div className="component-header">Add & LayerNorm</div>
             <div className="component-body">
                 <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'center'}}>
@@ -31,4 +31,3 @@ export const AddNorm: React.FC<AddNormProps> = ({ baseName, inputResidual, input
     );
 };
 // END OF FILE: src/components/AddNorm.tsx
-/* END OF FILE: src/components/AddNorm.tsx */
