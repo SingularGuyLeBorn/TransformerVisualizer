@@ -2,7 +2,6 @@
 ### 文件路径: src/App.css
 ================================================================================
 
-/* START OF FILE: src/App.css */
 /* FILE: src/App.css */
 :root {
   --highlight-color: #c0392b;
@@ -185,14 +184,12 @@ h1 {
 .matrix-element.source {
   background-color: var(--highlight-source-bg);
   color: var(--highlight-source-color);
-  border-color: var(--highlight-source-bg);
-  font-weight: normal; /* 确保不加粗 */
+  border: 1px solid var(--highlight-source-bg);
 }
 .matrix-element.target {
   background-color: var(--highlight-target-bg);
   color: var(--highlight-target-color);
-  border-color: var(--highlight-target-bg);
-  font-weight: normal; /* 确保不加粗 */
+  border: 1px solid var(--highlight-target-bg);
 }
 
 .vector-highlight-overlay {
@@ -269,6 +266,10 @@ h1 {
 }
 .math-block h5 {
     font-size: 1.1em;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
 }
 .math-block code {
    background-color: #e9ecef;
@@ -279,41 +280,71 @@ h1 {
 
 .formula-display {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start; /* Aligned to left for better scroll */
     align-items: center;
     gap: 15px;
-    flex-wrap: wrap;
+    overflow-x: auto; /* CRITICAL FIX: Allow horizontal scrolling */
     margin: 20px 0;
-    padding: 10px;
+    padding: 15px 10px;
+    background-color: rgba(0,0,0,0.02);
+    border-radius: 8px;
 }
+.formula-display > * {
+    flex-shrink: 0; /* CRITICAL FIX: Prevent items from shrinking */
+}
+
 .katex-display {
     margin: 0 !important;
 }
 
 .matrix-scroll-wrapper {
     overflow-x: auto;
-    padding: 10px;
-    max-width: 100%;
-    background-color: rgba(0,0,0,0.02);
-    border-radius: 8px;
-    flex-shrink: 1;
+    padding: 5px;
+    flex-shrink: 0; /* Changed from 1 to 0 */
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-/* [新增] 右侧符号矩阵的高亮框样式 */
-.symbolic-matrix-wrapper {
-    padding: 8px;
-    border-radius: 6px;
-    border: 2px solid transparent;
-    transition: all 0.3s ease;
+/* [REWORKED] Symbolic Matrix & Highlighting */
+.symbolic-matrix-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
 }
-.symbolic-matrix-wrapper.target {
-    border-color: var(--highlight-target-bg);
-    background-color: rgba(230, 57, 70, 0.1); /* 目标色半透明背景 */
+.symbolic-matrix-grid {
+    display: grid;
+    gap: 2px;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f9f9f9;
 }
-.symbolic-matrix-wrapper.source {
-    border-color: var(--highlight-source-bg);
-    background-color: rgba(29, 53, 87, 0.1); /* 来源色半透明背景 */
+.symbolic-element, .symbolic-ellipsis {
+    min-width: 60px;
+    min-height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.9em;
+    border-radius: 2px;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    transition: all 0.2s ease-in-out;
+}
+.symbolic-ellipsis {
+    border-style: dashed;
+    color: #aaa;
+}
+.symbolic-element.source {
+  background-color: rgba(29, 53, 87, 0.1);
+  border-color: var(--highlight-source-bg);
+}
+.symbolic-element.target {
+  background-color: rgba(230, 57, 70, 0.1);
+  border-color: var(--highlight-target-bg);
 }
 
 
@@ -355,6 +386,38 @@ h1 {
     font-size: 1em;
     font-weight: bold;
     background-color: #f0f2f5;
+}
+
+/* [NEW] Row for visualization formulas to prevent wrapping */
+.viz-formula-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    justify-content: flex-start;
+    width: 100%;
+    overflow-x: auto;
+    padding: 10px 5px;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+.viz-formula-row::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+}
+.viz-formula-row > * {
+    flex-shrink: 0; /* CRITICAL: Prevents matrices from shrinking/wrapping */
+}
+
+/* [NEW] Styling for sub-steps in visualization components */
+.viz-step-title {
+    width: 100%;
+    text-align: center;
+    font-weight: bold;
+    color: #606266;
+    margin-top: 10px;
+    margin-bottom: -5px;
+    font-size: 0.9em;
+    border-bottom: 1px solid #eef;
+    padding-bottom: 5px;
 }
 /* END OF FILE: src/App.css */
 
@@ -431,43 +494,47 @@ function App() {
 
       const d_k = dims.d_model / dims.h;
 
-      // --- Backward Tracing Logic ---
+      // --- [REWORKED] Backward Tracing Logic ---
       if (name === MATRIX_NAMES.encoderInput) {
           newSources.push({ name: MATRIX_NAMES.inputEmbeddings, row, col });
           newSources.push({ name: MATRIX_NAMES.posEncodings, row, col });
       }
+      // [新增] 修复了点击 Encoder 层输入时，无法追溯来源的问题
+      else if (name === LN.encoder_input) {
+          if (layerIdx > 0) {
+              const prevLayerLN = MATRIX_NAMES.layer(layerIdx - 1);
+              newSources.push({ name: prevLayerLN.add_norm_2_output, row, col });
+          } else {
+              newSources.push({ name: MATRIX_NAMES.encoderInput, row, col });
+          }
+      }
       // --- MHA Component ---
       else if (name === HN.Q || name === HN.K || name === HN.V) {
-          const matrixType = name.split('.').pop()!;
-          // [核心修复] 修正大小写错误 Wq vs wq
-          const weightName = HN[matrixType as 'Q' | 'K' | 'V'];
-          for (let k = 0; k < dims.d_model; k++) {
-              newSources.push({ name: LN.encoder_input, row, col: k, highlightRow: true });
-              newSources.push({ name: weightName.replace(matrixType, `W${matrixType.toLowerCase()}`), row: k, col: col, highlightCol: true });
-          }
+          const matrixType = name.split('.').pop()!; // 'Q', 'K', or 'V'
+          const weightName = HN[`W${matrixType.toLowerCase()}` as 'Wq' | 'Wk' | 'Wv'];
+          // Q[r,c] = encoder_input[r,:] * Wq[:,c]
+          newSources.push({ name: LN.encoder_input, row, col: -1, highlightRow: true });
+          newSources.push({ name: weightName, row: -1, col, highlightCol: true });
       } else if (name === HN.Scores) {
-          newSources.push({ name: HN.Q, row: row, col: -1, highlightRow: true });
-          newSources.push({ name: HN.K, row: col, col: -1, highlightRow: true });
+          // Scores[r,c] = Q[r,:] * K[c,:]^T
+          newSources.push({ name: HN.Q, row, col: -1, highlightRow: true });
+          newSources.push({ name: HN.K, row: col, col: -1, highlightRow: true }); // K is transposed, so K[c,:] becomes a row to highlight
       } else if (name === HN.ScaledScores) {
           newSources.push({ name: HN.Scores, row, col });
       } else if (name === HN.AttentionWeights) {
-           for (let k = 0; k < dims.seq_len; k++) {
-               newSources.push({ name: HN.ScaledScores, row, col: k, highlightRow: true });
-           }
+          // A[r,c] depends on the whole row of S' because of softmax
+           newSources.push({ name: HN.ScaledScores, row, col: -1, highlightRow: true });
       } else if (name === HN.HeadOutput) {
-          for (let k = 0; k < dims.seq_len; k++) {
-               newSources.push({ name: HN.AttentionWeights, row, col: k, highlightRow: true });
-          }
-          for (let k = 0; k < d_k; k++) {
-               newSources.push({ name: HN.V, row: -1, col: k, highlightCol: true });
-          }
+          // HeadOutput[r,c] = A[r,:] * V[:,c]
+          newSources.push({ name: HN.AttentionWeights, row, col: -1, highlightRow: true });
+          newSources.push({ name: HN.V, row: -1, col, highlightCol: true });
       } else if (name === LN.mha_output) {
-          for (let k = 0; k < dims.d_model; k++) {
-              const headIdx = Math.floor(k / d_k);
+          // mha_output[r,c] = Concat(all H)[r,:] * Wo[:,c]
+          for (let headIdx = 0; headIdx < dims.h; headIdx++) {
               const headName = MATRIX_NAMES.head(layerIdx, headIdx).HeadOutput;
               newSources.push({ name: headName, row, col: -1, highlightRow: true });
-              newSources.push({ name: LN.Wo, row: k, col: col, highlightCol: true });
           }
+          newSources.push({ name: LN.Wo, row: -1, col, highlightCol: true });
       }
       // --- Add & Norm 1 ---
       else if (name === LN.add_norm_1_output) {
@@ -476,23 +543,15 @@ function App() {
       }
       // --- FFN Component ---
       else if (name === LN.Intermediate || name === LN.Activated) {
-           for(let k=0; k < dims.d_model; k++) {
-               newSources.push({ name: LN.add_norm_1_output, row, col: k, highlightRow: true });
-               newSources.push({ name: LN.W1, row: k, col: col, highlightCol: true });
-           }
-           // Also add bias as a source
-           for(let k=0; k < dims.d_ff; k++) {
-               newSources.push({ name: LN.b1, row: 0, col: k, highlightRow: true});
-           }
+           // Intermediate[r,c] = Z'[r,:] * W1[:,c] + b1[c]
+           newSources.push({ name: LN.add_norm_1_output, row, col: -1, highlightRow: true });
+           newSources.push({ name: LN.W1, row: -1, col, highlightCol: true });
+           newSources.push({ name: LN.b1, row: 0, col });
       } else if (name === LN.ffn_output) {
-           for(let k=0; k < dims.d_ff; k++) {
-               newSources.push({ name: LN.Activated, row, col: k, highlightRow: true });
-               newSources.push({ name: LN.W2, row: k, col: col, highlightCol: true });
-           }
-            // Also add bias as a source
-           for(let k=0; k < dims.d_model; k++) {
-                newSources.push({ name: LN.b2, row: 0, col: k, highlightRow: true});
-           }
+           // ffn_output[r,c] = Activated[r,:] * W2[:,c] + b2[c]
+           newSources.push({ name: LN.Activated, row, col: -1, highlightRow: true });
+           newSources.push({ name: LN.W2, row: -1, col, highlightCol: true });
+           newSources.push({ name: LN.b2, row: 0, col });
       }
       // --- Add & Norm 2 ---
       else if (name === LN.add_norm_2_output) {
@@ -622,7 +681,7 @@ export interface AttentionHeadData {
 export interface MultiHeadAttentionData {
     heads: AttentionHeadData[];
     Wo: Matrix;
-    Output: Matrix;
+    output: Matrix;
 }
 
 export interface FFNData {
@@ -685,7 +744,7 @@ export const AddNorm: React.FC<AddNormProps> = ({ inputResidual, inputSublayer, 
          <div className={`diagram-component ${isActive ? 'active' : ''}`}>
             <div className="component-header">Add & LayerNorm</div>
             <div className="component-body">
-                <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'center'}}>
+                <div className="viz-formula-row">
                     <Matrix name={residualMatrixName} data={inputResidual} highlight={highlight} onElementClick={onElementClick} />
                     <div className="op-symbol">+</div>
                     <Matrix name={sublayerMatrixName} data={inputSublayer} highlight={highlight} onElementClick={onElementClick} />
@@ -915,7 +974,6 @@ import { SymbolicMatrix } from './SymbolicMatrix';
 import { SymbolicVector } from './SymbolicVector';
 import { HighlightState } from '../types';
 import { MATRIX_NAMES } from '../config/matrixNames';
-import { getSymbolParts } from '../config/symbolMapping';
 
 interface ExplanationProps {
     dims: { d_model: number; h: number, seq_len: number, n_layers: number, d_ff: number };
@@ -942,22 +1000,25 @@ const MathBlock: React.FC<MathBlockProps> = ({ id, title, children, highlight })
 export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight }) => {
     const LN = MATRIX_NAMES.layer(0);
     const HN = MATRIX_NAMES.head(0, 0);
-
-    // Helper to build KaTeX labels manually for consistency and correctness
-    const buildLabel = (name: string, rows: number, cols: number) => {
-        const symbol = getSymbolParts(name);
-        let label = symbol.base;
-        if (symbol.superscript) label += `^{${symbol.superscript}}`;
-        const finalSubscript = [symbol.subscript, `${rows}\\times${cols}`].filter(Boolean).join(',');
-        if (finalSubscript) label += `_{${finalSubscript}}`;
-        return label;
-    }
+    const d_k = dims.d_model / dims.h;
 
     return (
         <div>
              <MathBlock id="input_embed" title="输入嵌入 (Input Embedding)" highlight={highlight}>
                 <p>此步骤将输入的文本序列转换为模型可以处理的、包含位置信息的数值向量。我们以一个序列 (长度={dims.seq_len}) 为例，当前模型维度 <InlineMath math={`d_{model}=${dims.d_model}`} />。</p>
-                <BlockMath math={`${getSymbolParts(LN.encoder_input).base} = \\text{Embedding}(X) + \\text{PE}(X)`} />
+                <ol>
+                    <li><b>向量嵌入 (Embedding):</b> 首先，通过一个大型的、可学习的嵌入表，将每个词元的 ID 转换为一个稠密向量。结果是一个矩阵，每一行代表一个词。</li>
+                    <li><b>位置编码 (Positional Encoding):</b> 接下来，我们创建一个同样大小的位置编码矩阵。该矩阵根据固定的 <InlineMath math="\sin"/> 和 <InlineMath math="\cos"/> 函数生成，为模型注入序列的顺序信息。</li>
+                    <li><b>逐元素相加:</b> 最后，将上述两个矩阵逐元素相加，得到最终的输入表示 <InlineMath math="Z"/>。</li>
+                </ol>
+                <p>位置编码计算公式: 矩阵中每一项 <InlineMath math="PE_{(pos, i)}"/> 的值都由其位置 <code>pos</code> 和维度索引 <code>i</code> 决定：</p>
+                <BlockMath math={`
+                PE_{(pos, i)} =
+                \\begin{cases}
+                    \\sin(pos / 10000^{i/d_{\\text{model}}}), & \\text{if } i \\text{ is even} \\\\
+                    \\cos(pos / 10000^{(i-1)/d_{\\text{model}}}), & \\text{if } i \\text{ is odd}
+                \\end{cases}
+                `} />
                 <div className="formula-display">
                     <div className="matrix-scroll-wrapper"><SymbolicMatrix name={MATRIX_NAMES.inputEmbeddings} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} /></div>
                     <BlockMath math="+" />
@@ -968,29 +1029,45 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight }) => 
              </MathBlock>
 
              <MathBlock id="mha" title="编码器：多头注意力 (Multi-Head Attention)" highlight={highlight}>
-                <p>多头注意力的核心思想是将输入（<InlineMath math="Z"/>）拆分到 <InlineMath math={`h=${dims.h}`}/> 个“子空间”中并行处理，最后再将结果融合。这允许模型从不同角度关注信息。</p>
-                <h5>为单个头生成 Q, K, V</h5>
-                <p>输入矩阵 <InlineMath math="Z"/> 被并行地送入 {dims.h} 个独立的注意力头。每个头都拥有三块自己专属、可学习的权重矩阵。</p>
+                <h5>出现原因与设计思路</h5>
+                <p>传统的单头注意力虽然能捕捉输入元素间的关系，但只能在单一的表示空间中进行。这限制了模型在处理复杂信息时（如同时关注语法结构和语义关系）的能力。多头注意力（MHA）通过将注意力计算分解到多个并行的“头”来解决这个问题。每个头在输入的不同表示子空间中学习注意力权重，使得模型能同时从不同位置、不同方面关注信息。</p>
 
+                <h5>1. 为每个头生成 Q, K, V</h5>
+                <p>输入矩阵 <InlineMath math="Z"/> 被并行地送入 {dims.h} 个独立的注意力头。每个头都拥有三块自己专属、可学习的权重矩阵。通过矩阵乘法，将输入 <InlineMath math="Z"/> 投影到三个新的矩阵：Query (<InlineMath math="Q"/>), Key (<InlineMath math="K"/>), 和 Value (<InlineMath math="V"/>)。</p>
                 <div className="formula-display">
                     <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.encoder_input} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} /></div>
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Wq} rows={dims.d_model} cols={dims.d_model/dims.h} highlight={highlight} /></div>
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Wq} rows={dims.d_model} cols={d_k} highlight={highlight} /></div>
                     <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Q} rows={dims.seq_len} cols={dims.d_model/dims.h} highlight={highlight} /></div>
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Q} rows={dims.seq_len} cols={d_k} highlight={highlight} /></div>
+                </div>
+                 <div className="formula-display">
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.encoder_input} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} /></div>
+                    <BlockMath math="\times" />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Wk} rows={dims.d_model} cols={d_k} highlight={highlight} /></div>
+                    <BlockMath math="=" />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.K} rows={dims.seq_len} cols={d_k} highlight={highlight} /></div>
+                </div>
+                 <div className="formula-display">
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.encoder_input} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} /></div>
+                    <BlockMath math="\times" />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Wv} rows={dims.d_model} cols={d_k} highlight={highlight} /></div>
+                    <BlockMath math="=" />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.V} rows={dims.seq_len} cols={d_k} highlight={highlight} /></div>
                 </div>
 
-                <h5>计算注意力分数</h5>
-                <p>通过将 Query 矩阵与转置后的 Key 矩阵相乘，我们得到一个注意力分数矩阵 <InlineMath math="S"/>。</p>
-                <div className="formula-display">
-                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Q} rows={dims.seq_len} cols={dims.d_model/dims.h} highlight={highlight} /></div>
+                <h5>2. 计算注意力分数</h5>
+                <p>通过将 Query 矩阵与转置后的 Key 矩阵相乘，我们得到一个注意力分数矩阵 <InlineMath math="S"/>。该矩阵中的每个元素 <InlineMath math="S_{r,c}"/> 代表输入序列中第 <code>r</code> 个词对第 <code>c</code> 个词的关注度原始分数。</p>
+                 <div className="formula-display">
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Q} rows={dims.seq_len} cols={d_k} highlight={highlight} /></div>
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.K} rows={dims.d_model/dims.h} cols={dims.seq_len} highlight={highlight} transpose={true}/></div>
+                    {/* [FIX] Corrected the props for the transposed K matrix. Pass the ORIGINAL dimensions. */}
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.K} rows={dims.seq_len} cols={d_k} highlight={highlight} transpose={true}/></div>
                     <BlockMath math="=" />
                     <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Scores} rows={dims.seq_len} cols={dims.seq_len} highlight={highlight} /></div>
                 </div>
 
-                <h5>缩放、Softmax 和加权求和</h5>
+                <h5>3. 缩放与Softmax</h5>
                 <p>为防止梯度过小，将分数矩阵 <InlineMath math="S"/> 中的所有元素都除以一个缩放因子 <InlineMath math={`\\sqrt{d_k}`}/>。然后，对缩放后的分数矩阵<b>逐行</b>应用 Softmax 函数，将其转换为概率分布（权重 <InlineMath math="A"/>）。</p>
                 <div className="formula-display">
                     <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Scores} rows={dims.seq_len} cols={dims.seq_len} highlight={highlight}/></div>
@@ -1000,56 +1077,95 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight }) => 
                     <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.AttentionWeights} rows={dims.seq_len} cols={dims.seq_len} highlight={highlight}/></div>
                 </div>
 
-                <h5>拼接与最终投影</h5>
-                <p>所有 {dims.h} 个头的输出矩阵被拼接在一起，然后通过一个最终的线性层进行融合，得到该多头注意力块的最终输出 <InlineMath math="M"/>。</p>
+                <h5>4. 生成单头输出</h5>
+                <p>最后，将权重矩阵 <InlineMath math="A"/> 与 Value 矩阵 <InlineMath math="V"/> 相乘，得到该注意力头的最终输出 <InlineMath math="H"/>。这个过程本质上是对 <InlineMath math="V"/> 中的所有词向量进行加权求和。</p>
+                <div className="formula-display">
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.AttentionWeights} rows={dims.seq_len} cols={dims.seq_len} highlight={highlight}/></div>
+                    <BlockMath math="\times" />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.V} rows={dims.seq_len} cols={d_k} highlight={highlight} /></div>
+                    <BlockMath math="=" />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.HeadOutput} rows={dims.seq_len} cols={d_k} highlight={highlight}/></div>
+                </div>
+
+                <h5>5. 拼接与最终投影</h5>
+                <p>所有 {dims.h} 个头的输出矩阵 (<InlineMath math={`H_0, H_1, \\dots, H_{${dims.h-1}}`}/>) 在特征维度上被拼接在一起，形成一个大的矩阵 <InlineMath math="H_{cat}"/>。然后，这个拼接后的矩阵通过一个最终的线性层（权重 <InlineMath math="W^O"/>）进行融合，得到该多头注意力块的最终输出 <InlineMath math="M"/>。</p>
+                 <BlockMath math={`H_{cat} = \\text{Concat}(H_0, H_1, \\dots, H_{${dims.h-1}})`} />
+                 <div className="formula-display">
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={MATRIX_NAMES.concatOutput(0)} rows={dims.seq_len} cols={dims.d_model} highlight={highlight}/></div>
+                    <BlockMath math="\times" />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.Wo} rows={dims.d_model} cols={dims.d_model} highlight={highlight} /></div>
+                    <BlockMath math="=" />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.mha_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight}/></div>
+                </div>
              </MathBlock>
 
              <MathBlock id="add_norm_1" title="残差连接与层归一化 (1)" highlight={highlight}>
-                <p>此步骤包含两个关键操作：残差连接 (Add) 和层归一化 (LayerNorm)，旨在改善深度网络的训练过程并增强信息流动。</p>
+                <p>“Add & Norm” 包含两个关键步骤，旨在改善深度网络的训练过程并增强信息流动。</p>
+                <h5>步骤 1: 残差连接 (Add)</h5>
+                <p>此步骤的目的是将子层的输出信息与原始输入信息直接结合。这创建了一条“捷径”，使得梯度在反向传播时可以更容易地流过深层网络，有效缓解梯度消失问题。</p>
+                <BlockMath math={`Z_{add} = Z_{in} + \\text{Sublayer}(Z_{in})`} />
+
+                <h5>步骤 2: 层归一化 (Layer Normalization)</h5>
+                <p>此步骤旨在稳定训练过程。它独立地对每个词元（即矩阵的每一行）的特征向量进行归一化。对于 <InlineMath math="Z_{add}"/> 的每一行向量 <InlineMath math="\mathbf{z}"/>：</p>
+                <ol>
+                    <li><b>a. 计算均值 (<InlineMath math="\mu"/>) 和方差 (<InlineMath math="\sigma^2"/>):</b><br/>
+                    <p>计算该向量内所有元素的均值与方差。</p>
+                    </li>
+                    <li><b>b. 归一化:</b><br/>
+                    <BlockMath math={`\\mathbf{\\hat{z}} = \\frac{\\mathbf{z} - \\mu}{\\sqrt{\\sigma^2 + \\epsilon}}`} />
+                    </li>
+                    <li><b>c. 缩放与平移:</b><br/>
+                    <p>引入两个可学习的参数向量 <InlineMath math="\gamma"/> (gamma) 和 <InlineMath math="\beta"/> (beta)，来恢复模型的表达能力。其中 <InlineMath math="\odot"/> 代表哈达玛积（Hadamard product），即逐元素乘法。</p>
+                    <BlockMath math={`\\mathbf{z}_{out} = \\gamma \\odot \\mathbf{\\hat{z}} + \\beta`} />
+                    </li>
+                </ol>
                 <div className="formula-display">
-                    <SymbolicMatrix name={LN.encoder_input} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.encoder_input} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} /></div>
                     <BlockMath math="+" />
-                    <SymbolicMatrix name={LN.mha_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.mha_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} /></div>
                     <BlockMath math="\xrightarrow{\text{LayerNorm}}" />
-                    <SymbolicMatrix name={LN.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} /></div>
                 </div>
              </MathBlock>
 
               <MathBlock id="ffn" title="前馈神经网络 (Feed-Forward Network)" highlight={highlight}>
-                <p>前馈网络是一个简单的两层全连接神经网络，它被独立地应用于序列中的每一个位置（即每一个词元向量）。</p>
+                <h5>出现原因与设计思路</h5>
+                <p>注意力层本身是线性的（Softmax之后是加权和），为了让模型能够学习更复杂的函数，需要在每个注意力层之后引入非线性变换。前馈网络 (FFN) 就是这个非线性组件。它独立地应用于序列中的每一个位置（即每一个词元向量），为其增加了模型的“深度”和表达能力。</p>
                 <h5>1. 第一次线性变换 (维度扩展)</h5>
-                <p>输入矩阵 <InlineMath math="Z'"/> 首先会经过一个线性层，将其维度从 <InlineMath math={`d_{model}=${dims.d_model}`}/> 扩展到一个更大的中间维度 <InlineMath math={`d_{ff}=${dims.d_ff}`}/>。</p>
+                <p>输入矩阵 <InlineMath math="Z'"/> 首先会经过一个线性层，将其维度从 <InlineMath math={`d_{model}=${dims.d_model}`}/> 扩展到一个更大的中间维度 <InlineMath math={`d_{ff}=${dims.d_ff}`}/>。这个“升维”操作为模型提供了更大的空间来学习和组合特征。然后加上偏置项，并通过ReLU激活函数引入非线性。</p>
+                <BlockMath math={`H_{act} = \\text{ReLU}(Z' W_1 + b_1)`} />
                 <div className="formula-display">
-                    <SymbolicMatrix name={LN.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight}/>
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight}/></div>
                     <BlockMath math="\times"/>
-                    <SymbolicMatrix name={LN.W1} rows={dims.d_model} cols={dims.d_ff} highlight={highlight}/>
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.W1} rows={dims.d_model} cols={dims.d_ff} highlight={highlight}/></div>
                     <BlockMath math="+"/>
-                    <SymbolicVector name={LN.b1} data={Array(dims.d_ff).fill(0)} highlight={highlight}/>
+                    <div className="matrix-scroll-wrapper"><SymbolicVector name={LN.b1} data={Array(dims.d_ff).fill(0)} highlight={highlight}/></div>
                     <BlockMath math="\xrightarrow{ReLU}"/>
-                    <SymbolicMatrix name={LN.Activated} rows={dims.seq_len} cols={dims.d_ff} highlight={highlight}/>
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.Activated} rows={dims.seq_len} cols={dims.d_ff} highlight={highlight}/></div>
                 </div>
 
                 <h5>2. 第二次线性变换 (维度投影)</h5>
-                <p>最后，将经过激活函数处理的矩阵再通过第二个线性层，将其从中间维度 <InlineMath math={`d_{ff}`}/> 投影回原始的模型维度 <InlineMath math={`d_{model}`}/>。</p>
+                <p>最后，将经过激活函数处理的矩阵再通过第二个线性层，将其从中间维度 <InlineMath math={`d_{ff}`}/> 投影回原始的模型维度 <InlineMath math={`d_{model}`}/>，并加上第二个偏置项，得到FFN层的最终输出。这个“降维”操作将学习到的复杂特征整合回模型的主干维度中。</p>
+                <BlockMath math={`F = H_{act} W_2 + b_2`} />
                 <div className="formula-display">
-                    <SymbolicMatrix name={LN.Activated} rows={dims.seq_len} cols={dims.d_ff} highlight={highlight}/>
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.Activated} rows={dims.seq_len} cols={dims.d_ff} highlight={highlight}/></div>
                     <BlockMath math="\times"/>
-                    <SymbolicMatrix name={LN.W2} rows={dims.d_ff} cols={dims.d_model} highlight={highlight}/>
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.W2} rows={dims.d_ff} cols={dims.d_model} highlight={highlight}/></div>
                     <BlockMath math="+"/>
-                    <SymbolicVector name={LN.b2} data={Array(dims.d_model).fill(0)} highlight={highlight}/>
+                    <div className="matrix-scroll-wrapper"><SymbolicVector name={LN.b2} data={Array(dims.d_model).fill(0)} highlight={highlight}/></div>
                     <BlockMath math="="/>
-                    <SymbolicMatrix name={LN.ffn_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight}/>
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.ffn_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight}/></div>
                 </div>
              </MathBlock>
 
              <MathBlock id="add_norm_2" title="残差连接与层归一化 (2)" highlight={highlight}>
-                <p>与第一个 "Add & Norm" 层类似，此步骤将 FFN 子层的输出信息与该子层的输入信息直接结合，然后进行层归一化。</p>
+                <p>与第一个 "Add & Norm" 层完全相同，此步骤将 FFN 子层的输出信息与该子层的输入信息直接结合，然后进行层归一化，产生该编码器层的最终输出。</p>
                 <div className="formula-display">
-                    <SymbolicMatrix name={LN.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} /></div>
                     <BlockMath math="+" />
-                    <SymbolicMatrix name={LN.ffn_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.ffn_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} /></div>
                     <BlockMath math="\xrightarrow{\text{LayerNorm}}" />
-                    <SymbolicMatrix name={LN.add_norm_2_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={LN.add_norm_2_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} /></div>
                 </div>
              </MathBlock>
         </div>
@@ -1086,16 +1202,22 @@ export const FeedForward: React.FC<FFNProps> = ({ baseName, data, highlight, onE
             <div className="component-body">
                 <p>Input (from Add & Norm)</p>
                 <div className="arrow-down">↓</div>
-                {/* Visualizing Z' * W1 + b1 */}
-                <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'center'}}>
+
+                <div className="viz-step-title">1. First Linear Layer + ReLU</div>
+                <div className="viz-formula-row">
+                    <span>(Input) ×</span>
                     <Matrix name={LN.W1} data={data.W1} highlight={highlight} onElementClick={onElementClick} />
                     <div className="op-symbol">+</div>
                     <Matrix name={LN.b1} data={[data.b1]} highlight={highlight} onElementClick={onElementClick} />
                     <span>→ ReLU →</span>
                     <Matrix name={LN.Activated} data={data.Activated} highlight={highlight} onElementClick={onElementClick} />
                 </div>
-                 {/* Visualizing H * W2 + b2 */}
-                 <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '10px'}}>
+                
+                <div className="arrow-down">↓</div>
+
+                <div className="viz-step-title">2. Second Linear Layer</div>
+                 <div className="viz-formula-row">
+                    <span>(Activated) ×</span>
                     <Matrix name={LN.W2} data={data.W2} highlight={highlight} onElementClick={onElementClick} />
                     <div className="op-symbol">+</div>
                     <Matrix name={LN.b2} data={[data.b2]} highlight={highlight} onElementClick={onElementClick} />
@@ -1106,7 +1228,7 @@ export const FeedForward: React.FC<FFNProps> = ({ baseName, data, highlight, onE
         </div>
     );
 };
-// END OF FILE: src/components/FeedForward.tsx
+// END OF FILE: src/components/FeedForward.tsx```
 
 
 ================================================================================
@@ -1177,31 +1299,27 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
        return <div key={`${s.name}-${s.row}-${s.col}-${i}`} className="vector-highlight-overlay" style={style} />;
     });
 
-  const getLabelText = (fullName: string): string => {
-      const parts = fullName.split('.');
-      const lastPart = parts[parts.length - 1];
-      const simpleNames = ['Q', 'K', 'V', 'Scores', 'ScaledScores', 'AttentionWeights', 'HeadOutput', 'Wq', 'Wk', 'Wv', 'Wo', 'W1', 'W2', 'b1', 'b2'];
-      if (simpleNames.includes(lastPart)) {
-          return lastPart;
-      }
-      return `\\text{${lastPart.replace(/_/g, '\\_')}}`;
-  }
-
-  const labelText = getLabelText(name);
-
   const symbolParts = getSymbolParts(name);
   let mathSymbol = symbolParts.base;
   if(symbolParts.superscript) mathSymbol = `${mathSymbol}^{${symbolParts.superscript}}`;
   if(symbolParts.subscript) mathSymbol = `${mathSymbol}_{${symbolParts.subscript}}`;
+  if(isTransposed) mathSymbol = `${mathSymbol}^T`;
 
+  // Use the full math symbol for the main label
+  const labelText = mathSymbol;
+
+  // The smaller tag now shows the conceptual name, e.g. "Wq" or "Scores"
+  const conceptualName = name.split('.').pop() || '';
+  const simpleNames = ['Q', 'K', 'V', 'Scores', 'ScaledScores', 'AttentionWeights', 'HeadOutput', 'Wq', 'Wk', 'Wv', 'Wo', 'W1', 'W2', 'b1', 'b2', 'output'];
   let symbolTag = null;
-  if (mathSymbol && name !== 'inputEmbeddings' && name !== 'posEncodings') {
+  if (simpleNames.includes(conceptualName) && name !== 'inputEmbeddings' && name !== 'posEncodings') {
       symbolTag = (
         <div className="matrix-symbol-tag">
-            <InlineMath math={mathSymbol} />
+            {conceptualName}
         </div>
       );
   }
+
 
   return (
     <div className="matrix-wrapper">
@@ -1232,7 +1350,7 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
         </div>
       </div>
       <div className="matrix-label-container">
-        <div className="matrix-label"><InlineMath>{`${labelText}${isTransposed ? '^T' : ''}`}</InlineMath></div>
+        <div className="matrix-label"><InlineMath>{labelText}</InlineMath></div>
         {symbolTag}
       </div>
     </div>
@@ -1250,6 +1368,7 @@ import React from 'react';
 import { MultiHeadAttentionData, HighlightState, ElementIdentifier } from '../types';
 import { Matrix } from './Matrix';
 import { InlineMath } from 'react-katex';
+import { MATRIX_NAMES } from '../config/matrixNames';
 
 interface MHAProps {
     baseName: string;
@@ -1263,6 +1382,9 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
     const headData = data.heads[0];
     const headBaseName = `${baseName}.h0`;
     const isActive = highlight.activeComponent === 'mha'; // 检查是否为当前激活的组件
+    
+    const layerIndex = parseInt(baseName.split('.')[1], 10);
+    const LN = MATRIX_NAMES.layer(layerIndex);
 
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}> {/* 应用active类 */}
@@ -1272,17 +1394,17 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                 <div className="arrow-down">↓</div>
 
                 {/* Q, K, V Generation */}
-                <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '15px'}}>
+                <div className="viz-formula-row">
                    <span>Q = Z × Wq →</span>
                    <Matrix name={`${headBaseName}.Wq`} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
                    <Matrix name={`${headBaseName}.Q`} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                 </div>
-                 <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '15px', marginTop: '10px'}}>
+                 <div className="viz-formula-row" style={{marginTop: '10px'}}>
                    <span>K = Z × Wk →</span>
                    <Matrix name={`${headBaseName}.Wk`} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
                    <Matrix name={`${headBaseName}.K`} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
                 </div>
-                 <div style={{display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: '15px', marginTop: '10px'}}>
+                 <div className="viz-formula-row" style={{marginTop: '10px'}}>
                    <span>V = Z × Wv →</span>
                    <Matrix name={`${headBaseName}.Wv`} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
                    <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
@@ -1291,32 +1413,42 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                 <div className="arrow-down">↓</div>
                 <p>Scaled Dot-Product Attention (Head 1)</p>
 
-                <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'center'}}>
+                {/* Step 1: Q * K^T = Scores */}
+                <div className="viz-formula-row">
                     <Matrix name={`${headBaseName}.Q`} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                     <InlineMath math="\times" />
                     <Matrix name={`${headBaseName}.K`} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
                      <InlineMath math="=" />
                     <Matrix name={`${headBaseName}.Scores`} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
-                    {/* 新增: 明确展示缩放步骤 */}
+                </div>
+                
+                {/* Step 2: Scale -> Softmax */}
+                <div className="viz-formula-row">
                     <InlineMath math="\xrightarrow{/ \sqrt{d_k}}" />
                     <Matrix name={`${headBaseName}.ScaledScores`} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
                     <InlineMath math="\xrightarrow{\text{softmax}}" />
                     <Matrix name={`${headBaseName}.AttentionWeights`} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
-                     <InlineMath math="\times" />
+                </div>
+
+                {/* Step 3: A * V = HeadOutput */}
+                <div className="viz-formula-row">
+                    <Matrix name={`${headBaseName}.AttentionWeights`} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
+                    <InlineMath math="\times" />
                     <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
-                     <InlineMath math="=" />
+                    <InlineMath math="=" />
                     <Matrix name={`${headBaseName}.HeadOutput`} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick}/>
                 </div>
+
 
                 <div className="arrow-down">↓</div>
                 <p>Concat & Final Projection</p>
 
-                 <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'center'}}>
+                 <div className="viz-formula-row">
                    <Matrix name={`${headBaseName}.HeadOutput`} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick} />
                    <InlineMath math="..." />
                    <Matrix name={`${baseName}.Wo`} data={data.Wo} highlight={highlight} onElementClick={onElementClick} />
                    <InlineMath math="=" />
-                   <Matrix name={`${baseName}.Output`} data={data.Output} highlight={highlight} onElementClick={onElementClick} />
+                   <Matrix name={LN.mha_output} data={data.output} highlight={highlight} onElementClick={onElementClick} />
                 </div>
             </div>
         </div>
@@ -1326,14 +1458,48 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
 
 
 ================================================================================
+### 文件路径: src/components/SymbolicElement.tsx
+================================================================================
+
+// FILE: src/components/SymbolicElement.tsx
+import React from 'react';
+import { InlineMath } from 'react-katex';
+
+interface SymbolicElementProps {
+  base: string;
+  subscript?: string;
+  row?: number;
+  col?: number;
+  isTarget?: boolean;
+  isSource?: boolean;
+}
+
+export const SymbolicElement: React.FC<SymbolicElementProps> = React.memo(({ base, subscript, row, col, isTarget, isSource }) => {
+  const elementBase = base.toLowerCase().replace(/'/g, '').replace(/_{.*}/, '');
+  const subscriptContent = [subscript, row, col].filter(s => s !== undefined && s !== null).join(',');
+  const mathString = `${elementBase}_{${subscriptContent}}`;
+
+  const className = `symbolic-element ${isTarget ? 'target' : ''} ${isSource ? 'source' : ''}`;
+
+  return (
+    <div className={className}>
+      <InlineMath math={mathString} />
+    </div>
+  );
+});
+// END OF FILE: src/components/SymbolicElement.tsx
+
+
+================================================================================
 ### 文件路径: src/components/SymbolicMatrix.tsx
 ================================================================================
 
 // FILE: src/components/SymbolicMatrix.tsx
 import React from 'react';
 import { HighlightState } from '../types';
-import { BlockMath } from 'react-katex';
+import { InlineMath } from 'react-katex';
 import { getSymbolParts } from '../config/symbolMapping';
+import { SymbolicElement } from './SymbolicElement';
 
 interface SymbolicMatrixProps {
   name: string;
@@ -1343,109 +1509,64 @@ interface SymbolicMatrixProps {
   transpose?: boolean;
 }
 
-export const SymbolicMatrix: React.FC<SymbolicMatrixProps> = ({ name, rows, cols, highlight, transpose = false }) => {
+export const SymbolicMatrix: React.FC<SymbolicMatrixProps> = React.memo(({ name, rows, cols, highlight, transpose = false }) => {
   const displayRows = transpose ? cols : rows;
   const displayCols = transpose ? rows : cols;
-
   const symbol = getSymbolParts(name);
+  
+  const highlightedTarget = (highlight.target?.name === name) ? highlight.target : null;
+  const highlightedSources = highlight.sources.filter(s => s.name === name);
 
-  const MAX_DIM = 7;
-  const EDGE_COUNT = 2;
-  const WINDOW_RADIUS = 2;
+  const gridElements: React.ReactNode[] = [];
+  
+  for (let r = 0; r < displayRows; r++) {
+    for (let c = 0; c < displayCols; c++) {
+      const originalRow = transpose ? c : r;
+      const originalCol = transpose ? r : c;
 
-  const getVisibleIndices = (total: number, highlightIndices: number[]): number[] => {
-    if (total <= MAX_DIM) {
-      return Array.from({ length: total }, (_, i) => i);
-    }
-    const visible = new Set<number>();
-    for(let i=0; i < EDGE_COUNT; i++) visible.add(i);
-    for(let i=total - EDGE_COUNT; i < total; i++) visible.add(i);
-    highlightIndices.forEach(hIdx => {
-        if (hIdx === -1) return;
-        const start = Math.max(0, hIdx - WINDOW_RADIUS);
-        const end = Math.min(total - 1, hIdx + WINDOW_RADIUS);
-        for(let i = start; i <= end; i++) visible.add(i);
-    });
-    return Array.from(visible).sort((a,b) => a - b);
-  }
-
-  const thisSymbolicConceptualName = name.split('.').pop();
-
-  const highlightedTarget = (highlight.target?.name.split('.').pop() === thisSymbolicConceptualName) ? highlight.target : null;
-  const highlightedSources = highlight.sources.filter(s => s.name.split('.').pop() === thisSymbolicConceptualName);
-
-  const highlightRows = new Set<number>();
-  const highlightCols = new Set<number>();
-  if(highlightedTarget) {
-      highlightRows.add(transpose ? highlightedTarget.col : highlightedTarget.row);
-      highlightCols.add(transpose ? highlightedTarget.row : highlightedTarget.col);
-  }
-  highlightedSources.forEach(s => {
-      highlightRows.add(transpose ? s.col : s.row);
-      highlightCols.add(transpose ? s.row : s.col);
-  });
-
-  const visibleRows = getVisibleIndices(displayRows, Array.from(highlightRows));
-  const visibleCols = getVisibleIndices(displayCols, Array.from(highlightCols));
-
-  const getElement = (r_idx: number, c_idx: number): string => {
-      const originalRow = transpose ? c_idx : r_idx;
-      const originalCol = transpose ? r_idx : c_idx;
-
-      const elementBase = symbol.base.toLowerCase().replace(/'/g, '').replace(/_{.*}/, '');
-      const subscriptContent = [symbol.subscript, originalRow, originalCol].filter(s => s !== undefined).join(',');
-
-      let elementString = `${elementBase}_{${subscriptContent}}`;
-
-      let isTarget = false;
-      if (highlightedTarget && highlightedTarget.row === originalRow && highlightedTarget.col === originalCol) isTarget = true;
-
-      let isSource = false;
-      if (highlightedSources.some(s => {
-          if (s.highlightRow && !s.highlightCol) return s.row === originalRow;
-          if (s.highlightCol && !s.highlightRow) return s.col === originalCol;
-          return s.row === originalRow && s.col === originalCol;
-      })) isSource = true;
-
-      if (isTarget) return `{\\color{#e63946}${elementString}}`;
-      if (isSource) return `{\\color{#1d3557}${elementString}}`;
-      return elementString;
-  }
-
-  let matrixRowsStr: string[] = [];
-  let lastRow = -1;
-  visibleRows.forEach(r => {
-      if (r > lastRow + 1) {
-         const dots = visibleCols.map((c, i) => (i > 0 && visibleCols[i-1] !== c-1) ? '\\ddots' : '\\vdots').join(' & ');
-         matrixRowsStr.push(dots);
-      }
-      let matrixColsStr: string[] = [];
-      let lastCol = -1;
-      visibleCols.forEach(c => {
-          if(c > lastCol + 1) matrixColsStr.push('\\dots');
-          matrixColsStr.push(getElement(r,c));
-          lastCol = c;
+      let isTarget = !!highlightedTarget && highlightedTarget.row === originalRow && highlightedTarget.col === originalCol;
+      
+      let isSource = highlightedSources.some(s => {
+        if (s.highlightRow) return s.row === originalRow;
+        if (s.highlightCol) return s.col === originalCol;
+        return s.row === originalRow && s.col === originalCol;
       });
-      matrixRowsStr.push(matrixColsStr.join(' & '));
-      lastRow = r;
-  });
 
-  const matrixString = matrixRowsStr.join(' \\\\ ');
-  const bmatrix = `\\begin{pmatrix} ${matrixString} \\end{pmatrix}`;
+      gridElements.push(
+        <SymbolicElement
+          key={`elem-r${r}-c${c}`}
+          base={symbol.base}
+          subscript={symbol.subscript}
+          row={originalRow}
+          col={originalCol}
+          isTarget={isTarget}
+          isSource={isSource}
+        />
+      );
+    }
+  }
 
-  // [最终修复] 移除复杂的标签生成逻辑，只渲染矩阵本身
-  const finalFormula = bmatrix;
-
-  const isSourceComponent = highlight.sources.some(s => s.name === name);
-  const isTargetComponent = highlight.target?.name === name;
-  const wrapperClass = `symbolic-matrix-wrapper ${isTargetComponent ? 'target' : ''} ${isSourceComponent ? 'source' : ''}`;
+  let mathSymbol = symbol.base;
+  if (symbol.superscript) mathSymbol += `^{${symbol.superscript}}`;
+  if (transpose) mathSymbol += '^T';
+  
+  // [FIX] Combine symbol's own subscript with dimension subscript to prevent KaTeX errors.
+  const subscriptParts = [];
+  if (symbol.subscript) {
+    subscriptParts.push(symbol.subscript);
+  }
+  subscriptParts.push(`${displayRows} \\times ${displayCols}`);
+  mathSymbol += `_{${subscriptParts.join(',')}}`;
 
   return (
-    <div className={wrapperClass}>
-        <BlockMath math={finalFormula} />
+    <div className="symbolic-matrix-container">
+      <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+      <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: `repeat(${displayCols}, auto)` }}>
+        {gridElements}
+      </div>
     </div>
   );
-};
+});
 // END OF FILE: src/components/SymbolicMatrix.tsx
 
 
@@ -1456,55 +1577,69 @@ export const SymbolicMatrix: React.FC<SymbolicMatrixProps> = ({ name, rows, cols
 // FILE: src/components/SymbolicVector.tsx
 import React from 'react';
 import { HighlightState } from '../types';
-import { BlockMath } from 'react-katex';
-import { Vector } from '../types';
+import { InlineMath } from 'react-katex';
+import { Vector as VectorType } from '../types';
 import { getSymbolParts } from '../config/symbolMapping';
+import { SymbolicElement } from './SymbolicElement';
 
 interface SymbolicVectorProps {
   name: string;
-  data: Vector;
+  data: VectorType;
   highlight: HighlightState;
 }
 
-export const SymbolicVector: React.FC<SymbolicVectorProps> = ({ name, data, highlight }) => {
+export const SymbolicVector: React.FC<SymbolicVectorProps> = React.memo(({ name, data, highlight }) => {
   const displayCols = data.length;
   const symbol = getSymbolParts(name);
 
-  const getElement = (c_idx: number): string => {
-      const elementBase = symbol.base.toLowerCase();
-      const subscriptContent = [symbol.subscript, c_idx].filter(s => s !== undefined).join(',');
+  const gridElements: React.ReactNode[] = [];
+  const highlightedIndices = new Set<number>();
+  if (highlight.target?.name === name) highlightedIndices.add(highlight.target.col);
+  highlight.sources.forEach(s => {
+      if(s.name === name) {
+          if(s.highlightRow) { 
+              for(let i=0; i<displayCols; i++) highlightedIndices.add(i);
+          } else {
+             highlightedIndices.add(s.col);
+          }
+      }
+  });
 
-      let elementString = `${elementBase}_{${subscriptContent}}`;
-
-      const isTarget = highlight.target?.name === name && highlight.target.col === c_idx;
-
-      if (isTarget) return `{\\color{#e63946}${elementString}}`;
-      return elementString;
-  }
-
-  let vectorElements: string[] = [];
   for (let c = 0; c < displayCols; c++) {
-      vectorElements.push(getElement(c));
+    const isTarget = highlight.target?.name === name && highlight.target.col === c;
+    const isSource = highlightedIndices.has(c);
+    gridElements.push(
+        <SymbolicElement 
+            key={`elem-${c}`} 
+            base={symbol.base} 
+            subscript={symbol.subscript} 
+            col={c} 
+            isTarget={isTarget} 
+            isSource={isSource} 
+        />
+    );
   }
 
-  const vectorString = vectorElements.join(' & ');
-  const pmatrix = `\\begin{pmatrix} ${vectorString} \\end{pmatrix}`;
+  let mathSymbol = symbol.base;
 
-  let baseNameForFormula = symbol.base;
-  if (symbol.subscript) baseNameForFormula += `_{${symbol.subscript}}`;
+  // [FIX] Combine symbol's own subscript with dimension subscript to prevent KaTeX errors.
+  const subscriptParts = [];
+  if (symbol.subscript) {
+    subscriptParts.push(symbol.subscript);
+  }
+  subscriptParts.push(`1 \\times ${displayCols}`);
+  mathSymbol += `_{${subscriptParts.join(',')}}`;
 
-  const finalFormula = `${baseNameForFormula} = ${pmatrix}`;
-
-  const isSourceComponent = highlight.sources.some(s => s.name === name);
-  const isTargetComponent = highlight.target?.name === name;
-  const wrapperClass = `symbolic-matrix-wrapper ${isTargetComponent ? 'target' : ''} ${isSourceComponent ? 'source' : ''}`;
 
   return (
-    <div className={wrapperClass}>
-        <BlockMath math={finalFormula} />
+    <div className="symbolic-matrix-container">
+      <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+      <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: `repeat(${gridElements.length}, auto)` }}>
+        {gridElements}
+      </div>
     </div>
-    );
-};
+  );
+});
 // END OF FILE: src/components/SymbolicVector.tsx
 
 
@@ -1583,7 +1718,7 @@ export const MATRIX_NAMES = {
         encoder_input: `encoder.${layerIndex}.encoder_input`,
 
         // MHA
-        mha_output: `encoder.${layerIndex}.mha_output`,
+        mha_output: `encoder.${layerIndex}.mha.output`,
         Wo: `encoder.${layerIndex}.mha.Wo`,
 
         // Add & Norm 1
@@ -1596,7 +1731,7 @@ export const MATRIX_NAMES = {
         Activated: `encoder.${layerIndex}.ffn.Activated`,
         W2: `encoder.${layerIndex}.ffn.W2`,
         b2: `encoder.${layerIndex}.ffn.b2`,
-        ffn_output: `encoder.${layerIndex}.ffn_output`,
+        ffn_output: `encoder.${layerIndex}.ffn.output`,
 
         // Add & Norm 2
         add_norm_2_output: `encoder.${layerIndex}.add_norm_2_output`,
@@ -1646,10 +1781,10 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
     encoder_input: { base: 'Z' }, // Alias for layers
 
     // MHA Weights
-    Wq: { base: 'W', superscript: 'Q', subscript: 'q' },
-    Wk: { base: 'W', superscript: 'K', subscript: 'k' },
-    Wv: { base: 'W', superscript: 'V', subscript: 'v' },
-    Wo: { base: 'W', superscript: 'O', subscript: 'o' },
+    Wq: { base: 'W', superscript: 'Q' },
+    Wk: { base: 'W', superscript: 'K' },
+    Wv: { base: 'W', superscript: 'V' },
+    Wo: { base: 'W', superscript: 'O' },
 
     // MHA Tensors
     Q: { base: 'Q' },
@@ -1660,7 +1795,9 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
     AttentionWeights: { base: 'A' },
     HeadOutput: { base: 'H' },
     ConcatOutput: { base: 'H_{cat}'},
+    output: { base: 'M' }, // Corresponds to MHA output
     mha_output: { base: 'M' },
+
 
     // Add & Norm
     add_norm_1_output: { base: "Z'" },
@@ -1821,7 +1958,7 @@ export const useTransformer = (dims: Dims): TransformerData | null => {
             const ConcatOutput = headOutputs.reduce((acc, current) => acc.map((row, rIdx) => [...row, ...current[rIdx]]), Array(seq_len).fill(0).map(() => []));
             const Wo = createRandomMatrix(d_model, d_model);
             const mha_output = multiplyMatrices(ConcatOutput, Wo);
-            const mha: MultiHeadAttentionData = { heads, Wo, Output: mha_output };
+            const mha: MultiHeadAttentionData = { heads, Wo, output: mha_output };
 
             const add_norm_1_sum = addMatrices(encoder_input, mha_output);
             const add_norm_1_output = layerNorm(add_norm_1_sum);

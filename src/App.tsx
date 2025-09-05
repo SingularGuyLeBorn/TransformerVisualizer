@@ -66,42 +66,47 @@ function App() {
 
       const d_k = dims.d_model / dims.h;
 
-      // --- Backward Tracing Logic ---
+      // --- [REWORKED] Backward Tracing Logic ---
       if (name === MATRIX_NAMES.encoderInput) {
           newSources.push({ name: MATRIX_NAMES.inputEmbeddings, row, col });
           newSources.push({ name: MATRIX_NAMES.posEncodings, row, col });
+      }
+      // [新增] 修复了点击 Encoder 层输入时，无法追溯来源的问题
+      else if (name === LN.encoder_input) {
+          if (layerIdx > 0) {
+              const prevLayerLN = MATRIX_NAMES.layer(layerIdx - 1);
+              newSources.push({ name: prevLayerLN.add_norm_2_output, row, col });
+          } else {
+              newSources.push({ name: MATRIX_NAMES.encoderInput, row, col });
+          }
       }
       // --- MHA Component ---
       else if (name === HN.Q || name === HN.K || name === HN.V) {
           const matrixType = name.split('.').pop()!; // 'Q', 'K', or 'V'
           const weightName = HN[`W${matrixType.toLowerCase()}` as 'Wq' | 'Wk' | 'Wv'];
-          for (let k = 0; k < dims.d_model; k++) {
-              newSources.push({ name: LN.encoder_input, row, col: k, highlightRow: true });
-              newSources.push({ name: weightName, row: k, col, highlightCol: true });
-          }
+          // Q[r,c] = encoder_input[r,:] * Wq[:,c]
+          newSources.push({ name: LN.encoder_input, row, col: -1, highlightRow: true });
+          newSources.push({ name: weightName, row: -1, col, highlightCol: true });
       } else if (name === HN.Scores) {
-          newSources.push({ name: HN.Q, row: row, col: -1, highlightRow: true });
-          newSources.push({ name: HN.K, row: col, col: -1, highlightRow: true });
+          // Scores[r,c] = Q[r,:] * K[c,:]^T
+          newSources.push({ name: HN.Q, row, col: -1, highlightRow: true });
+          newSources.push({ name: HN.K, row: col, col: -1, highlightRow: true }); // K is transposed, so K[c,:] becomes a row to highlight
       } else if (name === HN.ScaledScores) {
           newSources.push({ name: HN.Scores, row, col });
       } else if (name === HN.AttentionWeights) {
-           for (let k = 0; k < dims.seq_len; k++) {
-               newSources.push({ name: HN.ScaledScores, row, col: k, highlightRow: true });
-           }
+          // A[r,c] depends on the whole row of S' because of softmax
+           newSources.push({ name: HN.ScaledScores, row, col: -1, highlightRow: true });
       } else if (name === HN.HeadOutput) {
-          for (let k = 0; k < dims.seq_len; k++) {
-               newSources.push({ name: HN.AttentionWeights, row, col: k, highlightRow: true });
-          }
-          for (let k = 0; k < d_k; k++) {
-               newSources.push({ name: HN.V, row: -1, col: k, highlightCol: true });
-          }
+          // HeadOutput[r,c] = A[r,:] * V[:,c]
+          newSources.push({ name: HN.AttentionWeights, row, col: -1, highlightRow: true });
+          newSources.push({ name: HN.V, row: -1, col, highlightCol: true });
       } else if (name === LN.mha_output) {
-          for (let k = 0; k < dims.d_model; k++) {
-              const headIdx = Math.floor(k / d_k);
+          // mha_output[r,c] = Concat(all H)[r,:] * Wo[:,c]
+          for (let headIdx = 0; headIdx < dims.h; headIdx++) {
               const headName = MATRIX_NAMES.head(layerIdx, headIdx).HeadOutput;
               newSources.push({ name: headName, row, col: -1, highlightRow: true });
-              newSources.push({ name: LN.Wo, row: k, col: col, highlightCol: true });
           }
+          newSources.push({ name: LN.Wo, row: -1, col, highlightCol: true });
       }
       // --- Add & Norm 1 ---
       else if (name === LN.add_norm_1_output) {
@@ -110,23 +115,15 @@ function App() {
       }
       // --- FFN Component ---
       else if (name === LN.Intermediate || name === LN.Activated) {
-           for(let k=0; k < dims.d_model; k++) {
-               newSources.push({ name: LN.add_norm_1_output, row, col: k, highlightRow: true });
-               newSources.push({ name: LN.W1, row: k, col: col, highlightCol: true });
-           }
-           // Also add bias as a source
-           for(let k=0; k < dims.d_ff; k++) {
-               newSources.push({ name: LN.b1, row: 0, col: k, highlightRow: true});
-           }
+           // Intermediate[r,c] = Z'[r,:] * W1[:,c] + b1[c]
+           newSources.push({ name: LN.add_norm_1_output, row, col: -1, highlightRow: true });
+           newSources.push({ name: LN.W1, row: -1, col, highlightCol: true });
+           newSources.push({ name: LN.b1, row: 0, col });
       } else if (name === LN.ffn_output) {
-           for(let k=0; k < dims.d_ff; k++) {
-               newSources.push({ name: LN.Activated, row, col: k, highlightRow: true });
-               newSources.push({ name: LN.W2, row: k, col: col, highlightCol: true });
-           }
-            // Also add bias as a source
-           for(let k=0; k < dims.d_model; k++) {
-                newSources.push({ name: LN.b2, row: 0, col: k, highlightRow: true});
-           }
+           // ffn_output[r,c] = Activated[r,:] * W2[:,c] + b2[c]
+           newSources.push({ name: LN.Activated, row, col: -1, highlightRow: true });
+           newSources.push({ name: LN.W2, row: -1, col, highlightCol: true });
+           newSources.push({ name: LN.b2, row: 0, col });
       }
       // --- Add & Norm 2 ---
       else if (name === LN.add_norm_2_output) {

@@ -180,14 +180,12 @@ h1 {
 .matrix-element.source {
   background-color: var(--highlight-source-bg);
   color: var(--highlight-source-color);
-  border-color: var(--highlight-source-bg);
-  font-weight: normal; /* 确保不加粗 */
+  border: 1px solid var(--highlight-source-bg);
 }
 .matrix-element.target {
   background-color: var(--highlight-target-bg);
   color: var(--highlight-target-color);
-  border-color: var(--highlight-target-bg);
-  font-weight: normal; /* 确保不加粗 */
+  border: 1px solid var(--highlight-target-bg);
 }
 
 .vector-highlight-overlay {
@@ -278,15 +276,19 @@ h1 {
 
 .formula-display {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start; /* Aligned to left for better scroll */
     align-items: center;
     gap: 15px;
-    flex-wrap: wrap;
+    overflow-x: auto; /* CRITICAL FIX: Allow horizontal scrolling */
     margin: 20px 0;
-    padding: 10px;
+    padding: 15px 10px;
     background-color: rgba(0,0,0,0.02);
     border-radius: 8px;
 }
+.formula-display > * {
+    flex-shrink: 0; /* CRITICAL FIX: Prevent items from shrinking */
+}
+
 .katex-display {
     margin: 0 !important;
 }
@@ -294,27 +296,51 @@ h1 {
 .matrix-scroll-wrapper {
     overflow-x: auto;
     padding: 5px;
-    flex-shrink: 1;
+    flex-shrink: 0; /* Changed from 1 to 0 */
     min-width: 0;
-    /* The wrapper for a single symbolic matrix, which might scroll */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-/* [新增] 右侧符号矩阵的高亮框样式 */
-.symbolic-matrix-wrapper {
-    padding: 8px;
-    border-radius: 6px;
-    border: 2px solid transparent;
-    transition: all 0.3s ease;
-    display: inline-block; /* Fixes wrapper width issue */
-    max-width: 100%; /* Ensures it doesn't overflow its container */
+/* [REWORKED] Symbolic Matrix & Highlighting */
+.symbolic-matrix-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
 }
-.symbolic-matrix-wrapper.target {
-    border-color: var(--highlight-target-bg);
-    background-color: rgba(230, 57, 70, 0.1); /* 目标色半透明背景 */
+.symbolic-matrix-grid {
+    display: grid;
+    gap: 2px;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f9f9f9;
 }
-.symbolic-matrix-wrapper.source {
-    border-color: var(--highlight-source-bg);
-    background-color: rgba(29, 53, 87, 0.1); /* 来源色半透明背景 */
+.symbolic-element, .symbolic-ellipsis {
+    min-width: 60px;
+    min-height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.9em;
+    border-radius: 2px;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    transition: all 0.2s ease-in-out;
+}
+.symbolic-ellipsis {
+    border-style: dashed;
+    color: #aaa;
+}
+.symbolic-element.source {
+  background-color: rgba(29, 53, 87, 0.1);
+  border-color: var(--highlight-source-bg);
+}
+.symbolic-element.target {
+  background-color: rgba(230, 57, 70, 0.1);
+  border-color: var(--highlight-target-bg);
 }
 
 
@@ -356,5 +382,37 @@ h1 {
     font-size: 1em;
     font-weight: bold;
     background-color: #f0f2f5;
+}
+
+/* [NEW] Row for visualization formulas to prevent wrapping */
+.viz-formula-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    justify-content: flex-start;
+    width: 100%;
+    overflow-x: auto;
+    padding: 10px 5px;
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+.viz-formula-row::-webkit-scrollbar {
+    display: none; /* Chrome, Safari and Opera */
+}
+.viz-formula-row > * {
+    flex-shrink: 0; /* CRITICAL: Prevents matrices from shrinking/wrapping */
+}
+
+/* [NEW] Styling for sub-steps in visualization components */
+.viz-step-title {
+    width: 100%;
+    text-align: center;
+    font-weight: bold;
+    color: #606266;
+    margin-top: 10px;
+    margin-bottom: -5px;
+    font-size: 0.9em;
+    border-bottom: 1px solid #eef;
+    padding-bottom: 5px;
 }
 /* END OF FILE: src/App.css */

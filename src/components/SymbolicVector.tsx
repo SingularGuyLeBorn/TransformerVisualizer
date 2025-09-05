@@ -1,89 +1,67 @@
 // FILE: src/components/SymbolicVector.tsx
 import React from 'react';
 import { HighlightState } from '../types';
-import { BlockMath } from 'react-katex';
-import { Vector } from '../types';
+import { InlineMath } from 'react-katex';
+import { Vector as VectorType } from '../types';
 import { getSymbolParts } from '../config/symbolMapping';
+import { SymbolicElement } from './SymbolicElement';
 
 interface SymbolicVectorProps {
   name: string;
-  data: Vector;
+  data: VectorType;
   highlight: HighlightState;
 }
 
-export const SymbolicVector: React.FC<SymbolicVectorProps> = ({ name, data, highlight }) => {
+export const SymbolicVector: React.FC<SymbolicVectorProps> = React.memo(({ name, data, highlight }) => {
   const displayCols = data.length;
   const symbol = getSymbolParts(name);
 
-  const getElement = (c_idx: number): string => {
-      const elementBase = symbol.base.toLowerCase();
-      const subscriptContent = [symbol.subscript, c_idx].filter(s => s !== undefined && s !== null).join(',');
-
-      let elementString = `${elementBase}_{${subscriptContent}}`;
-
-      const isTarget = highlight.target?.name === name && highlight.target.col === c_idx;
-      const isSource = highlight.sources.some(s => s.name === name);
-
-      if (isTarget) return `{\\color{#e63946}${elementString}}`;
-      if (isSource) return `{\\color{#1d3557}${elementString}}`;
-      return elementString;
-  }
-
-  let vectorElements: string[] = [];
-  // Abbreviate long vectors similar to matrices
-  const MAX_DIM = 10;
-  const EDGE_COUNT = 4;
-  if(displayCols > MAX_DIM) {
-      for (let c = 0; c < EDGE_COUNT; c++) {
-          vectorElements.push(getElement(c));
+  const gridElements: React.ReactNode[] = [];
+  const highlightedIndices = new Set<number>();
+  if (highlight.target?.name === name) highlightedIndices.add(highlight.target.col);
+  highlight.sources.forEach(s => {
+      if(s.name === name) {
+          if(s.highlightRow) { 
+              for(let i=0; i<displayCols; i++) highlightedIndices.add(i);
+          } else {
+             highlightedIndices.add(s.col);
+          }
       }
-      vectorElements.push('\\dots');
-      for (let c = displayCols - EDGE_COUNT; c < displayCols; c++) {
-          vectorElements.push(getElement(c));
-      }
-  } else {
-      for (let c = 0; c < displayCols; c++) {
-          vectorElements.push(getElement(c));
-      }
+  });
+
+  for (let c = 0; c < displayCols; c++) {
+    const isTarget = highlight.target?.name === name && highlight.target.col === c;
+    const isSource = highlightedIndices.has(c);
+    gridElements.push(
+        <SymbolicElement 
+            key={`elem-${c}`} 
+            base={symbol.base} 
+            subscript={symbol.subscript} 
+            col={c} 
+            isTarget={isTarget} 
+            isSource={isSource} 
+        />
+    );
   }
 
+  let mathSymbol = symbol.base;
 
-  const vectorString = vectorElements.join(' & ');
-  const pmatrix = `\\begin{pmatrix} ${vectorString} \\end{pmatrix}`;
-
-  // Logic to correctly combine subscripts for the main vector label
-  let baseNameForFormula = symbol.base;
-  if (symbol.superscript) baseNameForFormula += `^{${symbol.superscript}}`;
-  
-  const existingSubscriptMatch = baseNameForFormula.match(/_{([^}]*)}/);
-  let finalSubscriptContent = [symbol.subscript, `1 \\times ${displayCols}`].filter(Boolean).join(',');
-
-  if (existingSubscriptMatch) {
-      const baseWithoutSub = baseNameForFormula.replace(existingSubscriptMatch[0], '');
-      const combinedSub = [existingSubscriptMatch[1], `1 \\times ${displayCols}`].filter(Boolean).join(',');
-      baseNameForFormula = `${baseWithoutSub}_{${combinedSub}}`;
-  } else {
-      baseNameForFormula += `_{${finalSubscriptContent}}`;
+  // [FIX] Combine symbol's own subscript with dimension subscript to prevent KaTeX errors.
+  const subscriptParts = [];
+  if (symbol.subscript) {
+    subscriptParts.push(symbol.subscript);
   }
-  
-  const isSourceComponent = highlight.sources.some(s => s.name === name);
-  const isTargetComponent = highlight.target?.name === name;
+  subscriptParts.push(`1 \\times ${displayCols}`);
+  mathSymbol += `_{${subscriptParts.join(',')}}`;
 
-  let labelPart = baseNameForFormula;
-  if(isTargetComponent) {
-      // Use KaTeX-supported \colorbox{color}{content}
-      labelPart = `{\\colorbox{#fde8e9}{\\color{black}$\\displaystyle ${baseNameForFormula}$}}`;
-  } else if (isSourceComponent) {
-      labelPart = `{\\colorbox{#e8f0f8}{\\color{black}$\\displaystyle ${baseNameForFormula}$}}`;
-  }
-
-  const finalFormula = `${labelPart} = ${pmatrix}`;
-  const wrapperClass = `symbolic-matrix-wrapper ${isTargetComponent ? 'target' : ''} ${isSourceComponent ? 'source' : ''}`;
 
   return (
-    <div className={wrapperClass}>
-        <BlockMath math={finalFormula} />
+    <div className="symbolic-matrix-container">
+      <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+      <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: `repeat(${gridElements.length}, auto)` }}>
+        {gridElements}
+      </div>
     </div>
-    );
-};
+  );
+});
 // END OF FILE: src/components/SymbolicVector.tsx

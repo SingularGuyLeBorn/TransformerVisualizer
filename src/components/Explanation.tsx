@@ -93,7 +93,8 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight }) => 
                  <div className="formula-display">
                     <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Q} rows={dims.seq_len} cols={d_k} highlight={highlight} /></div>
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.K} rows={d_k} cols={dims.seq_len} highlight={highlight} transpose={true}/></div>
+                    {/* [FIX] Corrected the props for the transposed K matrix. Pass the ORIGINAL dimensions. */}
+                    <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.K} rows={dims.seq_len} cols={d_k} highlight={highlight} transpose={true}/></div>
                     <BlockMath math="=" />
                     <div className="matrix-scroll-wrapper"><SymbolicMatrix name={HN.Scores} rows={dims.seq_len} cols={dims.seq_len} highlight={highlight} /></div>
                 </div>

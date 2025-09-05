@@ -22,16 +22,22 @@ export const FeedForward: React.FC<FFNProps> = ({ baseName, data, highlight, onE
             <div className="component-body">
                 <p>Input (from Add & Norm)</p>
                 <div className="arrow-down">↓</div>
-                {/* Visualizing Z' * W1 + b1 */}
-                <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'center'}}>
+
+                <div className="viz-step-title">1. First Linear Layer + ReLU</div>
+                <div className="viz-formula-row">
+                    <span>(Input) ×</span>
                     <Matrix name={LN.W1} data={data.W1} highlight={highlight} onElementClick={onElementClick} />
                     <div className="op-symbol">+</div>
                     <Matrix name={LN.b1} data={[data.b1]} highlight={highlight} onElementClick={onElementClick} />
                     <span>→ ReLU →</span>
                     <Matrix name={LN.Activated} data={data.Activated} highlight={highlight} onElementClick={onElementClick} />
                 </div>
-                 {/* Visualizing H * W2 + b2 */}
-                 <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '10px'}}>
+                
+                <div className="arrow-down">↓</div>
+
+                <div className="viz-step-title">2. Second Linear Layer</div>
+                 <div className="viz-formula-row">
+                    <span>(Activated) ×</span>
                     <Matrix name={LN.W2} data={data.W2} highlight={highlight} onElementClick={onElementClick} />
                     <div className="op-symbol">+</div>
                     <Matrix name={LN.b2} data={[data.b2]} highlight={highlight} onElementClick={onElementClick} />
@@ -42,4 +48,4 @@ export const FeedForward: React.FC<FFNProps> = ({ baseName, data, highlight, onE
         </div>
     );
 };
-// END OF FILE: src/components/FeedForward.tsx
+// END OF FILE: src/components/FeedForward.tsx```

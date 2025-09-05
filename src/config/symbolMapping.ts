@@ -31,7 +31,7 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
     AttentionWeights: { base: 'A' },
     HeadOutput: { base: 'H' },
     ConcatOutput: { base: 'H_{cat}'},
-    output: { base: 'M' }, // Corresponds to mha_output
+    output: { base: 'M' }, // Corresponds to MHA output
     mha_output: { base: 'M' },
 
 

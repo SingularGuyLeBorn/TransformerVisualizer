@@ -22,7 +22,7 @@ export const AddNorm: React.FC<AddNormProps> = ({ inputResidual, inputSublayer, 
          <div className={`diagram-component ${isActive ? 'active' : ''}`}>
             <div className="component-header">Add & LayerNorm</div>
             <div className="component-body">
-                <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', justifyContent: 'center'}}>
+                <div className="viz-formula-row">
                     <Matrix name={residualMatrixName} data={inputResidual} highlight={highlight} onElementClick={onElementClick} />
                     <div className="op-symbol">+</div>
                     <Matrix name={sublayerMatrixName} data={inputSublayer} highlight={highlight} onElementClick={onElementClick} />
