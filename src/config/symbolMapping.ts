@@ -30,7 +30,7 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
     ScaledScores: { base: "S'" },
     AttentionWeights: { base: 'A' },
     HeadOutput: { base: 'H' },
-    ConcatOutput: { base: 'H_{cat}'},
+    ConcatOutput: { base: 'H', subscript: 'cat'},
     output: { base: 'M' }, // Corresponds to MHA output
     mha_output: { base: 'M' },
 
@@ -42,8 +42,8 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
     // FFN
     W1: { base: 'W', subscript: '1' },
     b1: { base: 'b', subscript: '1' },
-    Intermediate: { base: 'H_{ffn}' },
-    Activated: { base: 'H_{act}' },
+    Intermediate: { base: 'H', subscript: 'ffn' },
+    Activated: { base: 'H', subscript: 'act' },
     W2: { base: 'W', subscript: '2' },
     b2: { base: 'b', subscript: '2' },
     ffn_output: { base: 'F' },

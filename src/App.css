@@ -14,7 +14,7 @@
   /* Highlighting */
   --highlight-target-bg: #e63946;
   --highlight-target-color: #ffffff;
-  --highlight-source-bg: #1d3557;
+  --highlight-source-bg: #606266; /* [MODIFIED] Changed from dark blue to gray */
   --highlight-source-color: #f1faee;
   /* 调整为半透明橙红色调 */
   --highlight-formula-bg: rgba(252, 163, 17, 0.15); /* 橙红色（#fca311）的15%透明度 */
@@ -72,6 +72,7 @@ h1 {
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
   overflow-y: auto; /* THIS IS THE KEY FOR SCROLLING */
   min-height: 0;
+  min-width: 0; /* [ADDED] Critical fix for responsive overflow */
 }
 
 .column-content {
@@ -125,6 +126,8 @@ h1 {
   flex-direction: column;
   align-items: center;
   gap: 15px;
+  width: 100%; /* [ADDED] Critical fix for child element scrolling */
+  box-sizing: border-box; /* Ensure padding is included in the width */
 }
 
 .arrow-down {
@@ -136,9 +139,15 @@ h1 {
 }
 
 /* --- Matrix Styles --- */
+
 .matrix-wrapper {
     position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    vertical-align: middle; /* 改善在 flex 布局行中的对齐 */
 }
+
 .matrix-container {
   display: inline-block;
   border: 1px solid #ccc;
@@ -170,6 +179,19 @@ h1 {
   font-weight: normal; /* 确保不加粗 */
 }
 
+/* [ADDED] Styling for ellipsis cell in matrix grid */
+.matrix-ellipsis {
+    width: 45px;
+    height: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #aaa;
+    font-size: 1.2em;
+    font-family: monospace;
+}
+
+
 .matrix-element:hover {
   transform: scale(1.1);
   border-color: #007bff;
@@ -188,14 +210,9 @@ h1 {
   border: 1px solid var(--highlight-target-bg);
 }
 
-.vector-highlight-overlay {
-    position: absolute;
-    background-color: var(--highlight-vector-bg);
-    border: 1px solid var(--highlight-source-bg);
-    border-radius: 3px;
-    z-index: 1;
-    pointer-events: none;
-    transition: all 0.2s ease;
+.matrix-element.destination {
+  background-color: var(--highlight-formula-bg);
+  border: 1px solid var(--highlight-formula-border);
 }
 
 .matrix-label-container {
@@ -216,13 +233,13 @@ h1 {
 
 .matrix-symbol-tag {
     background-color: #e9ecef;
-    color: #6c757d;
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 0.9em;
+    color: #495057;
+    padding: 3px 7px;
+    border-radius: 5px;
+    font-size: 1.1em;
     border: 1px solid #ced4da;
     line-height: 1;
+    font-family: 'Times New Roman', serif;
 }
 
 
@@ -288,6 +305,14 @@ h1 {
 .formula-display > * {
     flex-shrink: 0; /* CRITICAL FIX: Prevent items from shrinking */
 }
+.formula-display.vertical {
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+.formula-display.vertical .viz-formula-row {
+    justify-content: flex-start;
+}
 
 .katex-display {
     margin: 0 !important;
@@ -303,7 +328,7 @@ h1 {
     align-items: center;
 }
 
-/* [REWORKED] Symbolic Matrix & Highlighting */
+/* Symbolic Matrix & Highlighting */
 .symbolic-matrix-container {
     display: flex;
     flex-direction: column;
@@ -335,12 +360,16 @@ h1 {
     color: #aaa;
 }
 .symbolic-element.source {
-  background-color: rgba(29, 53, 87, 0.1);
+  background-color: rgba(96, 98, 102, 0.1);
   border-color: var(--highlight-source-bg);
 }
 .symbolic-element.target {
   background-color: rgba(230, 57, 70, 0.1);
   border-color: var(--highlight-target-bg);
+}
+.symbolic-element.destination {
+    background-color: var(--highlight-formula-bg);
+    border-color: var(--highlight-formula-border);
 }
 
 
@@ -384,35 +413,210 @@ h1 {
     background-color: #f0f2f5;
 }
 
-/* [NEW] Row for visualization formulas to prevent wrapping */
+/* [MODIFIED] Grouping and Scrolling Logic */
+.viz-formula-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    overflow-x: auto;
+    padding: 15px 10px;
+    border: 1px solid #eef;
+    border-radius: 8px;
+    background-color: rgba(0,0,0,0.015);
+    gap: 5px; /* Spacing between rows/arrows inside a group */
+    box-sizing: border-box; /* Ensure padding is included in the width */
+}
+.viz-formula-group > * {
+    flex-shrink: 0; /* Ensure content inside does not shrink */
+}
 .viz-formula-row {
     display: flex;
     align-items: center;
     gap: 15px;
-    justify-content: flex-start;
-    width: 100%;
-    overflow-x: auto;
-    padding: 10px 5px;
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
-}
-.viz-formula-row::-webkit-scrollbar {
-    display: none; /* Chrome, Safari and Opera */
+    justify-content: center;
+    width: auto; /* Let the row size to its content */
+    padding: 0 5px; /* Remove vertical padding */
 }
 .viz-formula-row > * {
-    flex-shrink: 0; /* CRITICAL: Prevents matrices from shrinking/wrapping */
+    flex-shrink: 0;
 }
 
-/* [NEW] Styling for sub-steps in visualization components */
+
+/* Styling for sub-steps in visualization components */
 .viz-step-title {
     width: 100%;
     text-align: center;
     font-weight: bold;
     color: #606266;
     margin-top: 10px;
-    margin-bottom: -5px;
+    margin-bottom: 5px;
     font-size: 0.9em;
     border-bottom: 1px solid #eef;
     padding-bottom: 5px;
+}
+.viz-formula-group .viz-step-title {
+    margin-top: -5px; /* Adjust margin when inside a group */
+    margin-bottom: 10px;
+}
+
+/* Styling for Elementwise Operation Visualization */
+.elementwise-op-container {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0;
+    border: 1px dashed #ccc;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    box-sizing: border-box;
+}
+.elementwise-op-label {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+.elementwise-op-viz {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    font-family: monospace;
+    font-size: 1.2em;
+    padding-bottom: 5px;
+}
+.elementwise-op-viz > * {
+    flex-shrink: 0;
+}
+/* [ADDED] Wrapper for function call to keep items on one line */
+.elementwise-op-function-call {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.elementwise-op-row {
+    display: flex;
+    gap: 5px;
+    border: 1px solid #ddd;
+    padding: 4px;
+    border-radius: 4px;
+    background: #fff;
+    align-items: center;
+}
+.elementwise-op-element {
+  /* Inherits from .matrix-element */
+  width: 45px;
+  height: 25px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 2px;
+  font-family: monospace;
+  font-size: 0.8em;
+}
+/* [ADDED] Style for ellipsis in elementwise op */
+.elementwise-op-element.symbolic-ellipsis {
+    border: none;
+    background-color: transparent;
+    color: #aaa;
+    width: auto;
+}
+
+/* [NEW] Styles for ElementwiseCalculation */
+.elementwise-calc-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    font-size: 0.9em;
+}
+.calc-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.calc-label {
+    color: #555;
+    font-size: 0.9em;
+}
+.elementwise-op-element.sum {
+    width: auto;
+    padding: 0 10px;
+    font-weight: bold;
+}
+.elementwise-op-element.source, .elementwise-op-element.sum.source {
+    background-color: var(--highlight-source-bg) !important;
+    color: var(--highlight-source-color) !important;
+    border-color: var(--highlight-source-bg) !important;
+}
+.elementwise-op-element.target, .elementwise-op-element.sum.target {
+    background-color: var(--highlight-target-bg) !important;
+    color: var(--highlight-target-color) !important;
+    border-color: var(--highlight-target-bg) !important;
+}
+
+/* [NEW] Styles for Residual Block */
+.residual-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  border: 2px dashed var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #fcfcfc;
+}
+.residual-block:hover {
+    border-color: var(--highlight-formula-border);
+    background-color: var(--highlight-formula-bg);
+}
+.residual-icon {
+    font-size: 1.6em;
+    font-weight: bold;
+    color: var(--arrow-color);
+    line-height: 1;
+}
+.residual-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
+}
+.residual-matrix-symbol {
+    font-size: 1.2em;
+}
+.residual-matrix-dims {
+    font-size: 0.8em;
+    color: #666;
+    font-family: monospace;
+}
+.residual-block.active {
+    border-color: var(--highlight-formula-border);
+    border-style: solid;
+    box-shadow: 0 0 15px var(--highlight-formula-bg);
+    transform: scale(1.05);
+}
+.residual-block.active .residual-icon {
+    color: var(--highlight-formula-border);
+}
+
+.add-norm-component-body {
+    flex-direction: column; /* Changed for vertical layout */
+}
+
+.add-norm-inputs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap; /* Allow wrapping on small screens */
 }
 /* END OF FILE: src/App.css */

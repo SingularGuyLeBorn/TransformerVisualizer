@@ -1,4 +1,3 @@
-/* START OF FILE: src/components/Element.tsx */
 // FILE: src/components/Element.tsx
 import React from 'react';
 import { HighlightState, ElementIdentifier } from '../types';
@@ -12,13 +11,25 @@ interface ElementProps {
   onElementClick: (element: ElementIdentifier) => void;
 }
 
-// The 'export' keyword here is crucial. It makes this file a module.
 export const Element: React.FC<ElementProps> = React.memo(({ name, row, col, value, highlight, onElementClick }) => {
 
-  const isTarget = highlight.target?.name === name && highlight.target?.row === row && highlight.target?.col === col;
-  const isSource = highlight.sources.some(s => s.name === name && s.row === row && s.col === col);
+  const isTarget = highlight.target?.name === name && highlight.target?.row === row && highlight.target?.col === col && !highlight.target.isInternal;
 
-  const className = `matrix-element ${isTarget ? 'target' : ''} ${isSource ? 'source' : ''}`;
+  const isSource = highlight.sources.some(s => {
+    if (s.name !== name || s.isInternal) return false;
+    if (s.highlightRow) return s.row === row;
+    if (s.highlightCol) return s.col === col;
+    return s.row === row && s.col === col;
+  });
+
+  const isDestination = highlight.destinations?.some(d => {
+    if (d.name !== name || d.isInternal) return false;
+    if (d.highlightRow) return d.row === row;
+    if (d.highlightCol) return d.col === col;
+    return d.row === row && d.col === col;
+  });
+
+  const className = `matrix-element ${isTarget ? 'target' : ''} ${isSource ? 'source' : ''} ${isDestination ? 'destination' : ''}`;
 
   const handleClick = () => {
     onElementClick({ name, row, col });

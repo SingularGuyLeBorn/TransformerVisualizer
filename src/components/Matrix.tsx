@@ -4,6 +4,7 @@ import { Element } from './Element';
 import { Matrix as MatrixType, HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
 import { getSymbolParts } from '../config/symbolMapping';
+import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 
 interface MatrixProps {
   name: string;
@@ -18,49 +19,37 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
     return <div>Invalid matrix data for {name}</div>;
   }
 
-  const rows = isTransposed ? data[0].length : data.length;
-  const cols = isTransposed ? data.length : data[0].length;
+  const numRows = data.length;
+  const numCols = data[0].length;
 
-  const gridTemplateColumns = `repeat(${cols}, auto)`;
+  const displayRows = isTransposed ? numCols : numRows;
+  const displayCols = isTransposed ? numRows : numCols;
 
-  const vectorHighlights = highlight.sources
-    .filter(s => s.name === name && (s.highlightRow || s.highlightCol))
-    .map((s, i) => {
-       const elementWidth = 45;
-       const elementHeight = 25;
-       const gap = 3;
-       let style: React.CSSProperties = {};
+  let focusRow = -1;
+  let focusCol = -1;
 
-       const highlightDataRow = s.highlightRow ?? false;
-       const highlightDataCol = s.highlightCol ?? false;
+  if(highlight.target?.name === name && !highlight.target.isInternal) {
+    focusRow = highlight.target.row;
+    focusCol = highlight.target.col;
+  }
 
-       if (isTransposed) {
-           if (highlightDataRow) {
-               style.width = `${elementWidth}px`;
-               style.height = `calc(${rows} * (${elementHeight}px + ${gap}px) - ${gap}px)`;
-               style.top = `5px`;
-               style.left = `${s.row * (elementWidth + gap) + 5}px`;
-           } else if (highlightDataCol) {
-               style.width = `calc(${cols} * (${elementWidth}px + ${gap}px) - ${gap}px)`;
-               style.height = `${elementHeight}px`;
-               style.top = `${s.col * (elementHeight + gap) + 5}px`;
-               style.left = `5px`;
-           }
-       } else {
-           if (highlightDataRow) {
-               style.width = `calc(${cols} * (${elementWidth}px + ${gap}px) - ${gap}px)`;
-               style.height = `${elementHeight}px`;
-               style.top = `${s.row * (elementHeight + gap) + 5}px`;
-               style.left = `5px`;
-           } else if (highlightDataCol) {
-               style.width = `${elementWidth}px`;
-               style.height = `calc(${rows} * (${elementHeight}px + ${gap}px) - ${gap}px)`;
-               style.top = `5px`;
-               style.left = `${s.col * (elementWidth + gap) + 5}px`;
-           }
-       }
-       return <div key={`${s.name}-${s.row}-${s.col}-${i}`} className="vector-highlight-overlay" style={style} />;
-    });
+  const relevantSource = highlight.sources.find(s => s.name === name && !s.isInternal);
+  if (relevantSource) {
+      focusRow = relevantSource.row === -1 ? focusRow : relevantSource.row;
+      focusCol = relevantSource.col === -1 ? focusCol : relevantSource.col;
+  }
+
+  const relevantDestination = highlight.destinations?.find(d => d.name === name && !d.isInternal);
+    if (relevantDestination) {
+        focusRow = relevantDestination.row === -1 ? focusRow : relevantDestination.row;
+        focusCol = relevantDestination.col === -1 ? focusCol : relevantDestination.col;
+    }
+
+
+  const visibleRowIndices = getVisibleIndices(displayRows, isTransposed ? focusCol : focusRow);
+  const visibleColIndices = getVisibleIndices(displayCols, isTransposed ? focusRow : focusCol);
+
+  const gridTemplateColumns = `repeat(${visibleColIndices.length}, auto)`;
 
   const symbolParts = getSymbolParts(name);
   let mathSymbol = symbolParts.base;
@@ -68,53 +57,45 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
   if(symbolParts.subscript) mathSymbol = `${mathSymbol}_{${symbolParts.subscript}}`;
   if(isTransposed) mathSymbol = `${mathSymbol}^T`;
 
-  // Use the full math symbol for the main label
-  const labelText = mathSymbol;
-
-  // The smaller tag now shows the conceptual name, e.g. "Wq" or "Scores"
-  const conceptualName = name.split('.').pop() || '';
-  const simpleNames = ['Q', 'K', 'V', 'Scores', 'ScaledScores', 'AttentionWeights', 'HeadOutput', 'Wq', 'Wk', 'Wv', 'Wo', 'W1', 'W2', 'b1', 'b2', 'output'];
-  let symbolTag = null;
-  if (simpleNames.includes(conceptualName) && name !== 'inputEmbeddings' && name !== 'posEncodings') {
-      symbolTag = (
-        <div className="matrix-symbol-tag">
-            {conceptualName}
-        </div>
-      );
-  }
+  const gridElements = visibleRowIndices.map((r, rIdx) => {
+    if (r === ELLIPSIS) {
+        return visibleColIndices.map((c, cIdx) => (
+             <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>
+        ));
+    }
+    return visibleColIndices.map((c, cIdx) => {
+        if (c === ELLIPSIS) {
+            return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
+        }
+        const displayRow = r;
+        const displayCol = c;
+        const originalRow = isTransposed ? displayCol : displayRow;
+        const originalCol = isTransposed ? displayRow : displayCol;
+        const value = data[originalRow][originalCol];
+        return (
+             <Element
+              key={`${name}-${originalRow}-${originalCol}`}
+              name={name}
+              row={originalRow}
+              col={originalCol}
+              value={value}
+              highlight={highlight}
+              onElementClick={onElementClick}
+            />
+        )
+    });
+  });
 
 
   return (
     <div className="matrix-wrapper">
       <div className="matrix-container">
-        {vectorHighlights}
         <div className="matrix-grid" style={{ gridTemplateColumns }}>
-          {Array.from({ length: rows }).map((_, r) => (
-            <React.Fragment key={`row-${r}`}>
-            {Array.from({ length: cols }).map((_, c) => {
-              const originalRow = isTransposed ? c : r;
-              const originalCol = isTransposed ? r : c;
-              const value = data[originalRow][originalCol];
-
-              return (
-                <Element
-                  key={`${name}-${originalRow}-${originalCol}`}
-                  name={name}
-                  row={originalRow}
-                  col={originalCol}
-                  value={value}
-                  highlight={highlight}
-                  onElementClick={onElementClick}
-                />
-              );
-            })}
-            </React.Fragment>
-          ))}
+          {gridElements}
         </div>
       </div>
       <div className="matrix-label-container">
-        <div className="matrix-label"><InlineMath>{labelText}</InlineMath></div>
-        {symbolTag}
+        <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
       </div>
     </div>
   );

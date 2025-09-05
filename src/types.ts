@@ -3,9 +3,12 @@ export type Matrix = number[][];
 export type Vector = number[];
 
 export interface ElementIdentifier {
-  name: string; // e.g., "encoder.0.mha.h0.Q"
+  name: string; // e.g., "encoder.0.mha.h0.Q" or "residual.res1.start"
   row: number;
   col: number;
+  isInternal?: boolean; // True if it's part of an internal calculation visualization
+  matrixSymbol?: string; // e.g., "Z"
+  matrixDims?: string; // e.g., "3x8"
 }
 
 export interface HighlightSource extends ElementIdentifier {
@@ -14,9 +17,11 @@ export interface HighlightSource extends ElementIdentifier {
 }
 
 export interface HighlightState {
-  activeComponent: string | null; // e.g., "encoder.0.mha"
+  activeComponent: string | null; // e.g., "mha", "ffn"
+  activeResidual: string | null; // e.g., "res1"
   target: ElementIdentifier | null;
   sources: HighlightSource[];
+  destinations?: HighlightSource[]; // For forward tracing
 }
 
 export interface AttentionHeadData {
