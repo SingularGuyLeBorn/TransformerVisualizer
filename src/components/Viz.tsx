@@ -2,6 +2,7 @@
 import React from 'react';
 import { TransformerData, HighlightState, ElementIdentifier } from '../types';
 import { EncoderLayer } from './EncoderLayer';
+import { DecoderLayer } from './DecoderLayer';
 import { Matrix } from './Matrix';
 import { InlineMath } from 'react-katex';
 
@@ -13,15 +14,17 @@ interface VizProps {
 
 export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => {
     const isInputEmbedActive = highlight.activeComponent === 'input_embed';
+    const isOutputEmbedActive = highlight.activeComponent === 'output_embed';
+    const isFinalOutputActive = highlight.activeComponent === 'final_output';
 
     const cols = data.inputEmbeddings[0]?.length || 0;
-    const shouldBreak = cols > 15; // Here we only need to check one since they are the same size.
+    const shouldBreak = cols > 15;
 
     return (
         <div>
-            {/* Input Embedding & Positional Encoding 组件高亮 */}
+            {/* --- Encoder Side --- */}
             <div className={`diagram-component ${isInputEmbedActive ? 'active' : ''}`}>
-                <div className="component-header">Input Embedding & Positional Encoding</div>
+                <div className="component-header">Encoder Input & Positional Encoding</div>
                 <div className="component-body">
                     {shouldBreak ? (
                          <>
@@ -41,7 +44,6 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
 
             <div className="arrow-down">↓</div>
 
-            {/* Encoder Input 组件高亮 */}
             <div className={`diagram-component ${isInputEmbedActive ? 'active' : ''}`}>
                 <div className="component-header">Encoder Input (<InlineMath math="Z_0" />)</div>
                 <div className="component-body">
@@ -58,6 +60,48 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
                     onElementClick={onElementClick}
                 />
             ))}
+
+            {/* --- Decoder Side --- */}
+            <div className={`diagram-component ${isOutputEmbedActive ? 'active' : ''}`} style={{marginTop: '30px'}}>
+                <div className="component-header">Decoder Input & Positional Encoding</div>
+                <div className="component-body">
+                     <div className="viz-formula-row">
+                         <Matrix name="outputEmbeddings" data={data.outputEmbeddings} highlight={highlight} onElementClick={onElementClick} />
+                         <div className="op-symbol">+</div>
+                         <Matrix name="decoderPosEncodings" data={data.decoderPosEncodings} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                </div>
+            </div>
+            <div className="arrow-down">↓</div>
+            <div className={`diagram-component ${isOutputEmbedActive ? 'active' : ''}`}>
+                <div className="component-header">Decoder Input (<InlineMath math="Y_0" />)</div>
+                <div className="component-body">
+                     <Matrix name="decoderInput" data={data.decoderInput} highlight={highlight} onElementClick={onElementClick} />
+                </div>
+            </div>
+
+            {data.decoderLayers.map((layer, i) => (
+                <DecoderLayer
+                    key={i}
+                    layerIndex={i}
+                    data={layer}
+                    highlight={highlight}
+                    onElementClick={onElementClick}
+                />
+            ))}
+
+            {/* --- Final Output --- */}
+            <div className="arrow-down">↓</div>
+             <div className={`diagram-component ${isFinalOutputActive ? 'active' : ''}`}>
+                <div className="component-header">Final Linear & Softmax</div>
+                <div className="component-body">
+                    <Matrix name="finalLinear" data={data.finalLinear} highlight={highlight} onElementClick={onElementClick} />
+                    <div className="arrow-down">↓</div>
+                    <Matrix name="logits" data={data.logits} highlight={highlight} onElementClick={onElementClick} />
+                    <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Softmax}}" /></div>
+                    <Matrix name="outputProbabilities" data={data.outputProbabilities} highlight={highlight} onElementClick={onElementClick} />
+                </div>
+            </div>
         </div>
     );
 };

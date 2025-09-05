@@ -13,8 +13,8 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
     // Input
     inputEmbeddings: { base: 'E' },
     posEncodings: { base: 'PE' },
-    encoderInput: { base: 'Z' },
-    encoder_input: { base: 'Z' }, // Alias for layers
+    encoderInput: { base: 'Z' }, // Z_0
+    encoder_input: { base: 'Z' },
 
     // MHA Weights
     Wq: { base: 'W', superscript: 'Q' },
@@ -31,13 +31,13 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
     AttentionWeights: { base: 'A' },
     HeadOutput: { base: 'H' },
     ConcatOutput: { base: 'H', subscript: 'cat'},
-    output: { base: 'M' }, // Corresponds to MHA output
+    output: { base: 'M' },
     mha_output: { base: 'M' },
-
 
     // Add & Norm
     add_norm_1_output: { base: "Z'" },
     add_norm_2_output: { base: "Z''" },
+    add_norm_3_output: { base: "Z'''" },
 
     // FFN
     W1: { base: 'W', subscript: '1' },
@@ -47,6 +47,23 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
     W2: { base: 'W', subscript: '2' },
     b2: { base: 'b', subscript: '2' },
     ffn_output: { base: 'F' },
+
+    // --- Decoder Specific ---
+    outputEmbeddings: { base: 'E', subscript: 'out' },
+    decoderPosEncodings: { base: 'PE', subscript: 'dec' },
+    decoderInput: { base: 'Y' }, // Y_0
+    decoder_input: { base: 'Y' },
+
+    masked_mha_output: { base: 'M', subscript: 'mmha' },
+    Wo_masked: { base: 'W', superscript: 'O' },
+
+    enc_dec_mha_output: { base: 'M', subscript: 'ed' },
+    Wo_enc_dec: { base: 'W', superscript: 'O' },
+
+    // Final Output
+    finalLinear: { base: 'W', subscript: 'proj' },
+    logits: { base: 'L' },
+    outputProbabilities: { base: 'P' },
 };
 
 /**
@@ -56,6 +73,9 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
  */
 export const getSymbolParts = (name: string): SymbolParts => {
     const conceptualName = name.split('.').pop() || '';
+    if (conceptualName.startsWith('Wq') || conceptualName.startsWith('Wk') || conceptualName.startsWith('Wv') || conceptualName.startsWith('Wo')) {
+        return SYMBOL_CONFIG[conceptualName.substring(0,2)];
+    }
     return SYMBOL_CONFIG[conceptualName] || { base: 'X' }; // Default to 'X' if not found
 };
 // END OF FILE: src/config/symbolMapping.ts

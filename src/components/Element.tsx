@@ -35,9 +35,15 @@ export const Element: React.FC<ElementProps> = React.memo(({ name, row, col, val
     onElementClick({ name, row, col });
   };
 
+  const displayValue = () => {
+      if (value === -Infinity) return '-∞';
+      if (value === Infinity) return '+∞';
+      return value.toFixed(2);
+  }
+
   return (
     <div className={className} onClick={handleClick}>
-      {value.toFixed(2)}
+      {displayValue()}
     </div>
   );
 });

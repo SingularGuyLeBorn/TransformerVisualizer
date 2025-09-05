@@ -66,10 +66,37 @@ export interface EncoderLayerData {
     add_norm_2_output: Matrix;
 }
 
+export interface DecoderLayerData {
+    decoder_input: Matrix;
+    masked_mha: MultiHeadAttentionData;
+    masked_mha_output: Matrix;
+    add_norm_1_output: Matrix;
+
+    enc_dec_mha: MultiHeadAttentionData;
+    enc_dec_mha_output: Matrix;
+    add_norm_2_output: Matrix;
+
+    ffn: FFNData;
+    ffn_output: Matrix;
+    add_norm_3_output: Matrix;
+}
+
 export interface TransformerData {
+    // Encoder
     inputEmbeddings: Matrix;
     posEncodings: Matrix;
     encoderInput: Matrix;
     encoderLayers: EncoderLayerData[];
+    finalEncoderOutput: Matrix;
+
+    // Decoder
+    outputEmbeddings: Matrix;
+    decoderPosEncodings: Matrix;
+    decoderInput: Matrix;
+    decoderLayers: DecoderLayerData[];
+    finalDecoderOutput: Matrix;
+    finalLinear: Matrix; // Weights for the final linear layer
+    logits: Matrix;
+    outputProbabilities: Matrix;
 }
 // END OF FILE: src/types.ts

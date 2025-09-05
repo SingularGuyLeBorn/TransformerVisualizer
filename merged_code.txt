@@ -639,8 +639,15 @@ import { useTransformer } from './hooks/useTransformer';
 import { ElementIdentifier, HighlightSource, HighlightState, TransformerData } from './types';
 import { MATRIX_NAMES } from './config/matrixNames';
 
-// Helper to create backward highlight state
-const createBackwardHighlight = (element: ElementIdentifier, transformerData: TransformerData, dims: any, currentHighlight: HighlightState): HighlightState => {
+const getLayerAndHeadIndices = (name: string): [number, number] => {
+    const layerIdxMatch = name.match(/\.(encoder|decoder)\.(\d+)/);
+    const layerIdx = layerIdxMatch ? parseInt(layerIdxMatch[2], 10) : 0;
+    const headIdxMatch = name.match(/\.h(\d+)\./);
+    const headIdx = headIdxMatch ? parseInt(headIdxMatch[1], 10) : 0;
+    return [layerIdx, headIdx];
+};
+
+const createBackwardHighlight = (element: ElementIdentifier, transformerData: TransformerData, dims: any): HighlightState => {
     const { name, row, col, isInternal } = element;
     let newSources: HighlightSource[] = [];
     let newTarget: ElementIdentifier | null = element;
@@ -648,143 +655,116 @@ const createBackwardHighlight = (element: ElementIdentifier, transformerData: Tr
     let activeResidual: string | null = null;
 
     if (name.startsWith('residual.')) {
-        const [, resId, type] = name.split('.');
+        const [, resId] = name.split('.');
         activeResidual = resId;
-        const layerIdx = 0; // Simplified for this app
-        const LN = MATRIX_NAMES.layer(layerIdx);
-        if (resId === 'res1') {
-            activeComponent = 'add_norm_1';
-            newSources.push({ name: LN.encoder_input, row: -1, col: -1, highlightRow: true, highlightCol: true });
-            newSources.push({ name: LN.mha_output, row: -1, col: -1, highlightRow: true, highlightCol: true });
-        } else if (resId === 'res2') {
-            activeComponent = 'add_norm_2';
-            newSources.push({ name: LN.add_norm_1_output, row: -1, col: -1, highlightRow: true, highlightCol: true });
-            newSources.push({ name: LN.ffn_output, row: -1, col: -1, highlightRow: true, highlightCol: true });
+        const layerIdx = parseInt(resId.match(/l(\d+)/)?.[1] || '0', 10);
+        const part = parseInt(resId.match(/(\d+)$/)?.[1] || '1', 10);
+
+        if (resId.includes('-d')) {
+            const LN = MATRIX_NAMES.decoderLayer(layerIdx);
+            if(part === 1) { activeComponent = 'add_norm_1_dec'; newSources.push({ name: LN.decoder_input, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.masked_mha_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
+            else if (part === 2) { activeComponent = 'add_norm_2_dec'; newSources.push({ name: LN.add_norm_1_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.enc_dec_mha_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
+            else if (part === 3) { activeComponent = 'add_norm_3_dec'; newSources.push({ name: LN.add_norm_2_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.ffn_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
+        } else {
+            const LN = MATRIX_NAMES.layer(layerIdx);
+            if (part === 1) { activeComponent = 'add_norm_1'; newSources.push({ name: LN.encoder_input, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.mha_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
+            else if (part === 2) { activeComponent = 'add_norm_2'; newSources.push({ name: LN.add_norm_1_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.ffn_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
         }
-        return { target: null, sources: newSources, activeComponent, activeResidual };
+        return { target: null, sources: newSources, activeComponent, activeResidual, destinations: [] };
     }
 
-    const layerIdxMatch = name.match(/encoder\.(\d+)/);
-    const layerIdx = layerIdxMatch ? parseInt(layerIdxMatch[1], 10) : 0;
-    const headIdxMatch = name.match(/h(\d+)/);
-    const headIdx = headIdxMatch ? parseInt(headIdxMatch[1], 10) : 0;
+    const [layerIdx, headIdx] = getLayerAndHeadIndices(name);
+    const LNe = MATRIX_NAMES.layer(layerIdx);
+    const HNe = MATRIX_NAMES.head(layerIdx, headIdx);
+    const LNd = MATRIX_NAMES.decoderLayer(layerIdx);
+    const HNd_masked = MATRIX_NAMES.maskedMhaHead(layerIdx, headIdx);
+    const HNd_encdec = MATRIX_NAMES.encDecMhaHead(layerIdx, headIdx);
 
-    const LN = MATRIX_NAMES.layer(layerIdx);
-    const HN = MATRIX_NAMES.head(layerIdx, headIdx);
-
-    // Component Activation Logic
     const baseName = isInternal ? name.replace('.internal', '') : name;
-    if (Object.values(MATRIX_NAMES.head(layerIdx, headIdx)).includes(baseName) || baseName === LN.mha_output || baseName === LN.Wo || baseName === LN.encoder_input) {
-        activeComponent = 'mha';
-    } else if (baseName === MATRIX_NAMES.inputEmbeddings || baseName === MATRIX_NAMES.posEncodings || baseName === MATRIX_NAMES.encoderInput) {
-        activeComponent = 'input_embed';
-    } else if (baseName === LN.add_norm_1_output) {
-        activeComponent = 'add_norm_1';
-    } else if (baseName === LN.add_norm_2_output) {
-        activeComponent = 'add_norm_2';
-    } else if (Object.values(LN).includes(baseName) && (baseName.includes('.ffn.') || baseName.includes('add_norm_1_output'))) {
-         activeComponent = 'ffn';
-    }
+    if (name.startsWith('encoder')) {
+        if(Object.values(HNe).includes(baseName) || [LNe.mha_output, LNe.Wo, LNe.encoder_input].includes(baseName)) activeComponent = 'mha';
+        else if([LNe.add_norm_1_output].includes(baseName)) activeComponent = 'add_norm_1';
+        else if([LNe.add_norm_2_output].includes(baseName)) activeComponent = 'add_norm_2';
+        else if(baseName.includes('.ffn.')) activeComponent = 'ffn';
+    } else if (name.startsWith('decoder')) {
+        if(Object.values(HNd_masked).includes(baseName) || [LNd.masked_mha_output, LNd.Wo_masked, LNd.decoder_input].includes(baseName)) activeComponent = 'masked_mha';
+        else if(Object.values(HNd_encdec).includes(baseName) || [LNd.enc_dec_mha_output, LNd.Wo_enc_dec, LNd.add_norm_1_output].includes(baseName)) activeComponent = 'enc_dec_mha';
+        else if(baseName === LNd.add_norm_1_output) activeComponent = 'add_norm_1_dec';
+        else if(baseName === LNd.add_norm_2_output) activeComponent = 'add_norm_2_dec';
+        else if(baseName === LNd.add_norm_3_output) activeComponent = 'add_norm_3_dec';
+        else if(baseName.includes('.ffn.')) activeComponent = 'ffn_dec';
+    } else if ([MATRIX_NAMES.inputEmbeddings, MATRIX_NAMES.posEncodings, MATRIX_NAMES.encoderInput].includes(baseName)) activeComponent = 'input_embed';
+    else if ([MATRIX_NAMES.outputEmbeddings, MATRIX_NAMES.decoderPosEncodings, MATRIX_NAMES.decoderInput].includes(baseName)) activeComponent = 'output_embed';
+    else if ([MATRIX_NAMES.finalLinear, MATRIX_NAMES.logits, MATRIX_NAMES.outputProbabilities].includes(baseName)) activeComponent = 'final_output';
 
-     // Backward Tracing Logic
     if (isInternal) {
         newTarget = { name, row, col, isInternal: true };
-        if (baseName === HN.AttentionWeights) {
-            newSources.push({ name: HN.ScaledScores, row, col: -1, highlightRow: true });
+        if (baseName.includes('AttentionWeights')) {
+            const scaledScoresName = baseName.includes('masked_mha') ? HNd_masked.ScaledScores : baseName.includes('enc_dec_mha') ? HNd_encdec.ScaledScores : HNe.ScaledScores;
+            newSources.push({ name: scaledScoresName, row, col: -1, highlightRow: true });
             newSources.push({ name, row, col: -1, isInternal: true });
-        } else if (baseName === LN.Activated) {
-            newSources.push({ name: LN.Intermediate, row, col });
+        } else if (baseName.includes('Activated')) {
+            const intermediateName = baseName.includes('decoder') ? LNd.Intermediate : LNe.Intermediate;
+            newSources.push({ name: intermediateName, row, col });
         }
-    } else if (name === MATRIX_NAMES.encoderInput) {
-        newSources.push({ name: MATRIX_NAMES.inputEmbeddings, row, col });
-        newSources.push({ name: MATRIX_NAMES.posEncodings, row, col });
-    } else if (name === LN.encoder_input) {
-        newSources.push({ name: layerIdx > 0 ? MATRIX_NAMES.layer(layerIdx - 1).add_norm_2_output : MATRIX_NAMES.encoderInput, row, col });
-    } else if (name === HN.Q || name === HN.K || name === HN.V) {
-        const type = name.split('.').pop()!;
-        newSources.push({ name: LN.encoder_input, row, col: -1, highlightRow: true });
-        newSources.push({ name: HN[`W${type.toLowerCase()}` as 'Wq'|'Wk'|'Wv'], row: -1, col, highlightCol: true });
-    } else if (name === HN.Scores) {
-        newSources.push({ name: HN.Q, row, col: -1, highlightRow: true });
-        newSources.push({ name: HN.K, row: col, col: -1, highlightRow: true });
-    } else if (name === HN.ScaledScores) {
-        newSources.push({ name: HN.Scores, row, col });
-    } else if (name === HN.AttentionWeights) {
-        newSources.push({ name: HN.ScaledScores, row, col: -1, highlightRow: true });
-        newSources.push({ name: `${HN.AttentionWeights}.internal`, row, col, isInternal: true });
-    } else if (name === HN.HeadOutput) {
-        newSources.push({ name: HN.AttentionWeights, row, col: -1, highlightRow: true });
-        newSources.push({ name: HN.V, row: -1, col, highlightCol: true });
-    } else if (name === LN.mha_output) {
-        for (let h = 0; h < dims.h; h++) {
-            newSources.push({ name: MATRIX_NAMES.head(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true });
-        }
-        newSources.push({ name: LN.Wo, row: -1, col, highlightCol: true });
-    } else if (name === LN.add_norm_1_output) {
-        newSources.push({ name: LN.encoder_input, row, col: -1, highlightRow: true });
-        newSources.push({ name: LN.mha_output, row, col: -1, highlightRow: true });
-    } else if (name === LN.Intermediate || name === LN.Activated) {
-        newSources.push({ name: LN.add_norm_1_output, row, col: -1, highlightRow: true });
-        newSources.push({ name: LN.W1, row: -1, col, highlightCol: true });
-        newSources.push({ name: LN.b1, row: 0, col });
-        if (name === LN.Activated) {
-             newSources.push({ name: `${LN.Activated}.internal`, row, col, isInternal: true });
-        }
-    } else if (name === LN.ffn_output) {
-        newSources.push({ name: LN.Activated, row, col: -1, highlightRow: true });
-        newSources.push({ name: LN.W2, row: -1, col, highlightCol: true });
-        newSources.push({ name: LN.b2, row: 0, col });
-    } else if (name === LN.add_norm_2_output) {
-        newSources.push({ name: LN.add_norm_1_output, row, col: -1, highlightRow: true });
-        newSources.push({ name: LN.ffn_output, row, col: -1, highlightRow: true });
     }
+    else if (name === MATRIX_NAMES.encoderInput) { newSources.push({ name: MATRIX_NAMES.inputEmbeddings, row, col }); newSources.push({ name: MATRIX_NAMES.posEncodings, row, col }); }
+    else if (name === LNe.encoder_input) { newSources.push({ name: layerIdx > 0 ? MATRIX_NAMES.layer(layerIdx - 1).add_norm_2_output : MATRIX_NAMES.encoderInput, row, col }); }
+    else if (name === HNe.Q || name === HNe.K || name === HNe.V) { const type = name.split('.').pop()!; newSources.push({ name: LNe.encoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: HNe[`W${type.toLowerCase()}` as 'Wq'|'Wk'|'Wv'], row: -1, col, highlightCol: true }); }
+    else if (name === HNe.Scores) { newSources.push({ name: HNe.Q, row, col: -1, highlightRow: true }); newSources.push({ name: HNe.K, row: col, col: -1, highlightRow: true }); }
+    else if (name === HNe.ScaledScores) { newSources.push({ name: HNe.Scores, row, col }); }
+    else if (name === HNe.AttentionWeights) { newSources.push({ name: HNe.ScaledScores, row, col: -1, highlightRow: true }); newSources.push({ name: `${HNe.AttentionWeights}.internal`, row, col, isInternal: true }); }
+    else if (name === HNe.HeadOutput) { newSources.push({ name: HNe.AttentionWeights, row, col: -1, highlightRow: true }); newSources.push({ name: HNe.V, row: -1, col, highlightCol: true }); }
+    else if (name === LNe.mha_output) { for (let h = 0; h < dims.h; h++) newSources.push({ name: MATRIX_NAMES.head(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.Wo, row: -1, col, highlightCol: true }); }
+    else if (name === LNe.add_norm_1_output) { newSources.push({ name: LNe.encoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.mha_output, row, col: -1, highlightRow: true }); }
+    else if (name === LNe.Intermediate || name === LNe.Activated) { newSources.push({ name: LNe.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.W1, row: -1, col, highlightCol: true }); newSources.push({ name: LNe.b1, row: 0, col }); if (name === LNe.Activated) newSources.push({ name: `${LNe.Activated}.internal`, row, col, isInternal: true }); }
+    else if (name === LNe.ffn_output) { newSources.push({ name: LNe.Activated, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.W2, row: -1, col, highlightCol: true }); newSources.push({ name: LNe.b2, row: 0, col }); }
+    else if (name === LNe.add_norm_2_output) { newSources.push({ name: LNe.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.ffn_output, row: col: -1, highlightRow: true }); }
+    else if (name === MATRIX_NAMES.decoderInput) { newSources.push({ name: MATRIX_NAMES.outputEmbeddings, row, col }); newSources.push({ name: MATRIX_NAMES.decoderPosEncodings, row, col }); }
+    else if (name === LNd.decoder_input) { newSources.push({ name: layerIdx > 0 ? MATRIX_NAMES.decoderLayer(layerIdx - 1).add_norm_3_output : MATRIX_NAMES.decoderInput, row, col }); }
+    else if (name === HNd_masked.Q || name === HNd_masked.K || name === HNd_masked.V) { const type = name.split('.').pop()!; newSources.push({ name: LNd.decoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked[`W${type.toLowerCase()}` as 'Wq'|'Wk'|'Wv'], row: -1, col, highlightCol: true }); }
+    else if (name === HNd_masked.Scores) { newSources.push({ name: HNd_masked.Q, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked.K, row, col, col: -1, highlightRow: true }); }
+    else if (name === HNd_masked.AttentionWeights) { newSources.push({ name: HNd_masked.ScaledScores, row, col: -1, highlightRow: true }); newSources.push({ name: `${HNd_masked.AttentionWeights}.internal`, row, col, isInternal: true }); }
+    else if (name === HNd_masked.HeadOutput) { newSources.push({ name: HNd_masked.AttentionWeights, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked.V, row: -1, col, highlightCol: true }); }
+    else if (name === LNd.masked_mha_output) { for (let h = 0; h < dims.h; h++) newSources.push({ name: MATRIX_NAMES.maskedMhaHead(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.Wo_masked, row: -1, col, highlightCol: true }); }
+    else if (name === LNd.add_norm_1_output) { newSources.push({ name: LNd.decoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.masked_mha_output, row: -1, highlightRow: true }); }
+    else if (name === HNd_encdec.Q) { newSources.push({ name: LNd.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_encdec.Wq, row: -1, col, highlightCol: true }); }
+    else if (name === HNd_encdec.K || name === HNd_encdec.V) { const type = name.split('.').pop()!; newSources.push({ name: MATRIX_NAMES.finalEncoderOutput, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: HNd_encdec[`W${type.toLowerCase()}` as 'Wk'|'Wv'], row: -1, col, highlightCol: true }); }
+    else if (name === LNd.add_norm_2_output) { newSources.push({ name: LNd.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.enc_dec_mha_output, row, col: -1, highlightRow: true }); }
+    else if (name === LNd.ffn_output) { newSources.push({ name: LNd.Activated, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.W2, row: -1, col, highlightCol: true }); newSources.push({ name: LNd.b2, row: 0, col }); }
+    else if (name === LNd.add_norm_3_output) { newSources.push({ name: LNd.add_norm_2_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.ffn_output, row, col: -1, highlightRow: true }); }
+    else if (name === MATRIX_NAMES.logits) { newSources.push({ name: transformerData.decoderLayers[dims.n_layers-1].add_norm_3_output, row, col: -1, highlightRow: true}); newSources.push({name: MATRIX_NAMES.finalLinear, row: -1, col, highlightCol: true})}
+    else if (name === MATRIX_NAMES.outputProbabilities) { newSources.push({name: MATRIX_NAMES.logits, row, col: -1, highlightRow: true})}
 
-    return { target: newTarget, sources: newSources, activeComponent, activeResidual };
+    return { target: newTarget, sources: newSources, activeComponent, activeResidual, destinations: [] };
 };
 
-// Helper to create forward highlight state
 const createForwardHighlight = (element: ElementIdentifier, transformerData: TransformerData, dims: any): HighlightState => {
     const { name, row, col } = element;
     let newDestinations: HighlightSource[] = [];
-    let newSources: HighlightSource[] = [{...element}];
     let activeComponent: string | null = null;
+    let activeResidual: string | null = null;
 
-    const layerIdxMatch = name.match(/encoder\.(\d+)/);
-    const layerIdx = layerIdxMatch ? parseInt(layerIdxMatch[1], 10) : 0;
-    const headIdxMatch = name.match(/h(\d+)/);
-    const headIdx = headIdxMatch ? parseInt(headIdxMatch[1], 10) : 0;
+    const [layerIdx, headIdx] = getLayerAndHeadIndices(name);
+    const LNe = MATRIX_NAMES.layer(layerIdx);
+    const HNe = MATRIX_NAMES.head(layerIdx, headIdx);
+    const LNd = MATRIX_NAMES.decoderLayer(layerIdx);
+    const HNd_masked = MATRIX_NAMES.maskedMhaHead(layerIdx, headIdx);
+    const HNd_encdec = MATRIX_NAMES.encDecMhaHead(layerIdx, headIdx);
 
-    const LN = MATRIX_NAMES.layer(layerIdx);
-    const HN = MATRIX_NAMES.head(layerIdx, headIdx);
+    if (name === MATRIX_NAMES.inputEmbeddings || name === MATRIX_NAMES.posEncodings) { newDestinations.push({ name: MATRIX_NAMES.encoderInput, row, col }); activeComponent = 'input_embed'; }
+    else if (name === MATRIX_NAMES.encoderInput) { newDestinations.push({ name: MATRIX_NAMES.layer(0).encoder_input, row, col }); activeComponent = 'input_embed'; }
+    else if (name === LNe.encoder_input) { newDestinations.push({ name: HNe.Q, row, col: -1, highlightRow: true }); newDestinations.push({ name: HNe.K, row, col: -1, highlightRow: true }); newDestinations.push({ name: HNe.V, row, col: -1, highlightRow: true }); newDestinations.push({ name: LNe.add_norm_1_output, row, col }); activeComponent = 'mha'; }
+    else if (name === LNe.add_norm_2_output && layerIdx < dims.n_layers - 1) { newDestinations.push({ name: MATRIX_NAMES.layer(layerIdx+1).encoder_input, row, col }); }
+    else if (name === LNe.add_norm_2_output && layerIdx === dims.n_layers - 1) { newDestinations.push({ name: MATRIX_NAMES.finalEncoderOutput, row, col }); }
+    else if (name === MATRIX_NAMES.finalEncoderOutput) { for (let i = 0; i < dims.n_layers; i++) { const HNd_i = MATRIX_NAMES.encDecMhaHead(i, 0); newDestinations.push({name: HNd_i.K, row, col: -1, highlightRow: true}); newDestinations.push({name: HNd_i.V, row, col: -1, highlightRow: true}); } activeComponent = 'enc_dec_mha'; }
+    else if (name === MATRIX_NAMES.outputEmbeddings || name === MATRIX_NAMES.decoderPosEncodings) { newDestinations.push({ name: MATRIX_NAMES.decoderInput, row, col }); activeComponent = 'output_embed'; }
+    else if (name === MATRIX_NAMES.decoderInput) { newDestinations.push({ name: MATRIX_NAMES.decoderLayer(0).decoder_input, row, col }); activeComponent = 'output_embed'; }
+    else if (name === LNd.decoder_input) { newDestinations.push({ name: HNd_masked.Q, row, col: -1, highlightRow: true}); newDestinations.push({ name: HNd_masked.K, row, col: -1, highlightRow: true}); newDestinations.push({ name: HNd_masked.V, row, col: -1, highlightRow: true}); newDestinations.push({ name: LNd.add_norm_1_output, row, col}); activeComponent = 'masked_mha';}
+    else if (name === LNd.add_norm_1_output) { newDestinations.push({ name: HNd_encdec.Q, row, col: -1, highlightRow: true}); newDestinations.push({ name: LNd.add_norm_2_output, row, col}); activeComponent = 'enc_dec_mha';}
 
-    // Forward Tracing Logic
-    if (name === MATRIX_NAMES.inputEmbeddings || name === MATRIX_NAMES.posEncodings) {
-        newDestinations.push({ name: MATRIX_NAMES.encoderInput, row, col });
-        activeComponent = 'input_embed';
-    } else if (name === MATRIX_NAMES.encoderInput) {
-        newDestinations.push({ name: LN.encoder_input, row, col });
-        activeComponent = 'input_embed';
-    } else if (name === LN.encoder_input) {
-        newDestinations.push({ name: HN.Q, row, col: -1, highlightRow: true });
-        newDestinations.push({ name: HN.K, row, col: -1, highlightRow: true });
-        newDestinations.push({ name: HN.V, row, col: -1, highlightRow: true });
-        newDestinations.push({ name: LN.add_norm_1_output, row, col });
-        activeComponent = 'mha';
-    } else if (name === HN.Q) {
-        newDestinations.push({ name: HN.Scores, row, col: -1, highlightRow: true });
-        activeComponent = 'mha';
-    } else if (name === HN.K) {
-        newDestinations.push({ name: HN.Scores, row: -1, col: row, highlightCol: true });
-        activeComponent = 'mha';
-    } else if (name === HN.V) {
-        newDestinations.push({ name: HN.HeadOutput, row: -1, col, highlightCol: true });
-        activeComponent = 'mha';
-    }
-    // ... and so on for all other matrices
-
-    return { target: element, sources: [], destinations: newDestinations, activeComponent, activeResidual: null };
+    return { target: element, sources: [], destinations: newDestinations, activeComponent, activeResidual };
 };
-
 
 function App() {
   const [dims, setDims] = useState({
@@ -794,7 +774,7 @@ function App() {
       n_layers: 1,
       d_ff: 32
   });
-  const [highlight, setHighlight] = useState<HighlightState>({ target: null, sources: [], activeComponent: null, activeResidual: null });
+  const [highlight, setHighlight] = useState<HighlightState>({ target: null, sources: [], destinations: [], activeComponent: null, activeResidual: null });
 
   const transformerData: TransformerData | null = useTransformer(dims);
 
@@ -811,8 +791,8 @@ function App() {
 
   const handleElementClick = useCallback((element: ElementIdentifier) => {
       if (!transformerData) return;
-      setHighlight(createBackwardHighlight(element, transformerData, dims, highlight));
-  }, [transformerData, dims, highlight]);
+      setHighlight(createBackwardHighlight(element, transformerData, dims));
+  }, [transformerData, dims]);
 
   const handleSymbolClick = useCallback((element: ElementIdentifier) => {
     if (!transformerData) return;
@@ -825,7 +805,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <h1>终极 Transformer 深度探索器 (编码器篇)</h1>
+      <h1>终极 Transformer 深度探索器</h1>
       <Controls dims={dims} setDims={setDims} />
       <div className="main-layout">
         <div className="column left-column">
@@ -853,8 +833,7 @@ function App() {
   );
 }
 
-export default App
-
+export default App;
 // END OF FILE: src/App.tsx
 
 
@@ -962,11 +941,38 @@ export interface EncoderLayerData {
     add_norm_2_output: Matrix;
 }
 
+export interface DecoderLayerData {
+    decoder_input: Matrix;
+    masked_mha: MultiHeadAttentionData;
+    masked_mha_output: Matrix;
+    add_norm_1_output: Matrix;
+
+    enc_dec_mha: MultiHeadAttentionData;
+    enc_dec_mha_output: Matrix;
+    add_norm_2_output: Matrix;
+
+    ffn: FFNData;
+    ffn_output: Matrix;
+    add_norm_3_output: Matrix;
+}
+
 export interface TransformerData {
+    // Encoder
     inputEmbeddings: Matrix;
     posEncodings: Matrix;
     encoderInput: Matrix;
     encoderLayers: EncoderLayerData[];
+    finalEncoderOutput: Matrix;
+
+    // Decoder
+    outputEmbeddings: Matrix;
+    decoderPosEncodings: Matrix;
+    decoderInput: Matrix;
+    decoderLayers: DecoderLayerData[];
+    finalDecoderOutput: Matrix;
+    finalLinear: Matrix; // Weights for the final linear layer
+    logits: Matrix;
+    outputProbabilities: Matrix;
 }
 // END OF FILE: src/types.ts
 
@@ -989,8 +995,8 @@ interface AddNormProps {
     outputMatrixName: string;
     highlight: HighlightState;
     onElementClick: (element: ElementIdentifier) => void;
-    activeId: 'add_norm_1' | 'add_norm_2';
-    residualId: string; // e.g., "res1"
+    activeId: string;
+    residualId: string; // e.g., "res-l0-1"
     residualMatrixSymbol: string;
     residualMatrixDims: string;
 }
@@ -1118,13 +1124,123 @@ export const Controls: React.FC<ControlsProps> = ({ dims, setDims }) => {
 ### 文件路径: src/components/DecoderLayer.tsx
 ================================================================================
 
-/* START OF FILE: src/components/DecoderLayer.tsx */
 // FILE: src/components/DecoderLayer.tsx
-// This file is intentionally left blank for this version,
-// as the focus is on a complete and correct Encoder implementation.
-export {};
+import React from 'react';
+import { DecoderLayerData, HighlightState, ElementIdentifier } from '../types';
+import { AddNorm } from './AddNorm';
+import { FeedForward } from './FeedForward';
+import { MATRIX_NAMES } from '../config/matrixNames';
+import { ResidualBlock } from './ResidualBlock';
+import { getSymbolParts } from '../config/symbolMapping';
+import { Matrix } from './Matrix';
+import { MaskedMultiHeadAttention } from './MaskedMultiHeadAttention';
+import { EncoderDecoderAttention } from './EncoderDecoderAttention';
+
+interface DecoderLayerProps {
+  layerIndex: number;
+  data: DecoderLayerData;
+  highlight: HighlightState;
+  onElementClick: (element: ElementIdentifier) => void;
+}
+
+export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, highlight, onElementClick }) => {
+  const baseName = `decoder.${layerIndex}`;
+  const LN = MATRIX_NAMES.decoderLayer(layerIndex);
+
+  const symbolRes1 = getSymbolParts(LN.decoder_input);
+  const dimsRes1 = `${data.decoder_input.length}x${data.decoder_input[0].length}`;
+  const mathSymbolRes1 = symbolRes1.base + (symbolRes1.subscript ? `_{${symbolRes1.subscript}}` : '') + (symbolRes1.superscript ? `^{${symbolRes1.superscript}}` : '');
+
+  const symbolRes2 = getSymbolParts(LN.add_norm_1_output);
+  const dimsRes2 = `${data.add_norm_1_output.length}x${data.add_norm_1_output[0].length}`;
+  const mathSymbolRes2 = symbolRes2.base + (symbolRes2.subscript ? `_{${symbolRes2.subscript}}` : '') + (symbolRes2.superscript ? `^{${symbolRes2.superscript}}` : '');
+
+  const symbolRes3 = getSymbolParts(LN.add_norm_2_output);
+  const dimsRes3 = `${data.add_norm_2_output.length}x${data.add_norm_2_output[0].length}`;
+  const mathSymbolRes3 = symbolRes3.base + (symbolRes3.subscript ? `_{${symbolRes3.subscript}}` : '') + (symbolRes3.superscript ? `^{${symbolRes3.superscript}}` : '');
+
+  return (
+    <div className="decoder-layer-container">
+        <div className="arrow-down">↓</div>
+        <div className="diagram-component" style={{padding: '5px', borderColor: '#d1c4e9', borderWidth: '3px'}}>
+            <div className="component-header" style={{backgroundColor: '#ede7f6'}}>解码器层 (Decoder Layer) {layerIndex + 1}</div>
+            <div className="component-body">
+
+                {/* --- Masked MHA Sub-layer --- */}
+                <Matrix name={LN.decoder_input} data={data.decoder_input} highlight={highlight} onElementClick={onElementClick} />
+                <ResidualBlock id={`res-l${layerIndex}-d1`} type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes1} matrixDims={dimsRes1} />
+                <MaskedMultiHeadAttention
+                    baseName={`${baseName}.masked_mha`}
+                    data={data.masked_mha}
+                    highlight={highlight}
+                    onElementClick={onElementClick}
+                />
+                <AddNorm
+                    inputSublayer={data.masked_mha_output}
+                    output={data.add_norm_1_output}
+                    sublayerMatrixName={LN.masked_mha_output}
+                    outputMatrixName={LN.add_norm_1_output}
+                    highlight={highlight}
+                    onElementClick={onElementClick}
+                    activeId="add_norm_1_dec"
+                    residualId={`res-l${layerIndex}-d1`}
+                    residualMatrixSymbol={mathSymbolRes1}
+                    residualMatrixDims={dimsRes1}
+                />
+                <div className="arrow-down">↓</div>
+
+                {/* --- Encoder-Decoder Attention Sub-layer --- */}
+                <Matrix name={LN.add_norm_1_output} data={data.add_norm_1_output} highlight={highlight} onElementClick={onElementClick} />
+                <ResidualBlock id={`res-l${layerIndex}-d2`} type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes2} matrixDims={dimsRes2} />
+                <EncoderDecoderAttention
+                    baseName={`${baseName}.enc_dec_mha`}
+                    data={data.enc_dec_mha}
+                    highlight={highlight}
+                    onElementClick={onElementClick}
+                />
+                <AddNorm
+                    inputSublayer={data.enc_dec_mha_output}
+                    output={data.add_norm_2_output}
+                    sublayerMatrixName={LN.enc_dec_mha_output}
+                    outputMatrixName={LN.add_norm_2_output}
+                    highlight={highlight}
+                    onElementClick={onElementClick}
+                    activeId="add_norm_2_dec"
+                    residualId={`res-l${layerIndex}-d2`}
+                    residualMatrixSymbol={mathSymbolRes2}
+                    residualMatrixDims={dimsRes2}
+                />
+                <div className="arrow-down">↓</div>
+
+                {/* --- FFN Sub-layer --- */}
+                <Matrix name={LN.add_norm_2_output} data={data.add_norm_2_output} highlight={highlight} onElementClick={onElementClick} />
+                <ResidualBlock id={`res-l${layerIndex}-d3`} type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes3} matrixDims={dimsRes3} />
+                <FeedForward
+                    baseName={`${baseName}.ffn`}
+                    input={data.add_norm_2_output}
+                    inputName={LN.add_norm_2_output}
+                    data={data.ffn}
+                    highlight={highlight}
+                    onElementClick={onElementClick}
+                />
+                <AddNorm
+                    inputSublayer={data.ffn_output}
+                    output={data.add_norm_3_output}
+                    sublayerMatrixName={LN.ffn_output}
+                    outputMatrixName={LN.add_norm_3_output}
+                    highlight={highlight}
+                    onElementClick={onElementClick}
+                    activeId="add_norm_3_dec"
+                    residualId={`res-l${layerIndex}-d3`}
+                    residualMatrixSymbol={mathSymbolRes3}
+                    residualMatrixDims={dimsRes3}
+                />
+            </div>
+        </div>
+    </div>
+  );
+};
 // END OF FILE: src/components/DecoderLayer.tsx
-/* END OF FILE: src/components/DecoderLayer.tsx */
 
 
 ================================================================================
@@ -1168,9 +1284,15 @@ export const Element: React.FC<ElementProps> = React.memo(({ name, row, col, val
     onElementClick({ name, row, col });
   };
 
+  const displayValue = () => {
+      if (value === -Infinity) return '-∞';
+      if (value === Infinity) return '+∞';
+      return value.toFixed(2);
+  }
+
   return (
     <div className={className} onClick={handleClick}>
-      {value.toFixed(2)}
+      {displayValue()}
     </div>
   );
 });
@@ -1374,6 +1496,121 @@ export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
 
 
 ================================================================================
+### 文件路径: src/components/EncoderDecoderAttention.tsx
+================================================================================
+
+// FILE: src/components/EncoderDecoderAttention.tsx
+import React from 'react';
+import { MultiHeadAttentionData, HighlightState, ElementIdentifier } from '../types';
+import { Matrix } from './Matrix';
+import { InlineMath } from 'react-katex';
+import { MATRIX_NAMES } from '../config/matrixNames';
+import { ElementwiseOperation } from './ElementwiseOperation';
+
+interface EncDecAttentionProps {
+    baseName: string; // e.g., decoder.0.enc_dec_mha
+    data: MultiHeadAttentionData;
+    highlight: HighlightState;
+    onElementClick: (element: ElementIdentifier) => void;
+}
+
+export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseName, data, highlight, onElementClick }) => {
+    const layerIndex = parseInt(baseName.split('.')[1], 10);
+    const headIndex = 0; // Assume we visualize head 0
+    const headData = data.heads[headIndex];
+    const isActive = highlight.activeComponent === 'enc_dec_mha';
+
+    return (
+        <div className={`diagram-component ${isActive ? 'active' : ''}`}>
+            <div className="component-header">Encoder-Decoder Attention</div>
+            <div className="component-body">
+                <div className="viz-formula-group">
+                    <div className="viz-step-title">1. Generate Q, K, V (Head 1)</div>
+                     <div className="viz-formula-row">
+                       <span>Q (from Decoder) ×</span>
+                       <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
+                       <span>=</span>
+                       <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                     <div className="viz-formula-row">
+                       <span>K (from Encoder) ×</span>
+                       <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Wk} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
+                        <span>=</span>
+                       <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).K} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                     <div className="viz-formula-row">
+                       <span>V (from Encoder) ×</span>
+                       <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Wv} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
+                        <span>=</span>
+                       <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                </div>
+
+                <div className="arrow-down">↓</div>
+
+                <div className="viz-formula-group">
+                    <div className="viz-step-title">2. Scaled Dot-Product Attention (Head 1)</div>
+                     <div className="viz-formula-row">
+                        <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="\times" />
+                        <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).K} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
+                    </div>
+                    <div className="arrow-down">=</div>
+                    <div className="viz-formula-row">
+                         <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Scores} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
+                    </div>
+                    <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Scale by } / \sqrt{d_k}}" /></div>
+                    <div className="viz-formula-row">
+                         <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
+                    </div>
+
+                    <ElementwiseOperation
+                        opType="softmax"
+                        inputMatrix={headData.ScaledScores}
+                        outputMatrix={headData.AttentionWeights}
+                        outputMatrixName={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).AttentionWeights}
+                        highlight={highlight}
+                        onElementClick={onElementClick}
+                        layerIndex={layerIndex}
+                        headIndex={headIndex}
+                    />
+
+                    <div className="viz-formula-row">
+                         <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
+                    </div>
+
+                    <div className="viz-formula-row">
+                        <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
+                        <InlineMath math="\times" />
+                        <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                     <div className="arrow-down">=</div>
+                    <div className="viz-formula-row">
+                         <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).HeadOutput} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick}/>
+                    </div>
+                </div>
+
+                <div className="arrow-down">↓</div>
+
+                <div className="viz-formula-group">
+                    <div className="viz-step-title">3. Concat & Final Projection</div>
+                     <div className="viz-formula-row">
+                       <span>(Concatenated) ×</span>
+                       <Matrix name={MATRIX_NAMES.decoderLayer(layerIndex).Wo_enc_dec} data={data.Wo} highlight={highlight} onElementClick={onElementClick} />
+                     </div>
+                     <div className="arrow-down">=</div>
+                     <div className="viz-formula-row">
+                       <Matrix name={MATRIX_NAMES.decoderLayer(layerIndex).enc_dec_mha_output} data={data.output} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+// END OF FILE: src/components/EncoderDecoderAttention.tsx
+
+
+================================================================================
 ### 文件路径: src/components/EncoderLayer.tsx
 ================================================================================
 
@@ -1416,7 +1653,7 @@ export const EncoderLayer: React.FC<EncoderLayerProps> = ({ layerIndex, data, hi
 
                 {/* --- MHA Sub-layer with Residual Connection --- */}
                 <Matrix name={LN.encoder_input} data={data.encoder_input} highlight={highlight} onElementClick={onElementClick} />
-                <ResidualBlock id="res1" type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes1} matrixDims={dimsRes1} />
+                <ResidualBlock id={`res-l${layerIndex}-1`} type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes1} matrixDims={dimsRes1} />
                 <MultiHeadAttention
                     baseName={`${baseName}.mha`}
                     data={data.mha}
@@ -1431,7 +1668,7 @@ export const EncoderLayer: React.FC<EncoderLayerProps> = ({ layerIndex, data, hi
                     highlight={highlight}
                     onElementClick={onElementClick}
                     activeId="add_norm_1"
-                    residualId="res1"
+                    residualId={`res-l${layerIndex}-1`}
                     residualMatrixSymbol={mathSymbolRes1}
                     residualMatrixDims={dimsRes1}
                 />
@@ -1439,7 +1676,7 @@ export const EncoderLayer: React.FC<EncoderLayerProps> = ({ layerIndex, data, hi
                 {/* --- FFN Sub-layer with Residual Connection --- */}
                 <div className="arrow-down">↓</div>
                 <Matrix name={LN.add_norm_1_output} data={data.add_norm_1_output} highlight={highlight} onElementClick={onElementClick} />
-                <ResidualBlock id="res2" type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes2} matrixDims={dimsRes2} />
+                <ResidualBlock id={`res-l${layerIndex}-2`} type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes2} matrixDims={dimsRes2} />
                 <FeedForward
                     baseName={`${baseName}.ffn`}
                     input={data.add_norm_1_output}
@@ -1456,7 +1693,7 @@ export const EncoderLayer: React.FC<EncoderLayerProps> = ({ layerIndex, data, hi
                     highlight={highlight}
                     onElementClick={onElementClick}
                     activeId="add_norm_2"
-                    residualId="res2"
+                    residualId={`res-l${layerIndex}-2`}
                     residualMatrixSymbol={mathSymbolRes2}
                     residualMatrixDims={dimsRes2}
                 />
@@ -1506,8 +1743,11 @@ const MathBlock: React.FC<MathBlockProps> = ({ id, title, children, highlight })
 };
 
 export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSymbolClick }) => {
-    const LN = MATRIX_NAMES.layer(0);
-    const HN = MATRIX_NAMES.head(0, 0);
+    const LNe = MATRIX_NAMES.layer(0);
+    const HNe = MATRIX_NAMES.head(0, 0);
+    const LNd = MATRIX_NAMES.decoderLayer(0);
+    const HNd_masked = MATRIX_NAMES.maskedMhaHead(0, 0);
+    const HNd_encdec = MATRIX_NAMES.encDecMhaHead(0, 0);
     const d_k = dims.d_model / dims.h;
 
     const shouldBreakAddNorm = dims.d_model > 15 || dims.d_model * 2 > 15;
@@ -1517,194 +1757,165 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
             <div className="math-block">
                 <h3>Transformer 架构概览</h3>
                 <p>Transformer 模型由两个核心部分组成：<b>编码器 (Encoder)</b> 和 <b>解码器 (Decoder)</b>。编码器的任务是“理解”输入的整个句子（例如，"I am a student"），并将其转化为一组富含上下文信息的数字表示。解码器的任务是利用这些数字表示，并结合已经生成的内容，一次一个词地生成目标句子（例如，“我 是 一个 学生”）。</p>
-                <p>在2017年的原始论文《Attention Is All You Need》中，编码器和解码器都由 N=6 个相同的层堆叠而成。<b>此可视化工具将聚焦于编码器部分</b>，带您深入探索其内部的数据流动和数学原理。</p>
+                <p>在2017年的原始论文《Attention Is All You Need》中，编码器和解码器都由 N 个相同的层堆叠而成。此可视化工具将带您深入探索其内部的数据流动和数学原理。</p>
             </div>
 
-             <MathBlock id="input_embed" title="第1步：输入预处理" highlight={highlight}>
+            {/* --- ENCODER EXPLANATIONS --- */}
+            <h2 style={{textAlign: 'center', margin: '30px 0'}}>编码器 (Encoder)</h2>
+            <MathBlock id="input_embed" title="编码器第1步：输入预处理" highlight={highlight}>
                 <h5>做什么？</h5>
                 <p>此步骤将输入的文本序列（一串文字）转换为模型可以处理的、包含“词义”和“位置”信息的数值向量矩阵。我们以一个长度为 {dims.seq_len} 的序列为例，当前模型维度 <InlineMath math={`d_{model}=${dims.d_model}`}/>。</p>
-
                 <h5>计算流程</h5>
                 <ol>
-                    <li><b>词嵌入 (Token Embedding):</b> 首先，通过一个大型的、可学习的嵌入表（相当于一个巨大的“词典”），将每个词元（Token）的ID转换为一个稠密的向量。结果是一个矩阵，每一行代表一个词的初始含义。</li>
-                    <li><b>位置编码 (Positional Encoding):</b> Transformer没有循环结构，无法感知词的顺序。因此，我们创建另一个同样大小的位置编码矩阵。该矩阵根据固定的 <InlineMath math="\sin"/> 和 <InlineMath math="\cos"/> 函数生成，为模型注入关于序列顺序的绝对位置信息。</li>
-                    <li><b>逐元素相加:</b> 最后，将上述两个矩阵逐元素相加，得到编码器最终的输入表示 <InlineMath math="Z"/>。这个矩阵的每一行，都既包含了词的语义，也包含了它在句子中的位置信息。</li>
+                    <li><b>词嵌入 (Token Embedding):</b> 将每个词元（Token）的ID转换为一个稠密的向量。</li>
+                    <li><b>位置编码 (Positional Encoding):</b> 为模型注入关于序列顺序的绝对位置信息。</li>
+                    <li><b>逐元素相加:</b> 得到编码器最终的输入表示 <InlineMath math="Z"/>。</li>
                 </ol>
-
-                <p>位置编码计算公式: 矩阵中每一项 <InlineMath math="PE_{(pos, i)}"/> 的值都由其位置 <code>pos</code> 和维度索引 <code>i</code> 决定：</p>
-                <BlockMath math={`
-                PE_{(pos, i)} =
-                \\begin{cases}
-                    \\sin(pos / 10000^{i/d_{\\text{model}}}), & \\text{if } i \\text{ is even} \\\\
-                    \\cos(pos / 10000^{(i-1)/d_{\\text{model}}}), & \\text{if } i \\text{ is odd}
-                \\end{cases}
-                `} />
                 <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.inputEmbeddings} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <BlockMath math="+" />
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.posEncodings} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    {shouldBreakAddNorm && <BlockMath math="=" />}
-                    {!shouldBreakAddNorm && <BlockMath math="=" />}
+                    <BlockMath math="=" />
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.encoderInput} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
-             </MathBlock>
-
-             <MathBlock id="mha" title="编码器子层1：多头自注意力" highlight={highlight}>
+            </MathBlock>
+            <MathBlock id="mha" title="编码器子层1：多头自注意力" highlight={highlight}>
                 <h5>做什么？</h5>
                 <p>此机制的核心目的是计算句子中每个词与其他所有词的“关注度”或“相关性”，并根据这个关注度重新计算每个词的向量表示，从而让每个词的向量都融入其上下文信息。</p>
-                <h5>设计思路</h5>
-                <p>传统的单头注意力虽然能捕捉输入元素间的关系，但只能在单一的表示空间中进行。这限制了模型在处理复杂信息时（如同时关注语法结构和语义关系）的能力。多头注意力（MHA）通过将注意力计算分解到多个并行的“头”来解决这个问题。每个头在输入的不同表示子空间中学习注意力权重，使得模型能同时从不同位置、不同方面关注信息，就像让 {dims.h} 个“专家”从不同角度去审视和理解句子。</p>
-
-                <h5>1. 生成 Q, K, V 向量</h5>
+                 <h5>计算流程</h5>
                 <p>输入矩阵 <InlineMath math="Z"/> 被并行地送入 {dims.h} 个独立的注意力头。每个头都拥有三块自己专属、可学习的权重矩阵。通过矩阵乘法，将输入 <InlineMath math="Z"/> 投影到三个新的矩阵：查询 (Query, <InlineMath math="Q"/>), 键 (Key, <InlineMath math="K"/>), 和 值 (Value, <InlineMath math="V"/>)。</p>
                 <div className="formula-display">
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.encoder_input} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.encoder_input} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HN.Wq} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNe.Wq} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HN.Q} rows={dims.seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNe.Q} rows={dims.seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
-                 <div className="formula-display">
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.encoder_input} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HN.Wk} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HN.K} rows={dims.seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                </div>
-                 <div className="formula-display">
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.encoder_input} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HN.Wv} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HN.V} rows={dims.seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                </div>
-
-                <h5>2. 计算注意力分数</h5>
-                <p>通过将 Query 矩阵与转置后的 Key 矩阵相乘，我们得到一个注意力分数矩阵 <InlineMath math="S"/>。该矩阵中的每个元素 <InlineMath math="S_{r,c}"/> 代表输入序列中第 <code>r</code> 个词（查询方）对第 <code>c</code> 个词（被查询方）的关注度原始分数。</p>
-                 <div className="formula-display">
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HN.Q} rows={dims.seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HN.K} rows={dims.seq_len} cols={d_k} highlight={highlight} transpose={true} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HN.Scores} rows={dims.seq_len} cols={dims.seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                </div>
-
-                <h5>3. 缩放与Softmax</h5>
-                <p>为防止梯度在反向传播时过小，将分数矩阵 <InlineMath math="S"/> 中的所有元素都除以一个缩放因子 <InlineMath math={`\\sqrt{d_k}`}/>。然后，对缩放后的分数矩阵<b>逐行</b>应用 Softmax 函数，将其转换为总和为1的概率分布。这就是最终的注意力权重矩阵 <InlineMath math="A"/>。</p>
-                <div className="formula-display">
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HN.Scores} rows={dims.seq_len} cols={dims.seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math={`\\xrightarrow{/\\sqrt{d_k}}`} />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HN.ScaledScores} rows={dims.seq_len} cols={dims.seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math={`\\xrightarrow{\\text{softmax}}`} />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HN.AttentionWeights} rows={dims.seq_len} cols={dims.seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                </div>
-
-                <h5>4. 加权求和</h5>
-                <p>最后，将权重矩阵 <InlineMath math="A"/> 与 Value 矩阵 <InlineMath math="V"/> 相乘，得到该注意力头的最终输出 <InlineMath math="H"/>。这个过程本质上是对 <InlineMath math="V"/> 中的所有词向量进行加权求和，权重就是刚算出来的注意力分数。关注度越高的词，其V向量在最终结果中的占比就越大。</p>
-                <div className="formula-display">
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HN.AttentionWeights} rows={dims.seq_len} cols={dims.seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HN.V} rows={dims.seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HN.HeadOutput} rows={dims.seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                </div>
-
-                <h5>5. 拼接与最终投影</h5>
-                <p>所有 {dims.h} 个头的输出矩阵 (<InlineMath math={`H_0, H_1, \\dots, H_{${dims.h-1}}`}/>) 在特征维度上被拼接（Concatenate）在一起，形成一个大的矩阵 <InlineMath math="H_{cat}"/>。然后，这个拼接后的矩阵通过一个最终的线性层（权重 <InlineMath math="W^O"/>）进行融合与降维，得到该多头注意力块的最终输出 <InlineMath math="M"/>。</p>
-                 <BlockMath math={`H_{cat} = \\text{Concat}(H_0, H_1, \\dots, H_{${dims.h-1}})`} />
-                 <div className="formula-display">
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.concatOutput(0)} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.Wo} rows={dims.d_model} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.mha_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                </div>
-             </MathBlock>
-
-             <MathBlock id="add_norm_1" title="组件：残差连接与层归一化 (1)" highlight={highlight}>
-                <p>在每个子层（如多头注意力、前馈网络）之后，都会跟随一个“Add & Norm”模块。它包含两个关键步骤，旨在改善深度网络的训练过程并增强信息流动。</p>
-                <h5>步骤 1: 残差连接 (Add)</h5>
-                <p>此步骤的目的是将子层的<b>输入</b>信息与<b>输出</b>信息直接相加。这创建了一条“捷径”（Shortcut/Residual Connection），使得梯度在反向传播时可以更容易地流过深层网络，有效缓解梯度消失问题，也保证了模型不会因为增加了一层而效果变差。</p>
-                <BlockMath math={`Z_{add} = Z_{in} + \\text{Sublayer}(Z_{in})`} />
-
-                <h5>步骤 2: 层归一化 (Layer Normalization)</h5>
-                <p>此步骤旨在稳定训练过程，降低模型对权重初始化的敏感度。它独立地对每个样本（即矩阵的每一行）的特征向量进行归一化处理。对于 <InlineMath math="Z_{add}"/> 的每一行向量 <InlineMath math="\mathbf{z}"/>：</p>
-                <ol>
-                    <li><b>计算均值 (<InlineMath math="\mu"/>) 和方差 (<InlineMath math="\sigma^2"/>):</b> 计算该行向量内所有元素的均值与方差。</li>
-                    <li><b>归一化:</b> 将向量变为均值为0，方差为1的标准分布。</li>
-                    <BlockMath math={`\\mathbf{\\hat{z}} = \\frac{\\mathbf{z} - \\mu}{\\sqrt{\\sigma^2 + \\epsilon}}`} />
-                    <li><b>缩放与平移:</b> 引入两个可学习的参数向量 <InlineMath math="\gamma"/> (gamma) 和 <InlineMath math="\beta"/> (beta)，来恢复模型的表达能力，因为强制归一化可能会限制模型的性能。其中 <InlineMath math="\odot"/> 代表逐元素乘法。</li>
-                    <BlockMath math={`\\mathbf{z}_{out} = \\gamma \odot \\mathbf{\\hat{z}} + \\beta`} />
-                </ol>
-                <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.encoder_input} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                <p>然后计算注意力分数 <InlineMath math="S = QK^T"/>，进行缩放和Softmax得到权重 <InlineMath math="A"/>，最后加权求和 <InlineMath math="H = A \cdot V"/>。</p>
+            </MathBlock>
+            <MathBlock id="add_norm_1" title="组件：残差连接与层归一化 (1)" highlight={highlight}>
+                <p>在每个子层之后，都会跟随一个“Add & Norm”模块。它包含两个关键步骤：<b>残差连接</b>将子层的输入与输出直接相加，缓解梯度消失；<b>层归一化</b>则稳定训练过程。</p>
+                <BlockMath math={`Z' = \\text{LayerNorm}(Z_{in} + \\text{Sublayer}(Z_{in}))`} />
+                 <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.encoder_input} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <BlockMath math="+" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.mha_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.mha_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <BlockMath math="\xrightarrow{\text{LayerNorm}}" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
-             </MathBlock>
-
-              <MathBlock id="ffn" title="编码器子层2：位置前馈网络" highlight={highlight}>
-                <h5>做什么？</h5>
-                <p>在注意力层捕捉了上下文关系之后，前馈网络 (FFN) 对每个位置的向量独立地进行一次复杂的非线性变换。这极大地增加了模型的表达能力，使其能够学习更复杂的特征组合。</p>
-                <h5>设计思路</h5>
-                <p>注意力层本身的计算（加权求和）是线性的，为了让模型能够学习更复杂的函数，需要在每个注意力层之后引入非线性变换。FFN 就是这个非线性组件。它独立地、相同地应用于序列中的每一个位置（即每一个词元向量），为其增加了模型的“深度”和表达能力，可以看作是在特征维度上进行深度加工。</p>
-
-                <h5>1. 第一次线性变换 (维度扩展)</h5>
-                <p>输入矩阵 <InlineMath math="Z'"/> 首先会经过一个线性层，将其维度从 <InlineMath math={`d_{model}=${dims.d_model}`}/> 扩展到一个更大的中间维度 <InlineMath math={`d_{ff}=${dims.d_ff}`}/>。这个“升维”操作为模型提供了更大的空间来学习和组合特征。然后加上偏置项，并通过ReLU激活函数引入非线性。</p>
-                <BlockMath math={`H_{act} = \\text{ReLU}(Z' W_1 + b_1)`} />
+            </MathBlock>
+            <MathBlock id="ffn" title="编码器子层2：位置前馈网络" highlight={highlight}>
+                <p>前馈网络 (FFN) 对每个位置的向量独立地进行一次复杂的非线性变换，极大地增加了模型的表达能力。</p>
+                <BlockMath math={`F = \\text{ReLU}(Z' W_1 + b_1) W_2 + b_2`} />
                 <div className="formula-display vertical">
                     <div className="viz-formula-row">
-                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     </div>
                     <BlockMath math="\times"/>
                     <div className="viz-formula-row">
-                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.W1} rows={dims.d_model} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.W1} rows={dims.d_model} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     </div>
                     <BlockMath math="+"/>
                     <div className="viz-formula-row">
-                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicVector name={LN.b1} data={Array(dims.d_ff).fill(0)} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicVector name={LNe.b1} data={Array(dims.d_ff).fill(0)} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     </div>
                     <BlockMath math="\xrightarrow{ReLU}"/>
                     <div className="viz-formula-row">
-                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.Activated} rows={dims.seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.Activated} rows={dims.seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     </div>
                 </div>
+            </MathBlock>
+            <MathBlock id="add_norm_2" title="组件：残差连接与层归一化 (2)" highlight={highlight}>
+                <p>与第一个 "Add & Norm" 层完全相同，此步骤将 FFN 子层的输出与输入结合，产生该编码器层的最终输出。</p>
+                 <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="+" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.ffn_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="\xrightarrow{\text{LayerNorm}}" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.add_norm_2_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                </div>
+            </MathBlock>
 
-                <h5>2. 第二次线性变换 (维度投影)</h5>
-                <p>最后，将经过激活函数处理的矩阵再通过第二个线性层，将其从中间维度 <InlineMath math={`d_{ff}`}/> 投影回原始的模型维度 <InlineMath math={`d_{model}`}/>，并加上第二个偏置项，得到FFN层的最终输出。这个“降维”操作将学习到的复杂特征整合回模型的主干维度中。</p>
-                <BlockMath math={`F = H_{act} W_2 + b_2`} />
-                <div className="formula-display vertical">
+            {/* --- DECODER EXPLANATIONS --- */}
+            <h2 style={{textAlign: 'center', margin: '30px 0'}}>解码器 (Decoder)</h2>
+            <MathBlock id="output_embed" title="解码器第1步：输出预处理" highlight={highlight}>
+                 <h5>做什么？</h5>
+                <p>此步骤与编码器输入预处理类似，但作用于目标语言序列（即解码器要生成的内容）。它将目标序列（通常是已经生成的词加上一个起始符）转换为模型可以处理的数值向量矩阵。</p>
+                 <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.outputEmbeddings} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="+" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.decoderPosEncodings} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="=" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.decoderInput} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                </div>
+            </MathBlock>
+            <MathBlock id="masked_mha" title="解码器子层1：带掩码的多头自注意力" highlight={highlight}>
+                <h5>做什么？</h5>
+                <p>这是解码器的第一个关键子层。它与编码器的自注意力机制几乎完全相同，但有一个至关重要的区别：<b>前瞻遮罩 (Look-Ahead Mask)</b>。</p>
+                <h5>设计思路</h5>
+                <p>在生成任务中，模型在预测第 <code>i</code> 个词时，只能看到第 <code>i</code> 个词之前（包括第 <code>i</code> 个词）的内容，绝不能“偷看”未来的词。为了在并行的矩阵运算中实现这一点，我们在计算注意力分数后，会应用一个遮罩。这个遮罩将分数矩阵 <InlineMath math="S"/> 的上三角部分（代表未来位置）设置为一个非常大的负数（-∞）。这样，在经过 Softmax 运算后，这些位置的注意力权重将变为0，从而确保了模型无法关注未来的信息。</p>
+                 <div className="formula-display">
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_masked.Scores} rows={dims.seq_len} cols={dims.seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <BlockMath math={`\\xrightarrow{\\text{Mask}}`} />
+                    <p>上三角区域被设为-∞</p>
+                </div>
+            </MathBlock>
+            <MathBlock id="add_norm_1_dec" title="解码器组件：残差连接与层归一化 (1)" highlight={highlight}>
+                <p>同编码器中的 Add & Norm。</p>
+                <BlockMath math={`Y' = \\text{LayerNorm}(Y_{in} + \\text{Masked-MHA}(Y_{in}))`} />
+            </MathBlock>
+             <MathBlock id="enc_dec_mha" title="解码器子层2：编码器-解码器注意力" highlight={highlight}>
+                <h5>做什么？</h5>
+                <p>这是连接编码器和解码器的桥梁，也是 Transformer 架构的精髓所在。在这一层，解码器会“审视”编码器的全部输出，并判断输入序列中的哪些部分对于生成当前目标词最重要。</p>
+                 <h5>计算流程</h5>
+                <ol>
+                    <li><b>Query (<InlineMath math="Q"/>)</b>: 来自解码器前一层的输出。它代表了“我当前需要什么信息来生成下一个词？”</li>
+                    <li><b>Key (<InlineMath math="K"/>) 和 Value (<InlineMath math="V"/>)</b>: <b>均来自编码器的最终输出</b>。它们代表了整个输入序列的上下文信息。</li>
+                </ol>
+                <p>通过计算 <InlineMath math="Q_{dec} \cdot K_{enc}^T"/>，解码器能够评估其当前的生成需求与输入序列中每个词的相关性，然后利用这个相关性（注意力权重）从 <InlineMath math="V_{enc}"/> 中加权提取最需要的信息来辅助生成。</p>
+            </MathBlock>
+            <MathBlock id="add_norm_2_dec" title="解码器组件：残差连接与层归一化 (2)" highlight={highlight}>
+                 <p>同编码器中的 Add & Norm。</p>
+                 <BlockMath math={`Y'' = \\text{LayerNorm}(Y' + \\text{Enc-Dec-MHA}(Y', Z_{enc}))`} />
+            </MathBlock>
+            <MathBlock id="ffn_dec" title="解码器子层3：前馈网络" highlight={highlight}>
+                <p>同编码器中的 FFN。</p>
+                 <div className="formula-display vertical">
                      <div className="viz-formula-row">
-                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.Activated} rows={dims.seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.add_norm_2_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     </div>
                     <BlockMath math="\times"/>
                     <div className="viz-formula-row">
-                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.W2} rows={dims.d_ff} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.W1} rows={dims.d_model} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     </div>
                     <BlockMath math="+"/>
                     <div className="viz-formula-row">
-                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicVector name={LN.b2} data={Array(dims.d_model).fill(0)} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicVector name={LNd.b1} data={Array(dims.d_ff).fill(0)} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     </div>
-                    <BlockMath math="="/>
+                    <BlockMath math="\xrightarrow{ReLU}"/>
                     <div className="viz-formula-row">
-                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.ffn_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                        <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.Activated} rows={dims.seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     </div>
                 </div>
-             </MathBlock>
-
-             <MathBlock id="add_norm_2" title="组件：残差连接与层归一化 (2)" highlight={highlight}>
-                <p>与第一个 "Add & Norm" 层完全相同，此步骤将 FFN 子层的输出信息与该子层的输入信息直接结合，然后进行层归一化，产生该编码器层的最终输出。</p>
-                <p>这个输出可以被送入下一个编码器层进行更深层次的特征提取，或者（如果这是最后一层）被送入解码器的每一个“编码器-解码器注意力”子层中，作为指导翻译生成的上下文信息。</p>
-                <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="+" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.ffn_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="\xrightarrow{\text{LayerNorm}}" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LN.add_norm_2_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+            </MathBlock>
+            <MathBlock id="add_norm_3_dec" title="解码器组件：残差连接与层归一化 (3)" highlight={highlight}>
+                 <p>同编码器中的 Add & Norm。</p>
+                 <BlockMath math={`Y_{final} = \\text{LayerNorm}(Y'' + \\text{FFN}(Y''))`} />
+            </MathBlock>
+             <MathBlock id="final_output" title="最终输出层" highlight={highlight}>
+                <h5>做什么？</h5>
+                <p>在经过所有解码器层的处理后，我们得到一个最终的输出矩阵。此步骤将其转换为每个位置上词汇表中所有单词的概率分布。</p>
+                 <h5>计算流程</h5>
+                <ol>
+                    <li><b>线性层 (Linear Layer):</b> 将解码器输出矩阵通过一个大的线性投影层，将其维度从 <InlineMath math="d_{model}"/> 扩展到词汇表大小 (<InlineMath math="V_{size}"/>)。这会为每个位置生成一个分数向量，称为 Logits。</li>
+                    <li><b>Softmax:</b> 对 Logits 矩阵的每一行应用 Softmax 函数，将其转换为概率分布。概率最高的那个词，就是模型在当前位置的最终预测。</li>
+                </ol>
+                 <div className="formula-display">
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.finalLinear} rows={dims.d_model} cols={50} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <BlockMath math="\xrightarrow{\text{Softmax}}" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.outputProbabilities} rows={dims.seq_len} cols={50} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                 </div>
-             </MathBlock>
+            </MathBlock>
         </div>
     );
 };
@@ -1835,7 +2046,6 @@ export const FeedForward: React.FC<FFNProps> = ({ baseName, input, inputName, da
 // FILE: src/components/InteractiveSymbolicElement.tsx
 import React from 'react';
 import { InlineMath } from 'react-katex';
-import { ElementIdentifier } from '../types';
 
 interface InteractiveSymbolicElementProps {
   base: string;
@@ -2049,6 +2259,130 @@ export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps>
   );
 });
 // END OF FILE: src/components/InteractiveSymbolicVector.tsx
+
+
+================================================================================
+### 文件路径: src/components/MaskedMultiHeadAttention.tsx
+================================================================================
+
+// FILE: src/components/MaskedMultiHeadAttention.tsx
+import React from 'react';
+import { MultiHeadAttentionData, HighlightState, ElementIdentifier } from '../types';
+import { Matrix } from './Matrix';
+import { InlineMath } from 'react-katex';
+import { MATRIX_NAMES } from '../config/matrixNames';
+import { ElementwiseOperation } from './ElementwiseOperation';
+
+interface MHAProps {
+    baseName: string; // e.g., decoder.0.masked_mha
+    data: MultiHeadAttentionData;
+    highlight: HighlightState;
+    onElementClick: (element: ElementIdentifier) => void;
+}
+
+export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlight, onElementClick }) => {
+    const layerIndex = parseInt(baseName.split('.')[1], 10);
+    const headIndex = 0; // Assume we visualize head 0
+    const headData = data.heads[headIndex];
+    const isActive = highlight.activeComponent === 'masked_mha';
+
+    return (
+        <div className={`diagram-component ${isActive ? 'active' : ''}`}>
+            <div className="component-header">Masked Multi-Head Attention</div>
+            <div className="component-body">
+                {/* Visualizations for Q, K, V generation */}
+                <div className="viz-formula-group">
+                    <div className="viz-step-title">1. Generate Q, K, V (Head 1)</div>
+                     <div className="viz-formula-row">
+                       <span>(Input) ×</span>
+                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
+                       <span>=</span>
+                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                     <div className="viz-formula-row">
+                       <span>(Input) ×</span>
+                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Wk} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
+                        <span>=</span>
+                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).K} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                     <div className="viz-formula-row">
+                       <span>(Input) ×</span>
+                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Wv} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
+                        <span>=</span>
+                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                </div>
+
+                <div className="arrow-down">↓</div>
+
+                {/* Scaled Dot-Product Attention */}
+                <div className="viz-formula-group">
+                    <div className="viz-step-title">2. Scaled Dot-Product Attention (Head 1)</div>
+                    <div className="viz-formula-row">
+                        <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="\times" />
+                        <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).K} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
+                    </div>
+                    <div className="arrow-down">= (Scores)</div>
+                    <div className="arrow-down" style={{fontSize: '1em', color: '#e63946', fontWeight: 'bold'}}>Apply Look-Ahead Mask</div>
+                    <div className="viz-formula-row">
+                         <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Scores} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
+                    </div>
+
+                    <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Scale by } / \sqrt{d_k}}" /></div>
+                    <div className="viz-formula-row">
+                         <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
+                    </div>
+
+                    <ElementwiseOperation
+                        opType="softmax"
+                        inputMatrix={headData.ScaledScores}
+                        outputMatrix={headData.AttentionWeights}
+                        outputMatrixName={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).AttentionWeights}
+                        highlight={highlight}
+                        onElementClick={onElementClick}
+                        layerIndex={layerIndex}
+                        headIndex={headIndex}
+                    />
+
+                    <div className="viz-formula-row">
+                         <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
+                    </div>
+
+                    <div className="viz-formula-row">
+                        <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
+                        <InlineMath math="\times" />
+                        <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                     <div className="arrow-down">=</div>
+                    <div className="viz-formula-row">
+                         <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).HeadOutput} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick}/>
+                    </div>
+                </div>
+
+                {/* Final Projection */}
+                 <div className="arrow-down">↓</div>
+
+                <div className="viz-formula-group">
+                    <div className="viz-step-title">3. Concat & Final Projection</div>
+                    <div className="viz-formula-row">
+                       <InlineMath math="\text{Concat}(H_0, \dots, H_{N})" />
+                     </div>
+                     <div className="viz-formula-row">
+                       <span>(Concatenated) ×</span>
+                       <Matrix name={MATRIX_NAMES.decoderLayer(layerIndex).Wo_masked} data={data.Wo} highlight={highlight} onElementClick={onElementClick} />
+                     </div>
+                     <div className="arrow-down">=</div>
+                     <div className="viz-formula-row">
+                       <Matrix name={MATRIX_NAMES.decoderLayer(layerIndex).masked_mha_output} data={data.output} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    );
+};
+// END OF FILE: src/components/MaskedMultiHeadAttention.tsx
 
 
 ================================================================================
@@ -2448,6 +2782,7 @@ export const ResidualBlock: React.FC<ResidualBlockProps> = ({ id, type, matrixSy
 import React from 'react';
 import { TransformerData, HighlightState, ElementIdentifier } from '../types';
 import { EncoderLayer } from './EncoderLayer';
+import { DecoderLayer } from './DecoderLayer';
 import { Matrix } from './Matrix';
 import { InlineMath } from 'react-katex';
 
@@ -2459,15 +2794,17 @@ interface VizProps {
 
 export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => {
     const isInputEmbedActive = highlight.activeComponent === 'input_embed';
+    const isOutputEmbedActive = highlight.activeComponent === 'output_embed';
+    const isFinalOutputActive = highlight.activeComponent === 'final_output';
 
     const cols = data.inputEmbeddings[0]?.length || 0;
-    const shouldBreak = cols > 15; // Here we only need to check one since they are the same size.
+    const shouldBreak = cols > 15;
 
     return (
         <div>
-            {/* Input Embedding & Positional Encoding 组件高亮 */}
+            {/* --- Encoder Side --- */}
             <div className={`diagram-component ${isInputEmbedActive ? 'active' : ''}`}>
-                <div className="component-header">Input Embedding & Positional Encoding</div>
+                <div className="component-header">Encoder Input & Positional Encoding</div>
                 <div className="component-body">
                     {shouldBreak ? (
                          <>
@@ -2487,7 +2824,6 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
 
             <div className="arrow-down">↓</div>
 
-            {/* Encoder Input 组件高亮 */}
             <div className={`diagram-component ${isInputEmbedActive ? 'active' : ''}`}>
                 <div className="component-header">Encoder Input (<InlineMath math="Z_0" />)</div>
                 <div className="component-body">
@@ -2504,6 +2840,48 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
                     onElementClick={onElementClick}
                 />
             ))}
+
+            {/* --- Decoder Side --- */}
+            <div className={`diagram-component ${isOutputEmbedActive ? 'active' : ''}`} style={{marginTop: '30px'}}>
+                <div className="component-header">Decoder Input & Positional Encoding</div>
+                <div className="component-body">
+                     <div className="viz-formula-row">
+                         <Matrix name="outputEmbeddings" data={data.outputEmbeddings} highlight={highlight} onElementClick={onElementClick} />
+                         <div className="op-symbol">+</div>
+                         <Matrix name="decoderPosEncodings" data={data.decoderPosEncodings} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                </div>
+            </div>
+            <div className="arrow-down">↓</div>
+            <div className={`diagram-component ${isOutputEmbedActive ? 'active' : ''}`}>
+                <div className="component-header">Decoder Input (<InlineMath math="Y_0" />)</div>
+                <div className="component-body">
+                     <Matrix name="decoderInput" data={data.decoderInput} highlight={highlight} onElementClick={onElementClick} />
+                </div>
+            </div>
+
+            {data.decoderLayers.map((layer, i) => (
+                <DecoderLayer
+                    key={i}
+                    layerIndex={i}
+                    data={layer}
+                    highlight={highlight}
+                    onElementClick={onElementClick}
+                />
+            ))}
+
+            {/* --- Final Output --- */}
+            <div className="arrow-down">↓</div>
+             <div className={`diagram-component ${isFinalOutputActive ? 'active' : ''}`}>
+                <div className="component-header">Final Linear & Softmax</div>
+                <div className="component-body">
+                    <Matrix name="finalLinear" data={data.finalLinear} highlight={highlight} onElementClick={onElementClick} />
+                    <div className="arrow-down">↓</div>
+                    <Matrix name="logits" data={data.logits} highlight={highlight} onElementClick={onElementClick} />
+                    <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Softmax}}" /></div>
+                    <Matrix name="outputProbabilities" data={data.outputProbabilities} highlight={highlight} onElementClick={onElementClick} />
+                </div>
+            </div>
         </div>
     );
 };
@@ -2517,55 +2895,70 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
 // FILE: src/config/matrixNames.ts
 // This file is the single source of truth for all matrix and vector names.
 
+const generateHeadNames = (base: string) => ({
+    Wq: `${base}.Wq`, Wk: `${base}.Wk`, Wv: `${base}.Wv`,
+    Q: `${base}.Q`, K: `${base}.K`, V: `${base}.V`,
+    Scores: `${base}.Scores`, ScaledScores: `${base}.ScaledScores`,
+    AttentionWeights: `${base}.AttentionWeights`, HeadOutput: `${base}.HeadOutput`,
+});
+
 export const MATRIX_NAMES = {
     // Input
     inputEmbeddings: 'inputEmbeddings',
     posEncodings: 'posEncodings',
     encoderInput: 'encoderInput',
+    finalEncoderOutput: 'finalEncoderOutput', // [ADDED]
 
-    // Layer-specific names (functions to generate names for a specific layer)
+    // Encoder Layer
     layer: (layerIndex: number) => ({
-        // Inputs
         encoder_input: `encoder.${layerIndex}.encoder_input`,
-
-        // MHA
         mha_output: `encoder.${layerIndex}.mha.output`,
         Wo: `encoder.${layerIndex}.mha.Wo`,
-
-        // Add & Norm 1
         add_norm_1_output: `encoder.${layerIndex}.add_norm_1_output`,
-
-        // FFN
-        W1: `encoder.${layerIndex}.ffn.W1`,
-        b1: `encoder.${layerIndex}.ffn.b1`,
-        Intermediate: `encoder.${layerIndex}.ffn.Intermediate`,
-        Activated: `encoder.${layerIndex}.ffn.Activated`,
-        W2: `encoder.${layerIndex}.ffn.W2`,
-        b2: `encoder.${layerIndex}.ffn.b2`,
+        W1: `encoder.${layerIndex}.ffn.W1`, b1: `encoder.${layerIndex}.ffn.b1`,
+        Intermediate: `encoder.${layerIndex}.ffn.Intermediate`, Activated: `encoder.${layerIndex}.ffn.Activated`,
+        W2: `encoder.${layerIndex}.ffn.W2`, b2: `encoder.${layerIndex}.ffn.b2`,
         ffn_output: `encoder.${layerIndex}.ffn.output`,
-
-        // Add & Norm 2
         add_norm_2_output: `encoder.${layerIndex}.add_norm_2_output`,
     }),
 
-    // Head-specific names
-    head: (layerIndex: number, headIndex: number) => ({
-        Wq: `encoder.${layerIndex}.mha.h${headIndex}.Wq`,
-        Wk: `encoder.${layerIndex}.mha.h${headIndex}.Wk`,
-        Wv: `encoder.${layerIndex}.mha.h${headIndex}.Wv`,
-        Q: `encoder.${layerIndex}.mha.h${headIndex}.Q`,
-        K: `encoder.${layerIndex}.mha.h${headIndex}.K`,
-        V: `encoder.${layerIndex}.mha.h${headIndex}.V`,
-        Scores: `encoder.${layerIndex}.mha.h${headIndex}.Scores`,
-        ScaledScores: `encoder.${layerIndex}.mha.h${headIndex}.ScaledScores`,
-        AttentionWeights: `encoder.${layerIndex}.mha.h${headIndex}.AttentionWeights`,
-        HeadOutput: `encoder.${layerIndex}.mha.h${headIndex}.HeadOutput`,
+    // Encoder Head
+    head: (layerIndex: number, headIndex: number) => generateHeadNames(`encoder.${layerIndex}.mha.h${headIndex}`),
+    concatOutput: (layerIndex: number) => `encoder.${layerIndex}.mha.ConcatOutput`,
+
+    // Decoder Input
+    outputEmbeddings: 'outputEmbeddings',
+    decoderPosEncodings: 'decoderPosEncodings',
+    decoderInput: 'decoderInput',
+
+    // Decoder Layer
+    decoderLayer: (layerIndex: number) => ({
+        decoder_input: `decoder.${layerIndex}.decoder_input`,
+
+        masked_mha_output: `decoder.${layerIndex}.masked_mha.output`,
+        Wo_masked: `decoder.${layerIndex}.masked_mha.Wo`,
+        add_norm_1_output: `decoder.${layerIndex}.add_norm_1_output`,
+
+        enc_dec_mha_output: `decoder.${layerIndex}.enc_dec_mha.output`,
+        Wo_enc_dec: `decoder.${layerIndex}.enc_dec_mha.Wo`,
+        add_norm_2_output: `decoder.${layerIndex}.add_norm_2_output`,
+
+        W1: `decoder.${layerIndex}.ffn.W1`, b1: `decoder.${layerIndex}.ffn.b1`,
+        Intermediate: `decoder.${layerIndex}.ffn.Intermediate`, Activated: `decoder.${layerIndex}.ffn.Activated`,
+        W2: `decoder.${layerIndex}.ffn.W2`, b2: `decoder.${layerIndex}.ffn.b2`,
+        ffn_output: `decoder.${layerIndex}.ffn.output`,
+        add_norm_3_output: `decoder.${layerIndex}.add_norm_3_output`,
     }),
 
-    // A conceptual name for the concatenated heads, used only in explanations
-    concatOutput: (layerIndex: number) => `encoder.${layerIndex}.mha.ConcatOutput`,
-};
+    // Decoder Heads
+    maskedMhaHead: (layerIndex: number, headIndex: number) => generateHeadNames(`decoder.${layerIndex}.masked_mha.h${headIndex}`),
+    encDecMhaHead: (layerIndex: number, headIndex: number) => generateHeadNames(`decoder.${layerIndex}.enc_dec_mha.h${headIndex}`),
 
+    // Final Output
+    finalLinear: 'finalLinear',
+    logits: 'logits',
+    outputProbabilities: 'outputProbabilities',
+};
 // END OF FILE: src/config/matrixNames.ts
 
 
@@ -2588,8 +2981,8 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
     // Input
     inputEmbeddings: { base: 'E' },
     posEncodings: { base: 'PE' },
-    encoderInput: { base: 'Z' },
-    encoder_input: { base: 'Z' }, // Alias for layers
+    encoderInput: { base: 'Z' }, // Z_0
+    encoder_input: { base: 'Z' },
 
     // MHA Weights
     Wq: { base: 'W', superscript: 'Q' },
@@ -2606,13 +2999,13 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
     AttentionWeights: { base: 'A' },
     HeadOutput: { base: 'H' },
     ConcatOutput: { base: 'H', subscript: 'cat'},
-    output: { base: 'M' }, // Corresponds to MHA output
+    output: { base: 'M' },
     mha_output: { base: 'M' },
-
 
     // Add & Norm
     add_norm_1_output: { base: "Z'" },
     add_norm_2_output: { base: "Z''" },
+    add_norm_3_output: { base: "Z'''" },
 
     // FFN
     W1: { base: 'W', subscript: '1' },
@@ -2622,6 +3015,23 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
     W2: { base: 'W', subscript: '2' },
     b2: { base: 'b', subscript: '2' },
     ffn_output: { base: 'F' },
+
+    // --- Decoder Specific ---
+    outputEmbeddings: { base: 'E', subscript: 'out' },
+    decoderPosEncodings: { base: 'PE', subscript: 'dec' },
+    decoderInput: { base: 'Y' }, // Y_0
+    decoder_input: { base: 'Y' },
+
+    masked_mha_output: { base: 'M', subscript: 'mmha' },
+    Wo_masked: { base: 'W', superscript: 'O' },
+
+    enc_dec_mha_output: { base: 'M', subscript: 'ed' },
+    Wo_enc_dec: { base: 'W', superscript: 'O' },
+
+    // Final Output
+    finalLinear: { base: 'W', subscript: 'proj' },
+    logits: { base: 'L' },
+    outputProbabilities: { base: 'P' },
 };
 
 /**
@@ -2631,6 +3041,9 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
  */
 export const getSymbolParts = (name: string): SymbolParts => {
     const conceptualName = name.split('.').pop() || '';
+    if (conceptualName.startsWith('Wq') || conceptualName.startsWith('Wk') || conceptualName.startsWith('Wv') || conceptualName.startsWith('Wo')) {
+        return SYMBOL_CONFIG[conceptualName.substring(0,2)];
+    }
     return SYMBOL_CONFIG[conceptualName] || { base: 'X' }; // Default to 'X' if not found
 };
 // END OF FILE: src/config/symbolMapping.ts
@@ -2642,7 +3055,7 @@ export const getSymbolParts = (name: string): SymbolParts => {
 
 // FILE: src/hooks/useTransformer.ts
 import { useMemo } from 'react';
-import { Matrix, TransformerData, EncoderLayerData, FFNData, MultiHeadAttentionData, AttentionHeadData, Vector } from '../types';
+import { Matrix, TransformerData, EncoderLayerData, FFNData, MultiHeadAttentionData, AttentionHeadData, Vector, DecoderLayerData } from '../types';
 
 // --- Utility Functions ---
 
@@ -2686,9 +3099,10 @@ const scaleMatrix = (A: Matrix, scalar: number): Matrix => {
 
 const softmaxByRow = (A: Matrix): Matrix => {
     return A.map(row => {
-        const maxVal = Math.max(...row);
-        const exps = row.map(val => Math.exp(val - maxVal));
+        const maxVal = Math.max(...row.filter(v => isFinite(v)));
+        const exps = row.map(val => isFinite(val) ? Math.exp(val - maxVal) : 0);
         const sumExps = exps.reduce((a, b) => a + b, 0);
+        if (sumExps === 0) return row.map(() => 1 / row.length); // Avoid division by zero
         return exps.map(exp => parseFloat((exp / sumExps).toFixed(2)));
     });
 }
@@ -2710,6 +3124,13 @@ const addBias = (A: Matrix, b: Vector): Matrix => {
     return A.map(row => row.map((val, j) => parseFloat((val + b[j]).toFixed(2))));
 }
 
+const applyMask = (A: Matrix, maskValue = -Infinity): Matrix => {
+    return A.map((row, i) =>
+        row.map((val, j) => (j > i ? maskValue : val))
+    );
+};
+
+
 // --- Main Hook ---
 
 interface Dims {
@@ -2728,6 +3149,7 @@ export const useTransformer = (dims: Dims): TransformerData | null => {
         if (d_model % h !== 0) return null;
         const d_k = d_model / h;
 
+        // --- ENCODER ---
         const inputEmbeddings = createRandomMatrix(seq_len, d_model);
         const posEncodings: Matrix = Array.from({ length: seq_len }, (_, pos) =>
           Array.from({ length: d_model }, (_, i) =>
@@ -2738,31 +3160,25 @@ export const useTransformer = (dims: Dims): TransformerData | null => {
         );
         const encoderInput = addMatrices(inputEmbeddings, posEncodings);
 
-        let currentInput = encoderInput;
+        let currentEncoderInput = encoderInput;
         const encoderLayers: EncoderLayerData[] = [];
 
         for (let i = 0; i < n_layers; i++) {
-            const encoder_input = currentInput;
-
-            // MHA
+            const encoder_input = currentEncoderInput;
             const heads: AttentionHeadData[] = [];
             const headOutputs: Matrix[] = [];
             for(let j=0; j < h; j++) {
                 const Wq = createRandomMatrix(d_model, d_k);
                 const Wk = createRandomMatrix(d_model, d_k);
                 const Wv = createRandomMatrix(d_model, d_k);
-
                 const Q = multiplyMatrices(encoder_input, Wq);
                 const K = multiplyMatrices(encoder_input, Wk);
                 const V = multiplyMatrices(encoder_input, Wv);
-
-                const K_T: Matrix = Array.from({ length: d_k }, (_, r) => Array.from({ length: seq_len }, (_, c) => K[c][r]));
+                const K_T = Array.from({ length: d_k }, (_, r) => Array.from({ length: seq_len }, (_, c) => K[c][r]));
                 const Scores = multiplyMatrices(Q, K_T);
-
                 const ScaledScores = scaleMatrix(Scores, Math.sqrt(d_k));
                 const AttentionWeights = softmaxByRow(ScaledScores);
                 const HeadOutput = multiplyMatrices(AttentionWeights, V);
-
                 heads.push({ Wq, Wk, Wv, Q, K, V, Scores, ScaledScores, AttentionWeights, HeadOutput });
                 headOutputs.push(HeadOutput);
             }
@@ -2770,10 +3186,7 @@ export const useTransformer = (dims: Dims): TransformerData | null => {
             const Wo = createRandomMatrix(d_model, d_model);
             const mha_output = multiplyMatrices(ConcatOutput, Wo);
             const mha: MultiHeadAttentionData = { heads, Wo, output: mha_output };
-
-            const add_norm_1_sum = addMatrices(encoder_input, mha_output);
-            const add_norm_1_output = layerNorm(add_norm_1_sum);
-
+            const add_norm_1_output = layerNorm(addMatrices(encoder_input, mha_output));
             const W1 = createRandomMatrix(d_model, d_ff);
             const b1 = createRandomVector(d_ff);
             const Intermediate = addBias(multiplyMatrices(add_norm_1_output, W1), b1);
@@ -2782,28 +3195,103 @@ export const useTransformer = (dims: Dims): TransformerData | null => {
             const b2 = createRandomVector(d_model);
             const ffn_output = addBias(multiplyMatrices(Activated, W2), b2);
             const ffn: FFNData = { W1, b1, Intermediate, Activated, W2, b2, Output: ffn_output };
-
-            const add_norm_2_sum = addMatrices(add_norm_1_output, ffn_output);
-            const add_norm_2_output = layerNorm(add_norm_2_sum);
-
-            encoderLayers.push({
-                encoder_input,
-                mha,
-                mha_output,
-                add_norm_1_output,
-                ffn,
-                ffn_output,
-                add_norm_2_output
-            });
-
-            currentInput = add_norm_2_output;
+            const add_norm_2_output = layerNorm(addMatrices(add_norm_1_output, ffn_output));
+            encoderLayers.push({ encoder_input, mha, mha_output, add_norm_1_output, ffn, ffn_output, add_norm_2_output });
+            currentEncoderInput = add_norm_2_output;
         }
+        const finalEncoderOutput = currentEncoderInput;
+
+        // --- DECODER ---
+        const outputEmbeddings = createRandomMatrix(seq_len, d_model);
+        const decoderPosEncodings = posEncodings;
+        const decoderInput = addMatrices(outputEmbeddings, decoderPosEncodings);
+
+        let currentDecoderInput = decoderInput;
+        const decoderLayers: DecoderLayerData[] = [];
+
+        for (let i = 0; i < n_layers; i++) {
+            const decoder_input = currentDecoderInput;
+
+            const masked_mha_heads: AttentionHeadData[] = [];
+            const masked_mha_headOutputs: Matrix[] = [];
+            for (let j = 0; j < h; j++) {
+                const Wq = createRandomMatrix(d_model, d_k);
+                const Wk = createRandomMatrix(d_model, d_k);
+                const Wv = createRandomMatrix(d_model, d_k);
+                const Q = multiplyMatrices(decoder_input, Wq);
+                const K = multiplyMatrices(decoder_input, Wk);
+                const V = multiplyMatrices(decoder_input, Wv);
+                const K_T = Array.from({ length: d_k }, (_, r) => Array.from({ length: seq_len }, (_, c) => K[c][r]));
+                const Scores = applyMask(multiplyMatrices(Q, K_T));
+                const ScaledScores = scaleMatrix(Scores, Math.sqrt(d_k));
+                const AttentionWeights = softmaxByRow(ScaledScores);
+                const HeadOutput = multiplyMatrices(AttentionWeights, V);
+                masked_mha_heads.push({ Wq, Wk, Wv, Q, K, V, Scores, ScaledScores, AttentionWeights, HeadOutput });
+                masked_mha_headOutputs.push(HeadOutput);
+            }
+            const masked_ConcatOutput = masked_mha_headOutputs.reduce((acc, current) => acc.map((row, rIdx) => [...row, ...current[rIdx]]), Array(seq_len).fill(0).map(() => []));
+            const masked_Wo = createRandomMatrix(d_model, d_model);
+            const masked_mha_output = multiplyMatrices(masked_ConcatOutput, masked_Wo);
+            const masked_mha: MultiHeadAttentionData = { heads: masked_mha_heads, Wo: masked_Wo, output: masked_mha_output };
+            const dec_add_norm_1_output = layerNorm(addMatrices(decoder_input, masked_mha_output));
+
+            const enc_dec_mha_heads: AttentionHeadData[] = [];
+            const enc_dec_mha_headOutputs: Matrix[] = [];
+             for (let j = 0; j < h; j++) {
+                const Wq = createRandomMatrix(d_model, d_k);
+                const Wk = createRandomMatrix(d_model, d_k);
+                const Wv = createRandomMatrix(d_model, d_k);
+                const Q = multiplyMatrices(dec_add_norm_1_output, Wq);
+                const K = multiplyMatrices(finalEncoderOutput, Wk);
+                const V = multiplyMatrices(finalEncoderOutput, Wv);
+                const K_T = Array.from({ length: d_k }, (_, r) => Array.from({ length: seq_len }, (_, c) => K[c][r]));
+                const Scores = multiplyMatrices(Q, K_T);
+                const ScaledScores = scaleMatrix(Scores, Math.sqrt(d_k));
+                const AttentionWeights = softmaxByRow(ScaledScores);
+                const HeadOutput = multiplyMatrices(AttentionWeights, V);
+                enc_dec_mha_heads.push({ Wq, Wk, Wv, Q, K, V, Scores, ScaledScores, AttentionWeights, HeadOutput });
+                enc_dec_mha_headOutputs.push(HeadOutput);
+            }
+            const enc_dec_ConcatOutput = enc_dec_mha_headOutputs.reduce((acc, current) => acc.map((row, rIdx) => [...row, ...current[rIdx]]), Array(seq_len).fill(0).map(() => []));
+            const enc_dec_Wo = createRandomMatrix(d_model, d_model);
+            const enc_dec_mha_output = multiplyMatrices(enc_dec_ConcatOutput, enc_dec_Wo);
+            const enc_dec_mha: MultiHeadAttentionData = { heads: enc_dec_mha_heads, Wo: enc_dec_Wo, output: enc_dec_mha_output };
+            const dec_add_norm_2_output = layerNorm(addMatrices(dec_add_norm_1_output, enc_dec_mha_output));
+
+            const W1 = createRandomMatrix(d_model, d_ff);
+            const b1 = createRandomVector(d_ff);
+            const Intermediate = addBias(multiplyMatrices(dec_add_norm_2_output, W1), b1);
+            const Activated = applyReLU(Intermediate);
+            const W2 = createRandomMatrix(d_ff, d_model);
+            const b2 = createRandomVector(d_model);
+            const ffn_output = addBias(multiplyMatrices(Activated, W2), b2);
+            const ffn: FFNData = { W1, b1, Intermediate, Activated, W2, b2, Output: ffn_output };
+            const dec_add_norm_3_output = layerNorm(addMatrices(dec_add_norm_2_output, ffn_output));
+
+            decoderLayers.push({ decoder_input, masked_mha, masked_mha_output, add_norm_1_output: dec_add_norm_1_output, enc_dec_mha, enc_dec_mha_output, add_norm_2_output: dec_add_norm_2_output, ffn, ffn_output, add_norm_3_output: dec_add_norm_3_output });
+            currentDecoderInput = dec_add_norm_3_output;
+        }
+        const finalDecoderOutput = currentDecoderInput;
+
+        const vocab_size = 50;
+        const finalLinear = createRandomMatrix(d_model, vocab_size);
+        const logits = multiplyMatrices(finalDecoderOutput, finalLinear);
+        const outputProbabilities = softmaxByRow(logits);
 
         return {
             inputEmbeddings,
             posEncodings,
             encoderInput,
-            encoderLayers
+            encoderLayers,
+            finalEncoderOutput,
+            outputEmbeddings,
+            decoderPosEncodings,
+            decoderInput,
+            decoderLayers,
+            finalDecoderOutput,
+            finalLinear,
+            logits,
+            outputProbabilities
         };
     } catch (e) {
         console.error("Error during transformer calculation:", e);

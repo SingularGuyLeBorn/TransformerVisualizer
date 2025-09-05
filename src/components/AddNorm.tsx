@@ -12,8 +12,8 @@ interface AddNormProps {
     outputMatrixName: string;
     highlight: HighlightState;
     onElementClick: (element: ElementIdentifier) => void;
-    activeId: 'add_norm_1' | 'add_norm_2';
-    residualId: string; // e.g., "res1"
+    activeId: string;
+    residualId: string; // e.g., "res-l0-1"
     residualMatrixSymbol: string;
     residualMatrixDims: string;
 }

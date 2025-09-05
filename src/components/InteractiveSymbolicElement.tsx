@@ -1,7 +1,6 @@
 // FILE: src/components/InteractiveSymbolicElement.tsx
 import React from 'react';
 import { InlineMath } from 'react-katex';
-import { ElementIdentifier } from '../types';
 
 interface InteractiveSymbolicElementProps {
   base: string;
