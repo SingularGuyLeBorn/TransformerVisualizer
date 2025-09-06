@@ -46,6 +46,10 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
     const shouldBreakFFN2 = dims.d_ff + dims.d_model > 8;
     const shouldBreakFinalOutput = dims.d_model + dims.vocab_size > 8;
 
+    // [FIXED] Specific breaking logic for Enc-Dec Attention
+    const shouldBreakEncDecScores = d_k + dims.encoder_seq_len > 8;
+    const shouldBreakEncDecHeadOutput = dims.encoder_seq_len + d_k > 8;
+
 
     return (
         <div>
@@ -232,7 +236,7 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                         <InteractiveSymbolicMatrix name={FinalLNe.add_norm_2_output} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} truncate={false}/>
                     </div>
                  </div>
-                 <h5>计算流程</h5>
+                 <h5>计算流程 (以单个注意力头为例)</h5>
                 <ol>
                     <li><b>Query (<InlineMath math="Q"/>)</b>: 来自解码器前一层的输出 (<InlineMath math="Y'"/>). 它代表了“我当前需要什么信息来生成下一个词？”</li>
                     <li><b>Key (<InlineMath math="K"/>) 和 Value (<InlineMath math="V"/>)</b>: <b>均来自编码器的最终输出 (<InlineMath math="Z_{final}"/>)</b>. 它们代表了整个输入序列的上下文信息. </li>
@@ -243,6 +247,29 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                     <div className="viz-formula-row"><InlineMath math="Z_{final}" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_encdec.Wv} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_encdec.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
                 <p>通过计算 <InlineMath math="Q_{dec} \cdot K_{enc}^T"/>,解码器能够评估其当前的生成需求与输入序列中每个词的相关性,然后利用这个相关性(注意力权重)从 <InlineMath math="V_{enc}"/> 中加权提取最需要的信息来辅助生成. </p>
+                {/* [FIXED] Added missing formulas for enc-dec attention */}
+                <h5>注意力计算与输出</h5>
+                <div className={`formula-display ${shouldBreakEncDecScores ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_encdec.Q} rows={dims.decoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <BlockMath math="\times" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_encdec.K} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} transpose={true}/></div>
+                    <BlockMath math="\xrightarrow{\text{Scale + Softmax}}" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_encdec.AttentionWeights} rows={dims.decoder_seq_len} cols={dims.encoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                </div>
+                 <div className={`formula-display ${shouldBreakEncDecHeadOutput ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_encdec.AttentionWeights} rows={dims.decoder_seq_len} cols={dims.encoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <BlockMath math="\times" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_encdec.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <BlockMath math="=" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_encdec.HeadOutput} rows={dims.decoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                </div>
+                 <div className={`formula-display ${shouldBreakMhaProj ? 'vertical' : ''}`}>
+                    <InlineMath math="\text{Concat}(H_0, ..., H_{h-1})" />
+                    <BlockMath math="\times" />
+                    <InteractiveSymbolicMatrix name={LNd.Wo_enc_dec} rows={dims.d_model} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                    <BlockMath math="=" />
+                    <InteractiveSymbolicMatrix name={LNd.enc_dec_mha_output} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                </div>
             </MathBlock>
             <MathBlock id="add_norm_2_dec" title="解码器组件:残差连接与层归一化 (2)" highlight={highlight}>
                 <p>此步骤结合了编码器-解码器注意力子层的输入 (<InlineMath math="Y'"/>) 与其输出 (<InlineMath math="M_{ed}"/>),并进行层归一化,以稳定训练过程并融合来自编码器的信息. </p>
