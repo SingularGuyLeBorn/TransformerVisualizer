@@ -9,11 +9,14 @@ export interface ElementIdentifier {
   isInternal?: boolean; // True if it's part of an internal calculation visualization
   matrixSymbol?: string; // e.g., "Z"
   matrixDims?: string; // e.g., "3x8"
+  tokenId?: number; // e.g., 10 for "I"
+  tokenStr?: string; // e.g., "I"
 }
 
 export interface HighlightSource extends ElementIdentifier {
   highlightRow?: boolean;
   highlightCol?: boolean;
+  highlightProbCol?: boolean; // [ADDED] For highlighting probability columns from input
 }
 
 export interface HighlightState {
@@ -82,6 +85,12 @@ export interface DecoderLayerData {
 }
 
 export interface TransformerData {
+    // Input Stage
+    inputText: string[];
+    tokenizedInput: number[];
+    embeddingMatrix: Matrix;
+    vocab: { [key: number]: string };
+
     // Encoder
     inputEmbeddings: Matrix;
     posEncodings: Matrix;
@@ -98,5 +107,9 @@ export interface TransformerData {
     finalLinear: Matrix; // Weights for the final linear layer
     logits: Matrix;
     outputProbabilities: Matrix;
+
+    // Output Stage
+    decodedTokens: number[];
+    outputText: string[];
 }
 // END OF FILE: src/types.ts

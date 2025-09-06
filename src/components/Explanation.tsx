@@ -50,14 +50,25 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
 
             {/* --- ENCODER EXPLANATIONS --- */}
             <h2 style={{textAlign: 'center', margin: '30px 0'}}>编码器 (Encoder)</h2>
+             <MathBlock id="token_embed" title="编码器第0步：分词与词嵌入" highlight={highlight}>
+                <h5>做什么？</h5>
+                <p>此步骤将原始的自然语言文本（一个句子）转换为模型可以处理的数值矩阵。这是所有后续计算的起点。</p>
+                <h5>计算流程</h5>
+                <ol>
+                    <li><b>分词 (Tokenization):</b> 将输入句子分解为一个个独立的词元（Token）。例如，"I am a student" 被分解为 "I", "am", "a", "student"。</li>
+                    <li><b>ID映射 (ID Mapping):</b> 使用一个预先构建好的词汇表（Vocabulary），将每个词元映射到一个唯一的整数ID。例如 "I" → 10, "am" → 25。</li>
+                    <li><b>词嵌入 (Embedding Lookup):</b> 使用一个巨大的、可学习的“查询表”（Embedding Matrix），根据每个词元的ID，从中“提取”出对应的向量。这个向量就是该词元的初始数值表示。</li>
+                </ol>
+                 <p>最终，我们得到一个形状为 <code>(序列长度, 模型维度)</code> 的矩阵，其中每一行都代表了输入句子中一个词的初始“含义”。</p>
+            </MathBlock>
             <MathBlock id="input_embed" title="编码器第1步：输入预处理" highlight={highlight}>
                 <h5>做什么？</h5>
                 <p>此步骤将输入的文本序列（一串文字）转换为模型可以处理的、包含“词义”和“位置”信息的数值向量矩阵。我们以一个长度为 {dims.seq_len} 的序列为例，当前模型维度 <InlineMath math={`d_{model}=${dims.d_model}`}/>。</p>
                 <h5>计算流程</h5>
                 <ol>
-                    <li><b>词嵌入 (Token Embedding):</b> 将每个词元（Token）的ID转换为一个稠密的向量。</li>
-                    <li><b>位置编码 (Positional Encoding):</b> 为模型注入关于序列顺序的绝对位置信息。</li>
-                    <li><b>逐元素相加:</b> 得到编码器最终的输入表示 <InlineMath math="Z"/>。</li>
+                    <li><b>词嵌入 (Token Embedding):</b> 从上一步获得的矩阵，代表了每个词的“词义”。</li>
+                    <li><b>位置编码 (Positional Encoding):</b> 为模型注入关于序列顺序的绝对位置信息。这是一个固定的、根据三角函数生成的矩阵。</li>
+                    <li><b>逐元素相加:</b> 得到编码器最终的输入表示 <InlineMath math="Z_0"/>。</li>
                 </ol>
                 <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.inputEmbeddings} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
@@ -149,25 +160,40 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 </div>
             </MathBlock>
             <MathBlock id="add_norm_1_dec" title="解码器组件：残差连接与层归一化 (1)" highlight={highlight}>
-                <p>同编码器中的 Add & Norm。</p>
+                <p>此模块接收解码器输入 <InlineMath math="Y_{in}"/> 和带掩码自注意力子层的输出 <InlineMath math="M_{mmha}"/>，将它们相加后进行层归一化。这确保了模型既能利用新的上下文信息，又不会忘记原始的输入信息。</p>
                 <BlockMath math={`Y' = \\text{LayerNorm}(Y_{in} + \\text{Masked-MHA}(Y_{in}))`} />
+                 <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.decoder_input} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="+" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.masked_mha_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="\xrightarrow{\text{LayerNorm}}" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                </div>
             </MathBlock>
              <MathBlock id="enc_dec_mha" title="解码器子层2：编码器-解码器注意力" highlight={highlight}>
                 <h5>做什么？</h5>
                 <p>这是连接编码器和解码器的桥梁，也是 Transformer 架构的精髓所在。在这一层，解码器会“审视”编码器的全部输出，并判断输入序列中的哪些部分对于生成当前目标词最重要。</p>
                  <h5>计算流程</h5>
                 <ol>
-                    <li><b>Query (<InlineMath math="Q"/>)</b>: 来自解码器前一层的输出。它代表了“我当前需要什么信息来生成下一个词？”</li>
-                    <li><b>Key (<InlineMath math="K"/>) 和 Value (<InlineMath math="V"/>)</b>: <b>均来自编码器的最终输出</b>。它们代表了整个输入序列的上下文信息。</li>
+                    <li><b>Query (<InlineMath math="Q"/>)</b>: 来自解码器前一层的输出 (<InlineMath math="Y'"/>)。它代表了“我当前需要什么信息来生成下一个词？”</li>
+                    <li><b>Key (<InlineMath math="K"/>) 和 Value (<InlineMath math="V"/>)</b>: <b>均来自编码器的最终输出 (<InlineMath math="Z_{enc}"/>)</b>。它们代表了整个输入序列的上下文信息。</li>
                 </ol>
                 <p>通过计算 <InlineMath math="Q_{dec} \cdot K_{enc}^T"/>，解码器能够评估其当前的生成需求与输入序列中每个词的相关性，然后利用这个相关性（注意力权重）从 <InlineMath math="V_{enc}"/> 中加权提取最需要的信息来辅助生成。</p>
             </MathBlock>
             <MathBlock id="add_norm_2_dec" title="解码器组件：残差连接与层归一化 (2)" highlight={highlight}>
-                 <p>同编码器中的 Add & Norm。</p>
+                <p>此步骤结合了编码器-解码器注意力子层的输入 (<InlineMath math="Y'"/>) 与其输出 (<InlineMath math="M_{ed}"/>)，并进行层归一化，以稳定训练过程并融合来自编码器的信息。</p>
                  <BlockMath math={`Y'' = \\text{LayerNorm}(Y' + \\text{Enc-Dec-MHA}(Y', Z_{enc}))`} />
+                  <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="+" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.enc_dec_mha_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="\xrightarrow{\text{LayerNorm}}" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.add_norm_2_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                </div>
             </MathBlock>
             <MathBlock id="ffn_dec" title="解码器子层3：前馈网络" highlight={highlight}>
-                <p>同编码器中的 FFN。</p>
+                <p>与编码器中的 FFN 类似，解码器中的前馈网络 (FFN) 也对每个位置的向量 (<InlineMath math="Y''"/>) 独立地进行一次复杂的非线性变换，进一步增强模型的表达能力，为最终的输出预测做准备。</p>
+                <BlockMath math={`F = \\text{ReLU}(Y'' W_1 + b_1) W_2 + b_2`} />
                  <div className="formula-display vertical">
                      <div className="viz-formula-row">
                         <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.add_norm_2_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
@@ -187,22 +213,40 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 </div>
             </MathBlock>
             <MathBlock id="add_norm_3_dec" title="解码器组件：残差连接与层归一化 (3)" highlight={highlight}>
-                 <p>同编码器中的 Add & Norm。</p>
+                 <p>这是解码器层中的最后一个 Add & Norm 步骤，它将 FFN 的输入 (<InlineMath math="Y''"/>) 与其输出 (<InlineMath math="F"/>) 相结合，产生该解码器层的最终输出 <InlineMath math="Y_{final}"/>。</p>
                  <BlockMath math={`Y_{final} = \\text{LayerNorm}(Y'' + \\text{FFN}(Y''))`} />
+                 <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.add_norm_2_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="+" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.ffn_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="\xrightarrow{\text{LayerNorm}}" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.add_norm_3_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                </div>
             </MathBlock>
-             <MathBlock id="final_output" title="最终输出层" highlight={highlight}>
+             <MathBlock id="final_output" title="最终输出层：线性层与Softmax" highlight={highlight}>
                 <h5>做什么？</h5>
                 <p>在经过所有解码器层的处理后，我们得到一个最终的输出矩阵。此步骤将其转换为每个位置上词汇表中所有单词的概率分布。</p>
                  <h5>计算流程</h5>
                 <ol>
                     <li><b>线性层 (Linear Layer):</b> 将解码器输出矩阵通过一个大的线性投影层，将其维度从 <InlineMath math="d_{model}"/> 扩展到词汇表大小 (<InlineMath math="V_{size}"/>)。这会为每个位置生成一个分数向量，称为 Logits。</li>
-                    <li><b>Softmax:</b> 对 Logits 矩阵的每一行应用 Softmax 函数，将其转换为概率分布。概率最高的那个词，就是模型在当前位置的最终预测。</li>
+                    <li><b>Softmax:</b> 对 Logits 矩阵的每一行应用 Softmax 函数，将其转换为概率分布。</li>
                 </ol>
                  <div className="formula-display">
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.finalLinear} rows={dims.d_model} cols={50} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math="\xrightarrow{\text{Softmax}}" />
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.outputProbabilities} rows={dims.seq_len} cols={50} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                 </div>
+                 <p>现在，矩阵 <InlineMath math="P"/> 中的每一行都是一个概率分布，代表了在那个位置上生成词汇表中任何一个单词的可能性。</p>
+            </MathBlock>
+            <MathBlock id="decoding" title="最终解码：Argmax 与文本生成" highlight={highlight}>
+                <h5>做什么？</h5>
+                <p>这是生成过程的最后一步，将代表概率的数字变回人类可读的文本。</p>
+                <h5>计算流程</h5>
+                <ol>
+                    <li><b>Argmax:</b> 对概率矩阵 <InlineMath math="P"/> 的每一行，找到其中概率值最大的那个元素的**索引 (index)**。这个索引就对应了词汇表中该位置最有可能的词元ID。这个过程通常被称为“贪心解码 (Greedy Decoding)”。</li>
+                    <li><b>ID到文本映射:</b> 将得到的词元ID序列，通过反向查询词汇表，映射回原始的文本词元。</li>
+                </ol>
+                <p>这样，模型就完成了一次从输入文本到输出文本的完整预测。</p>
             </MathBlock>
         </div>
     );

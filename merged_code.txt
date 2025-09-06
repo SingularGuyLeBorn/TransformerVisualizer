@@ -623,7 +623,80 @@ h1 {
     gap: 10px;
     flex-wrap: wrap; /* Allow wrapping on small screens */
 }
+
+/* [NEW] Styles for Tokenization and Decoding */
+.token-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 5px;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 2px solid transparent;
+    transition: all 0.2s ease-in-out;
+}
+.token-container:hover {
+    transform: scale(1.05);
+    background-color: rgba(0,0,0,0.02);
+}
+.token-container.target {
+    border-color: var(--highlight-target-bg);
+    background-color: rgba(230, 57, 70, 0.05);
+}
+.token-container.source {
+    border-color: var(--highlight-source-bg);
+    background-color: rgba(96, 98, 102, 0.05);
+}
+.token-text {
+    padding: 4px 8px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 1.05em;
+    min-width: 25px;
+    text-align: center;
+}
+.token-id {
+    padding: 2px 6px;
+    background-color: #e9ecef;
+    border: 1px solid #ced4da;
+    border-radius: 10px;
+    font-size: 0.8em;
+    color: #495057;
+}
+
+.token-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+.decoding-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+.decoding-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+}
+.decoding-matrix-wrapper {
+    flex-shrink: 1;
+    min-width: 0;
+}
+.decoding-token-wrapper {
+    flex-shrink: 0;
+}
 /* END OF FILE: src/App.css */
+
 
 
 ================================================================================
@@ -688,14 +761,23 @@ const createBackwardHighlight = (element: ElementIdentifier, transformerData: Tr
         else if(baseName.includes('.ffn.')) activeComponent = 'ffn';
     } else if (name.startsWith('decoder')) {
         if(Object.values(HNd_masked).includes(baseName) || [LNd.masked_mha_output, LNd.Wo_masked, LNd.decoder_input].includes(baseName)) activeComponent = 'masked_mha';
-        else if(Object.values(HNd_encdec).includes(baseName) || [LNd.enc_dec_mha_output, LNd.Wo_enc_dec, LNd.add_norm_1_output].includes(baseName)) activeComponent = 'enc_dec_mha';
+        else if(Object.values(HNd_encdec).includes(baseName) || [LNd.enc_dec_mha_output, LNd.Wo_enc_dec, LNd.add_norm_1_output, MATRIX_NAMES.finalEncoderOutput].includes(baseName)) activeComponent = 'enc_dec_mha';
         else if(baseName === LNd.add_norm_1_output) activeComponent = 'add_norm_1_dec';
         else if(baseName === LNd.add_norm_2_output) activeComponent = 'add_norm_2_dec';
         else if(baseName === LNd.add_norm_3_output) activeComponent = 'add_norm_3_dec';
         else if(baseName.includes('.ffn.')) activeComponent = 'ffn_dec';
-    } else if ([MATRIX_NAMES.inputEmbeddings, MATRIX_NAMES.posEncodings, MATRIX_NAMES.encoderInput].includes(baseName)) activeComponent = 'input_embed';
-    else if ([MATRIX_NAMES.outputEmbeddings, MATRIX_NAMES.decoderPosEncodings, MATRIX_NAMES.decoderInput].includes(baseName)) activeComponent = 'output_embed';
-    else if ([MATRIX_NAMES.finalLinear, MATRIX_NAMES.logits, MATRIX_NAMES.outputProbabilities].includes(baseName)) activeComponent = 'final_output';
+    } else if (name === 'inputToken' || name === 'embeddingMatrix' || name === 'inputEmbeddings') {
+        activeComponent = 'token_embed';
+    } else if ([MATRIX_NAMES.posEncodings, MATRIX_NAMES.encoderInput].includes(baseName)) {
+        activeComponent = 'input_embed';
+    } else if ([MATRIX_NAMES.outputEmbeddings, MATRIX_NAMES.decoderPosEncodings, MATRIX_NAMES.decoderInput].includes(baseName)) {
+        activeComponent = 'output_embed';
+    } else if ([MATRIX_NAMES.finalLinear, MATRIX_NAMES.logits].includes(baseName)) {
+        activeComponent = 'final_output';
+    } else if (name === 'outputProbabilities' || name === 'outputToken') {
+        activeComponent = 'decoding';
+    }
+
 
     if (isInternal) {
         newTarget = { name, row, col, isInternal: true };
@@ -708,6 +790,10 @@ const createBackwardHighlight = (element: ElementIdentifier, transformerData: Tr
             newSources.push({ name: intermediateName, row, col });
         }
     }
+    // --- Input ---
+    else if (name === 'inputToken') { newSources.push({ name: 'inputEmbeddings', row, col: -1, highlightRow: true }) }
+    else if (name === MATRIX_NAMES.inputEmbeddings) { newSources.push({ name: 'inputToken', row, col: -1 }); newSources.push({ name: 'embeddingMatrix', row: transformerData.tokenizedInput[row], col: -1, highlightRow: true }) }
+    // --- Encoder ---
     else if (name === MATRIX_NAMES.encoderInput) { newSources.push({ name: MATRIX_NAMES.inputEmbeddings, row, col }); newSources.push({ name: MATRIX_NAMES.posEncodings, row, col }); }
     else if (name === LNe.encoder_input) { newSources.push({ name: layerIdx > 0 ? MATRIX_NAMES.layer(layerIdx - 1).add_norm_2_output : MATRIX_NAMES.encoderInput, row, col }); }
     else if (name === HNe.Q || name === HNe.K || name === HNe.V) { const type = name.split('.').pop()!; newSources.push({ name: LNe.encoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: HNe[`W${type.toLowerCase()}` as 'Wq'|'Wk'|'Wv'], row: -1, col, highlightCol: true }); }
@@ -719,22 +805,36 @@ const createBackwardHighlight = (element: ElementIdentifier, transformerData: Tr
     else if (name === LNe.add_norm_1_output) { newSources.push({ name: LNe.encoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.mha_output, row, col: -1, highlightRow: true }); }
     else if (name === LNe.Intermediate || name === LNe.Activated) { newSources.push({ name: LNe.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.W1, row: -1, col, highlightCol: true }); newSources.push({ name: LNe.b1, row: 0, col }); if (name === LNe.Activated) newSources.push({ name: `${LNe.Activated}.internal`, row, col, isInternal: true }); }
     else if (name === LNe.ffn_output) { newSources.push({ name: LNe.Activated, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.W2, row: -1, col, highlightCol: true }); newSources.push({ name: LNe.b2, row: 0, col }); }
-    else if (name === LNe.add_norm_2_output) { newSources.push({ name: LNe.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.ffn_output, row: col: -1, highlightRow: true }); }
+    else if (name === LNe.add_norm_2_output) { newSources.push({ name: LNe.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.ffn_output, row, col: -1, highlightRow: true }); }
+    // --- Decoder ---
     else if (name === MATRIX_NAMES.decoderInput) { newSources.push({ name: MATRIX_NAMES.outputEmbeddings, row, col }); newSources.push({ name: MATRIX_NAMES.decoderPosEncodings, row, col }); }
     else if (name === LNd.decoder_input) { newSources.push({ name: layerIdx > 0 ? MATRIX_NAMES.decoderLayer(layerIdx - 1).add_norm_3_output : MATRIX_NAMES.decoderInput, row, col }); }
+    // Masked MHA
     else if (name === HNd_masked.Q || name === HNd_masked.K || name === HNd_masked.V) { const type = name.split('.').pop()!; newSources.push({ name: LNd.decoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked[`W${type.toLowerCase()}` as 'Wq'|'Wk'|'Wv'], row: -1, col, highlightCol: true }); }
-    else if (name === HNd_masked.Scores) { newSources.push({ name: HNd_masked.Q, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked.K, row, col, col: -1, highlightRow: true }); }
+    else if (name === HNd_masked.Scores) { newSources.push({ name: HNd_masked.Q, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked.K, row: col, col: -1, highlightRow: true }); }
+    else if (name === HNd_masked.ScaledScores) { newSources.push({ name: HNd_masked.Scores, row, col }); }
     else if (name === HNd_masked.AttentionWeights) { newSources.push({ name: HNd_masked.ScaledScores, row, col: -1, highlightRow: true }); newSources.push({ name: `${HNd_masked.AttentionWeights}.internal`, row, col, isInternal: true }); }
     else if (name === HNd_masked.HeadOutput) { newSources.push({ name: HNd_masked.AttentionWeights, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked.V, row: -1, col, highlightCol: true }); }
     else if (name === LNd.masked_mha_output) { for (let h = 0; h < dims.h; h++) newSources.push({ name: MATRIX_NAMES.maskedMhaHead(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.Wo_masked, row: -1, col, highlightCol: true }); }
-    else if (name === LNd.add_norm_1_output) { newSources.push({ name: LNd.decoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.masked_mha_output, row: -1, highlightRow: true }); }
+    else if (name === LNd.add_norm_1_output) { newSources.push({ name: LNd.decoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.masked_mha_output, row: -1, col: -1, highlightRow: true }); }
+    // Encoder-Decoder MHA
     else if (name === HNd_encdec.Q) { newSources.push({ name: LNd.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_encdec.Wq, row: -1, col, highlightCol: true }); }
     else if (name === HNd_encdec.K || name === HNd_encdec.V) { const type = name.split('.').pop()!; newSources.push({ name: MATRIX_NAMES.finalEncoderOutput, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: HNd_encdec[`W${type.toLowerCase()}` as 'Wk'|'Wv'], row: -1, col, highlightCol: true }); }
+    else if (name === HNd_encdec.Scores) { newSources.push({ name: HNd_encdec.Q, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_encdec.K, row: col, col: -1, highlightRow: true }); }
+    else if (name === HNd_encdec.ScaledScores) { newSources.push({ name: HNd_encdec.Scores, row, col }); }
+    else if (name === HNd_encdec.AttentionWeights) { newSources.push({ name: HNd_encdec.ScaledScores, row, col: -1, highlightRow: true }); newSources.push({ name: `${HNd_encdec.AttentionWeights}.internal`, row, col, isInternal: true }); }
+    else if (name === HNd_encdec.HeadOutput) { newSources.push({ name: HNd_encdec.AttentionWeights, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_encdec.V, row: -1, col, highlightCol: true }); }
+    else if (name === LNd.enc_dec_mha_output) { for (let h = 0; h < dims.h; h++) newSources.push({ name: MATRIX_NAMES.encDecMhaHead(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.Wo_enc_dec, row: -1, col, highlightCol: true }); }
     else if (name === LNd.add_norm_2_output) { newSources.push({ name: LNd.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.enc_dec_mha_output, row, col: -1, highlightRow: true }); }
+    // Decoder FFN
+    else if (name === LNd.Intermediate || name === LNd.Activated) { newSources.push({ name: LNd.add_norm_2_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.W1, row: -1, col, highlightCol: true }); newSources.push({ name: LNd.b1, row: 0, col }); if (name === LNd.Activated) newSources.push({ name: `${LNd.Activated}.internal`, row, col, isInternal: true }); }
     else if (name === LNd.ffn_output) { newSources.push({ name: LNd.Activated, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.W2, row: -1, col, highlightCol: true }); newSources.push({ name: LNd.b2, row: 0, col }); }
-    else if (name === LNd.add_norm_3_output) { newSources.push({ name: LNd.add_norm_2_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.ffn_output, row, col: -1, highlightRow: true }); }
-    else if (name === MATRIX_NAMES.logits) { newSources.push({ name: transformerData.decoderLayers[dims.n_layers-1].add_norm_3_output, row, col: -1, highlightRow: true}); newSources.push({name: MATRIX_NAMES.finalLinear, row: -1, col, highlightCol: true})}
+    else if (name === LNd.add_norm_3_output) { newSources.push({ name: LNd.add_norm_2_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.ffn_output, row: -1, col: -1, highlightRow: true }); }
+    // --- Final Output ---
+    else if (name === MATRIX_NAMES.logits) { newSources.push({ name: MATRIX_NAMES.decoderLayer(dims.n_layers - 1).add_norm_3_output, row, col: -1, highlightRow: true}); newSources.push({name: MATRIX_NAMES.finalLinear, row: -1, col, highlightCol: true})}
     else if (name === MATRIX_NAMES.outputProbabilities) { newSources.push({name: MATRIX_NAMES.logits, row, col: -1, highlightRow: true})}
+    else if (name === 'outputToken') { newSources.push({ name: 'outputProbabilities', row, col: -1, highlightRow: true }) }
+
 
     return { target: newTarget, sources: newSources, activeComponent, activeResidual, destinations: [] };
 };
@@ -752,16 +852,36 @@ const createForwardHighlight = (element: ElementIdentifier, transformerData: Tra
     const HNd_masked = MATRIX_NAMES.maskedMhaHead(layerIdx, headIdx);
     const HNd_encdec = MATRIX_NAMES.encDecMhaHead(layerIdx, headIdx);
 
-    if (name === MATRIX_NAMES.inputEmbeddings || name === MATRIX_NAMES.posEncodings) { newDestinations.push({ name: MATRIX_NAMES.encoderInput, row, col }); activeComponent = 'input_embed'; }
+    if (name === 'inputToken') {
+        newDestinations.push({ name: 'inputEmbeddings', row, col: -1, highlightRow: true });
+        activeComponent = 'token_embed';
+    }
+    else if (name === MATRIX_NAMES.inputEmbeddings || name === MATRIX_NAMES.posEncodings) { newDestinations.push({ name: MATRIX_NAMES.encoderInput, row, col }); activeComponent = 'input_embed'; }
     else if (name === MATRIX_NAMES.encoderInput) { newDestinations.push({ name: MATRIX_NAMES.layer(0).encoder_input, row, col }); activeComponent = 'input_embed'; }
     else if (name === LNe.encoder_input) { newDestinations.push({ name: HNe.Q, row, col: -1, highlightRow: true }); newDestinations.push({ name: HNe.K, row, col: -1, highlightRow: true }); newDestinations.push({ name: HNe.V, row, col: -1, highlightRow: true }); newDestinations.push({ name: LNe.add_norm_1_output, row, col }); activeComponent = 'mha'; }
     else if (name === LNe.add_norm_2_output && layerIdx < dims.n_layers - 1) { newDestinations.push({ name: MATRIX_NAMES.layer(layerIdx+1).encoder_input, row, col }); }
     else if (name === LNe.add_norm_2_output && layerIdx === dims.n_layers - 1) { newDestinations.push({ name: MATRIX_NAMES.finalEncoderOutput, row, col }); }
-    else if (name === MATRIX_NAMES.finalEncoderOutput) { for (let i = 0; i < dims.n_layers; i++) { const HNd_i = MATRIX_NAMES.encDecMhaHead(i, 0); newDestinations.push({name: HNd_i.K, row, col: -1, highlightRow: true}); newDestinations.push({name: HNd_i.V, row, col: -1, highlightRow: true}); } activeComponent = 'enc_dec_mha'; }
+    else if (name === MATRIX_NAMES.finalEncoderOutput) { for (let i = 0; i < dims.n_layers; i++) { for (let h = 0; h < dims.h; h++) { const HNd_i = MATRIX_NAMES.encDecMhaHead(i, h); newDestinations.push({name: HNd_i.K, row, col: -1, highlightRow: true}); newDestinations.push({name: HNd_i.V, row, col: -1, highlightRow: true}); } } activeComponent = 'enc_dec_mha'; }
     else if (name === MATRIX_NAMES.outputEmbeddings || name === MATRIX_NAMES.decoderPosEncodings) { newDestinations.push({ name: MATRIX_NAMES.decoderInput, row, col }); activeComponent = 'output_embed'; }
     else if (name === MATRIX_NAMES.decoderInput) { newDestinations.push({ name: MATRIX_NAMES.decoderLayer(0).decoder_input, row, col }); activeComponent = 'output_embed'; }
     else if (name === LNd.decoder_input) { newDestinations.push({ name: HNd_masked.Q, row, col: -1, highlightRow: true}); newDestinations.push({ name: HNd_masked.K, row, col: -1, highlightRow: true}); newDestinations.push({ name: HNd_masked.V, row, col: -1, highlightRow: true}); newDestinations.push({ name: LNd.add_norm_1_output, row, col}); activeComponent = 'masked_mha';}
     else if (name === LNd.add_norm_1_output) { newDestinations.push({ name: HNd_encdec.Q, row, col: -1, highlightRow: true}); newDestinations.push({ name: LNd.add_norm_2_output, row, col}); activeComponent = 'enc_dec_mha';}
+    else if (name === LNd.add_norm_2_output) {
+        newDestinations.push({ name: LNd.Intermediate, row, col: -1, highlightRow: true });
+        newDestinations.push({ name: LNd.add_norm_3_output, row, col });
+        activeComponent = 'ffn_dec';
+    }
+    else if (name === LNd.add_norm_3_output && layerIdx < dims.n_layers - 1) {
+        newDestinations.push({ name: MATRIX_NAMES.decoderLayer(layerIdx + 1).decoder_input, row, col });
+    }
+    else if (name === LNd.add_norm_3_output && layerIdx === dims.n_layers - 1) {
+        newDestinations.push({ name: MATRIX_NAMES.logits, row, col: -1, highlightRow: true });
+        activeComponent = 'final_output';
+    }
+    else if (name === MATRIX_NAMES.outputProbabilities) {
+        newDestinations.push({ name: 'outputToken', row, col: -1 });
+        activeComponent = 'decoding';
+    }
 
     return { target: element, sources: [], destinations: newDestinations, activeComponent, activeResidual };
 };
@@ -770,7 +890,7 @@ function App() {
   const [dims, setDims] = useState({
       d_model: 8,
       h: 2,
-      seq_len: 3,
+      seq_len: 2,
       n_layers: 1,
       d_ff: 32
   });
@@ -805,7 +925,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <h1>终极 Transformer 深度探索器</h1>
+      <h1>Transformer 深度探索器 (确定性计算)</h1>
       <Controls dims={dims} setDims={setDims} />
       <div className="main-layout">
         <div className="column left-column">
@@ -884,11 +1004,14 @@ export interface ElementIdentifier {
   isInternal?: boolean; // True if it's part of an internal calculation visualization
   matrixSymbol?: string; // e.g., "Z"
   matrixDims?: string; // e.g., "3x8"
+  tokenId?: number; // e.g., 10 for "I"
+  tokenStr?: string; // e.g., "I"
 }
 
 export interface HighlightSource extends ElementIdentifier {
   highlightRow?: boolean;
   highlightCol?: boolean;
+  highlightProbCol?: boolean; // [ADDED] For highlighting probability columns from input
 }
 
 export interface HighlightState {
@@ -957,6 +1080,12 @@ export interface DecoderLayerData {
 }
 
 export interface TransformerData {
+    // Input Stage
+    inputText: string[];
+    tokenizedInput: number[];
+    embeddingMatrix: Matrix;
+    vocab: { [key: number]: string };
+
     // Encoder
     inputEmbeddings: Matrix;
     posEncodings: Matrix;
@@ -973,6 +1102,10 @@ export interface TransformerData {
     finalLinear: Matrix; // Weights for the final linear layer
     logits: Matrix;
     outputProbabilities: Matrix;
+
+    // Output Stage
+    decodedTokens: number[];
+    outputText: string[];
 }
 // END OF FILE: src/types.ts
 
@@ -1046,7 +1179,6 @@ export const AddNorm: React.FC<AddNormProps> = ({
 ### 文件路径: src/components/Controls.tsx
 ================================================================================
 
-/* START OF FILE: src/components/Controls.tsx */
 // FILE: src/components/Controls.tsx
 import React from 'react';
 
@@ -1095,7 +1227,7 @@ export const Controls: React.FC<ControlsProps> = ({ dims, setDims }) => {
     <div className="controls-container">
       <div className="control-group">
         <label htmlFor="seq_len">序列长度 (seq_len)</label>
-        <input type="number" id="seq_len" value={dims.seq_len} onChange={handleInputChange} min="2" max="5" />
+        <input type="number" id="seq_len" value={dims.seq_len} onChange={handleInputChange} min="1" max="4" />
       </div>
       <div className="control-group">
         <label htmlFor="d_model">模型维度 (d_model)</label>
@@ -1117,7 +1249,6 @@ export const Controls: React.FC<ControlsProps> = ({ dims, setDims }) => {
   );
 };
 // END OF FILE: src/components/Controls.tsx
-/* END OF FILE: src/components/Controls.tsx */
 
 
 ================================================================================
@@ -1241,6 +1372,69 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
   );
 };
 // END OF FILE: src/components/DecoderLayer.tsx
+
+
+================================================================================
+### 文件路径: src/components/Decoding.tsx
+================================================================================
+
+// FILE: src/components/Decoding.tsx
+import React from 'react';
+import { TransformerData, HighlightState, ElementIdentifier } from '../types';
+import { Matrix } from './Matrix';
+import { InlineMath } from 'react-katex';
+import { Token } from './Token';
+
+interface DecodingProps {
+    data: TransformerData;
+    highlight: HighlightState;
+    onElementClick: (element: ElementIdentifier) => void;
+    isActive: boolean;
+}
+
+export const Decoding: React.FC<DecodingProps> = ({ data, highlight, onElementClick, isActive }) => {
+    return (
+        <div className={`diagram-component ${isActive ? 'active' : ''}`}>
+            <div className="component-header">Output: Decoding Probabilities to Text</div>
+            <div className="component-body">
+
+                <div className="decoding-step">
+                    <div className="viz-step-title">1. Final Probabilities (Softmax Output)</div>
+                    <Matrix name="outputProbabilities" data={data.outputProbabilities} highlight={highlight} onElementClick={onElementClick} />
+                </div>
+
+                <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Argmax}}" /></div>
+
+                <div className="decoding-step">
+                     <div className="viz-step-title">2. Find Index of Max Probability per Row (Predicted Token IDs)</div>
+                    <div className="decoding-row">
+                        <div className="decoding-matrix-wrapper">
+                             <Matrix name="outputProbabilities" data={data.outputProbabilities} highlight={highlight} onElementClick={onElementClick} />
+                        </div>
+                        <div className="op-symbol">→</div>
+                        <div className="decoding-token-wrapper">
+                            <div className="token-row">
+                                {data.outputText.map((token, i) => (
+                                    <Token
+                                        key={i}
+                                        tokenStr={token}
+                                        tokenId={data.decodedTokens[i]}
+                                        position={i}
+                                        name="outputToken"
+                                        highlight={highlight}
+                                        onElementClick={onElementClick}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    );
+};
+// END OF FILE: src/components/Decoding.tsx
 
 
 ================================================================================
@@ -1762,14 +1956,25 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
 
             {/* --- ENCODER EXPLANATIONS --- */}
             <h2 style={{textAlign: 'center', margin: '30px 0'}}>编码器 (Encoder)</h2>
+             <MathBlock id="token_embed" title="编码器第0步：分词与词嵌入" highlight={highlight}>
+                <h5>做什么？</h5>
+                <p>此步骤将原始的自然语言文本（一个句子）转换为模型可以处理的数值矩阵。这是所有后续计算的起点。</p>
+                <h5>计算流程</h5>
+                <ol>
+                    <li><b>分词 (Tokenization):</b> 将输入句子分解为一个个独立的词元（Token）。例如，"I am a student" 被分解为 "I", "am", "a", "student"。</li>
+                    <li><b>ID映射 (ID Mapping):</b> 使用一个预先构建好的词汇表（Vocabulary），将每个词元映射到一个唯一的整数ID。例如 "I" → 10, "am" → 25。</li>
+                    <li><b>词嵌入 (Embedding Lookup):</b> 使用一个巨大的、可学习的“查询表”（Embedding Matrix），根据每个词元的ID，从中“提取”出对应的向量。这个向量就是该词元的初始数值表示。</li>
+                </ol>
+                 <p>最终，我们得到一个形状为 <code>(序列长度, 模型维度)</code> 的矩阵，其中每一行都代表了输入句子中一个词的初始“含义”。</p>
+            </MathBlock>
             <MathBlock id="input_embed" title="编码器第1步：输入预处理" highlight={highlight}>
                 <h5>做什么？</h5>
                 <p>此步骤将输入的文本序列（一串文字）转换为模型可以处理的、包含“词义”和“位置”信息的数值向量矩阵。我们以一个长度为 {dims.seq_len} 的序列为例，当前模型维度 <InlineMath math={`d_{model}=${dims.d_model}`}/>。</p>
                 <h5>计算流程</h5>
                 <ol>
-                    <li><b>词嵌入 (Token Embedding):</b> 将每个词元（Token）的ID转换为一个稠密的向量。</li>
-                    <li><b>位置编码 (Positional Encoding):</b> 为模型注入关于序列顺序的绝对位置信息。</li>
-                    <li><b>逐元素相加:</b> 得到编码器最终的输入表示 <InlineMath math="Z"/>。</li>
+                    <li><b>词嵌入 (Token Embedding):</b> 从上一步获得的矩阵，代表了每个词的“词义”。</li>
+                    <li><b>位置编码 (Positional Encoding):</b> 为模型注入关于序列顺序的绝对位置信息。这是一个固定的、根据三角函数生成的矩阵。</li>
+                    <li><b>逐元素相加:</b> 得到编码器最终的输入表示 <InlineMath math="Z_0"/>。</li>
                 </ol>
                 <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.inputEmbeddings} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
@@ -1861,25 +2066,40 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 </div>
             </MathBlock>
             <MathBlock id="add_norm_1_dec" title="解码器组件：残差连接与层归一化 (1)" highlight={highlight}>
-                <p>同编码器中的 Add & Norm。</p>
+                <p>此模块接收解码器输入 <InlineMath math="Y_{in}"/> 和带掩码自注意力子层的输出 <InlineMath math="M_{mmha}"/>，将它们相加后进行层归一化。这确保了模型既能利用新的上下文信息，又不会忘记原始的输入信息。</p>
                 <BlockMath math={`Y' = \\text{LayerNorm}(Y_{in} + \\text{Masked-MHA}(Y_{in}))`} />
+                 <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.decoder_input} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="+" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.masked_mha_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="\xrightarrow{\text{LayerNorm}}" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                </div>
             </MathBlock>
              <MathBlock id="enc_dec_mha" title="解码器子层2：编码器-解码器注意力" highlight={highlight}>
                 <h5>做什么？</h5>
                 <p>这是连接编码器和解码器的桥梁，也是 Transformer 架构的精髓所在。在这一层，解码器会“审视”编码器的全部输出，并判断输入序列中的哪些部分对于生成当前目标词最重要。</p>
                  <h5>计算流程</h5>
                 <ol>
-                    <li><b>Query (<InlineMath math="Q"/>)</b>: 来自解码器前一层的输出。它代表了“我当前需要什么信息来生成下一个词？”</li>
-                    <li><b>Key (<InlineMath math="K"/>) 和 Value (<InlineMath math="V"/>)</b>: <b>均来自编码器的最终输出</b>。它们代表了整个输入序列的上下文信息。</li>
+                    <li><b>Query (<InlineMath math="Q"/>)</b>: 来自解码器前一层的输出 (<InlineMath math="Y'"/>)。它代表了“我当前需要什么信息来生成下一个词？”</li>
+                    <li><b>Key (<InlineMath math="K"/>) 和 Value (<InlineMath math="V"/>)</b>: <b>均来自编码器的最终输出 (<InlineMath math="Z_{enc}"/>)</b>。它们代表了整个输入序列的上下文信息。</li>
                 </ol>
                 <p>通过计算 <InlineMath math="Q_{dec} \cdot K_{enc}^T"/>，解码器能够评估其当前的生成需求与输入序列中每个词的相关性，然后利用这个相关性（注意力权重）从 <InlineMath math="V_{enc}"/> 中加权提取最需要的信息来辅助生成。</p>
             </MathBlock>
             <MathBlock id="add_norm_2_dec" title="解码器组件：残差连接与层归一化 (2)" highlight={highlight}>
-                 <p>同编码器中的 Add & Norm。</p>
+                <p>此步骤结合了编码器-解码器注意力子层的输入 (<InlineMath math="Y'"/>) 与其输出 (<InlineMath math="M_{ed}"/>)，并进行层归一化，以稳定训练过程并融合来自编码器的信息。</p>
                  <BlockMath math={`Y'' = \\text{LayerNorm}(Y' + \\text{Enc-Dec-MHA}(Y', Z_{enc}))`} />
+                  <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="+" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.enc_dec_mha_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="\xrightarrow{\text{LayerNorm}}" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.add_norm_2_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                </div>
             </MathBlock>
             <MathBlock id="ffn_dec" title="解码器子层3：前馈网络" highlight={highlight}>
-                <p>同编码器中的 FFN。</p>
+                <p>与编码器中的 FFN 类似，解码器中的前馈网络 (FFN) 也对每个位置的向量 (<InlineMath math="Y''"/>) 独立地进行一次复杂的非线性变换，进一步增强模型的表达能力，为最终的输出预测做准备。</p>
+                <BlockMath math={`F = \\text{ReLU}(Y'' W_1 + b_1) W_2 + b_2`} />
                  <div className="formula-display vertical">
                      <div className="viz-formula-row">
                         <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.add_norm_2_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
@@ -1899,22 +2119,40 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 </div>
             </MathBlock>
             <MathBlock id="add_norm_3_dec" title="解码器组件：残差连接与层归一化 (3)" highlight={highlight}>
-                 <p>同编码器中的 Add & Norm。</p>
+                 <p>这是解码器层中的最后一个 Add & Norm 步骤，它将 FFN 的输入 (<InlineMath math="Y''"/>) 与其输出 (<InlineMath math="F"/>) 相结合，产生该解码器层的最终输出 <InlineMath math="Y_{final}"/>。</p>
                  <BlockMath math={`Y_{final} = \\text{LayerNorm}(Y'' + \\text{FFN}(Y''))`} />
+                 <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.add_norm_2_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="+" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.ffn_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <BlockMath math="\xrightarrow{\text{LayerNorm}}" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.add_norm_3_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                </div>
             </MathBlock>
-             <MathBlock id="final_output" title="最终输出层" highlight={highlight}>
+             <MathBlock id="final_output" title="最终输出层：线性层与Softmax" highlight={highlight}>
                 <h5>做什么？</h5>
                 <p>在经过所有解码器层的处理后，我们得到一个最终的输出矩阵。此步骤将其转换为每个位置上词汇表中所有单词的概率分布。</p>
                  <h5>计算流程</h5>
                 <ol>
                     <li><b>线性层 (Linear Layer):</b> 将解码器输出矩阵通过一个大的线性投影层，将其维度从 <InlineMath math="d_{model}"/> 扩展到词汇表大小 (<InlineMath math="V_{size}"/>)。这会为每个位置生成一个分数向量，称为 Logits。</li>
-                    <li><b>Softmax:</b> 对 Logits 矩阵的每一行应用 Softmax 函数，将其转换为概率分布。概率最高的那个词，就是模型在当前位置的最终预测。</li>
+                    <li><b>Softmax:</b> 对 Logits 矩阵的每一行应用 Softmax 函数，将其转换为概率分布。</li>
                 </ol>
                  <div className="formula-display">
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.finalLinear} rows={dims.d_model} cols={50} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math="\xrightarrow{\text{Softmax}}" />
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.outputProbabilities} rows={dims.seq_len} cols={50} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                 </div>
+                 <p>现在，矩阵 <InlineMath math="P"/> 中的每一行都是一个概率分布，代表了在那个位置上生成词汇表中任何一个单词的可能性。</p>
+            </MathBlock>
+            <MathBlock id="decoding" title="最终解码：Argmax 与文本生成" highlight={highlight}>
+                <h5>做什么？</h5>
+                <p>这是生成过程的最后一步，将代表概率的数字变回人类可读的文本。</p>
+                <h5>计算流程</h5>
+                <ol>
+                    <li><b>Argmax:</b> 对概率矩阵 <InlineMath math="P"/> 的每一行，找到其中概率值最大的那个元素的**索引 (index)**。这个索引就对应了词汇表中该位置最有可能的词元ID。这个过程通常被称为“贪心解码 (Greedy Decoding)”。</li>
+                    <li><b>ID到文本映射:</b> 将得到的词元ID序列，通过反向查询词汇表，映射回原始的文本词元。</li>
+                </ol>
+                <p>这样，模型就完成了一次从输入文本到输出文本的完整预测。</p>
             </MathBlock>
         </div>
     );
@@ -2775,6 +3013,110 @@ export const ResidualBlock: React.FC<ResidualBlockProps> = ({ id, type, matrixSy
 
 
 ================================================================================
+### 文件路径: src/components/Token.tsx
+================================================================================
+
+// FILE: src/components/common/Token.tsx
+import React from 'react';
+import { ElementIdentifier, HighlightState } from '../types';
+
+interface TokenProps {
+  tokenStr: string;
+  tokenId: number;
+  position: number;
+  name: string; // "inputToken" or "outputToken"
+  highlight: HighlightState;
+  onElementClick: (element: ElementIdentifier) => void;
+}
+
+export const Token: React.FC<TokenProps> = ({
+  tokenStr,
+  tokenId,
+  position,
+  name,
+  highlight,
+  onElementClick,
+}) => {
+  const isTarget =
+    highlight.target?.name === name && highlight.target?.row === position;
+  const isSource = highlight.sources.some(
+    (s) => s.name === name && s.row === position
+  );
+
+  const handleClick = () => {
+    onElementClick({ name, row: position, col: -1, tokenStr, tokenId });
+  };
+
+  const className = `token-container ${isTarget ? 'target' : ''} ${
+    isSource ? 'source' : ''
+  }`;
+
+  return (
+    <div className={className} onClick={handleClick}>
+      <div className="token-text">{tokenStr}</div>
+      <div className="token-id">ID: {tokenId}</div>
+    </div>
+  );
+};
+// END OF FILE: src/components/common/Token.tsx
+
+
+================================================================================
+### 文件路径: src/components/TokenizationEmbedding.tsx
+================================================================================
+
+// FILE: src/components/TokenizationEmbedding.tsx
+import React from 'react';
+import { TransformerData, HighlightState, ElementIdentifier } from '../types';
+import { Matrix } from './Matrix';
+import { InlineMath } from 'react-katex';
+import { Token } from './Token';
+
+interface TokenizationEmbeddingProps {
+    data: TransformerData;
+    highlight: HighlightState;
+    onElementClick: (element: ElementIdentifier) => void;
+    isActive: boolean;
+}
+
+export const TokenizationEmbedding: React.FC<TokenizationEmbeddingProps> = ({ data, highlight, onElementClick, isActive }) => {
+    return (
+        <div className={`diagram-component ${isActive ? 'active' : ''}`}>
+            <div className="component-header">Input: Tokenization & Embedding Lookup</div>
+            <div className="component-body">
+                <div className="viz-step-title">1. Raw Text to Token IDs</div>
+                 <div className="token-row">
+                    {data.inputText.map((token, i) => (
+                        <Token
+                            key={i}
+                            tokenStr={token}
+                            tokenId={data.tokenizedInput[i]}
+                            position={i}
+                            name="inputToken"
+                            highlight={highlight}
+                            onElementClick={onElementClick}
+                        />
+                    ))}
+                </div>
+
+                <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Embedding Lookup}}" /></div>
+                <div className="viz-step-title">2. Use IDs to lookup vectors in Embedding Matrix</div>
+
+                 <div className="viz-formula-row">
+                     <span>(IDs)</span>
+                     <div className="op-symbol" style={{margin: '0 10px'}}> <InlineMath math="\in" /></div>
+                    <Matrix name="embeddingMatrix" data={data.embeddingMatrix} highlight={highlight} onElementClick={() => {}} />
+                </div>
+                 <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Lookup}}" /></div>
+                <Matrix name="inputEmbeddings" data={data.inputEmbeddings} highlight={highlight} onElementClick={onElementClick} />
+            </div>
+        </div>
+    );
+};
+// END OF FILE: src/components/TokenizationEmbedding.tsx
+
+
+================================================================================
 ### 文件路径: src/components/Viz.tsx
 ================================================================================
 
@@ -2785,6 +3127,8 @@ import { EncoderLayer } from './EncoderLayer';
 import { DecoderLayer } from './DecoderLayer';
 import { Matrix } from './Matrix';
 import { InlineMath } from 'react-katex';
+import { TokenizationEmbedding } from './TokenizationEmbedding';
+import { Decoding } from './Decoding';
 
 interface VizProps {
     data: TransformerData;
@@ -2793,18 +3137,30 @@ interface VizProps {
 }
 
 export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => {
+    const isTokenEmbedActive = highlight.activeComponent === 'token_embed';
     const isInputEmbedActive = highlight.activeComponent === 'input_embed';
     const isOutputEmbedActive = highlight.activeComponent === 'output_embed';
     const isFinalOutputActive = highlight.activeComponent === 'final_output';
+    const isDecodingActive = highlight.activeComponent === 'decoding';
 
     const cols = data.inputEmbeddings[0]?.length || 0;
     const shouldBreak = cols > 15;
 
     return (
         <div>
+            {/* --- Input Stage --- */}
+            <TokenizationEmbedding
+                data={data}
+                highlight={highlight}
+                onElementClick={onElementClick}
+                isActive={isTokenEmbedActive}
+            />
+
+            <div className="arrow-down">↓</div>
+
             {/* --- Encoder Side --- */}
             <div className={`diagram-component ${isInputEmbedActive ? 'active' : ''}`}>
-                <div className="component-header">Encoder Input & Positional Encoding</div>
+                <div className="component-header">Positional Encoding Addition</div>
                 <div className="component-body">
                     {shouldBreak ? (
                          <>
@@ -2882,6 +3238,16 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
                     <Matrix name="outputProbabilities" data={data.outputProbabilities} highlight={highlight} onElementClick={onElementClick} />
                 </div>
             </div>
+
+            {/* --- Decoding Stage --- */}
+            <div className="arrow-down">↓</div>
+            <Decoding
+                data={data}
+                highlight={highlight}
+                onElementClick={onElementClick}
+                isActive={isDecodingActive}
+            />
+
         </div>
     );
 };
@@ -3055,19 +3421,178 @@ export const getSymbolParts = (name: string): SymbolParts => {
 
 // FILE: src/hooks/useTransformer.ts
 import { useMemo } from 'react';
+import { TransformerData } from '../types';
+import { calculateTransformer } from '../lib/transformer';
+
+// --- Main Hook ---
+
+interface Dims {
+    d_model: number;
+    h: number;
+    seq_len: number;
+    n_layers: number;
+    d_ff: number;
+}
+
+/**
+ * A React hook that calculates the entire state of a Transformer model.
+ * It uses a deterministic calculation function from `lib/transformer` and
+ * memoizes the result to avoid re-computation on every render.
+ *
+ * @param dims - The dimensions of the Transformer model.
+ * @returns A `TransformerData` object containing all intermediate matrices,
+ *          or `null` if the dimensions are invalid or a calculation error occurs.
+ */
+export const useTransformer = (dims: Dims): TransformerData | null => {
+  return useMemo(() => {
+    try {
+      // The core logic is now delegated to a pure function.
+      // This makes the hook cleaner and separates concerns.
+      // The heavy computation is in `calculateTransformer`.
+      const transformerData = calculateTransformer(dims);
+      return transformerData;
+    } catch (e) {
+      console.error("Error during transformer calculation:", e);
+      // If any error occurs during the complex calculation,
+      // return null to indicate failure to the UI.
+      return null;
+    }
+  }, [dims]); // The hook will only re-run if the dimensions change.
+};
+// END OF FILE: src/hooks/useTransformer.ts
+
+
+================================================================================
+### 文件路径: src/lib/fixedWeights.ts
+================================================================================
+
+// FILE: src/lib/fixedWeights.ts
+// This file provides a deterministic set of weights for the Transformer model.
+// All values are hardcoded to ensure the visualization is reproducible.
+// This replaces the previous random number generation.
+
+interface Dims {
+    d_model: number;
+    h: number;
+    seq_len: number;
+    n_layers: number;
+    d_ff: number;
+}
+
+// A simple seeding function for pseudo-random but deterministic numbers.
+const createSeededRandom = (seed: number) => {
+    let state = seed;
+    return () => {
+        state = (state * 9301 + 49297) % 233280;
+        return (state / 233280.0) * 2 - 1; // Return value between -1 and 1
+    };
+};
+
+const createFixedMatrix = (rows: number, cols: number, seed: number): number[][] => {
+    const random = createSeededRandom(seed);
+    return Array.from({ length: rows }, () =>
+        Array.from({ length: cols }, () => parseFloat(random().toFixed(2)))
+    );
+};
+
+const createFixedVector = (size: number, seed: number): number[] => {
+    const random = createSeededRandom(seed);
+    return Array.from({ length: size }, () => parseFloat(random().toFixed(2)));
+};
+
+export const fixedWeights = (dims: Dims) => {
+    const { d_model, h, n_layers, d_ff, seq_len } = dims;
+    const d_k = d_model / h;
+
+    const VOCAB_SIZE = 16;
+    const vocab: { [key: number]: string } = {
+        0: '<PAD>', 1: '<SOS>', 2: '<EOS>', 3: 'I', 4: 'am', 5: 'a', 6: 'student',
+        7: '我', 8: '是', 9: '一个', 10: '学生', 11: 'he', 12: 'she', 13: 'is',
+        14: 'good', 15: '[UNK]'
+    };
+
+    const embeddingMatrix = createFixedMatrix(VOCAB_SIZE, d_model, 1);
+    const posEncodings = Array.from({ length: 10 }, (_, pos) => // Max seq_len of 10
+      Array.from({ length: d_model }, (_, i) =>
+        parseFloat((i % 2 === 0
+          ? Math.sin(pos / (10000 ** (i / d_model)))
+          : Math.cos(pos / (10000 ** ((i - 1) / d_model)))).toFixed(2))
+      )
+    );
+
+    const encoderLayers = Array.from({ length: n_layers }, (_, l) => ({
+        mha: {
+            heads: Array.from({ length: h }, (_, head) => ({
+                Wq: createFixedMatrix(d_model, d_k, 100 + l * 10 + head * 3 + 0),
+                Wk: createFixedMatrix(d_model, d_k, 100 + l * 10 + head * 3 + 1),
+                Wv: createFixedMatrix(d_model, d_k, 100 + l * 10 + head * 3 + 2),
+            })),
+            Wo: createFixedMatrix(d_model, d_model, 150 + l),
+        },
+        ffn: {
+            W1: createFixedMatrix(d_model, d_ff, 200 + l * 2 + 0),
+            b1: createFixedVector(d_ff, 201 + l * 2 + 0),
+            W2: createFixedMatrix(d_ff, d_model, 200 + l * 2 + 1),
+            b2: createFixedVector(d_model, 201 + l * 2 + 1),
+        },
+    }));
+
+    const decoderLayers = Array.from({ length: n_layers }, (_, l) => ({
+        masked_mha: {
+            heads: Array.from({ length: h }, (_, head) => ({
+                Wq: createFixedMatrix(d_model, d_k, 300 + l * 20 + head * 3 + 0),
+                Wk: createFixedMatrix(d_model, d_k, 300 + l * 20 + head * 3 + 1),
+                Wv: createFixedMatrix(d_model, d_k, 300 + l * 20 + head * 3 + 2),
+            })),
+            Wo: createFixedMatrix(d_model, d_model, 350 + l),
+        },
+        enc_dec_mha: {
+            heads: Array.from({ length: h }, (_, head) => ({
+                Wq: createFixedMatrix(d_model, d_k, 400 + l * 20 + head * 3 + 0),
+                Wk: createFixedMatrix(d_model, d_k, 400 + l * 20 + head * 3 + 1),
+                Wv: createFixedMatrix(d_model, d_k, 400 + l * 20 + head * 3 + 2),
+            })),
+            Wo: createFixedMatrix(d_model, d_model, 450 + l),
+        },
+        ffn: {
+            W1: createFixedMatrix(d_model, d_ff, 500 + l * 2 + 0),
+            b1: createFixedVector(d_ff, 501 + l * 2 + 0),
+            W2: createFixedMatrix(d_ff, d_model, 500 + l * 2 + 1),
+            b2: createFixedVector(d_model, 501 + l * 2 + 1),
+        },
+    }));
+
+    const finalLinear = createFixedMatrix(d_model, VOCAB_SIZE, 999);
+
+    return {
+        vocab,
+        embeddingMatrix,
+        posEncodings,
+        encoderLayers,
+        decoderLayers,
+        finalLinear,
+    };
+};
+// END OF FILE: src/lib/fixedWeights.ts
+
+
+================================================================================
+### 文件路径: src/lib/transformer.ts
+================================================================================
+
+// FILE: src/lib/transformer.ts
 import { Matrix, TransformerData, EncoderLayerData, FFNData, MultiHeadAttentionData, AttentionHeadData, Vector, DecoderLayerData } from '../types';
+import { fixedWeights } from './fixedWeights';
 
 // --- Utility Functions ---
 
-const createRandomMatrix = (rows: number, cols: number): Matrix => {
-  return Array.from({ length: rows }, () =>
-    Array.from({ length: cols }, () => parseFloat((Math.random() * 2 - 1).toFixed(2)))
-  );
+const createMatrixFrom2DArray = (data: number[][]): Matrix => {
+    return data.map(row => row.slice());
 };
 
-const createRandomVector = (size: number): Vector => {
-  return Array.from({ length: size }, () => parseFloat((Math.random() * 2 - 1).toFixed(2)));
-}
+const createVectorFrom1DArray = (data: number[]): Vector => {
+    return data.slice();
+};
 
 const addMatrices = (A: Matrix, B: Matrix): Matrix => {
   return A.map((row, i) =>
@@ -3103,7 +3628,7 @@ const softmaxByRow = (A: Matrix): Matrix => {
         const exps = row.map(val => isFinite(val) ? Math.exp(val - maxVal) : 0);
         const sumExps = exps.reduce((a, b) => a + b, 0);
         if (sumExps === 0) return row.map(() => 1 / row.length); // Avoid division by zero
-        return exps.map(exp => parseFloat((exp / sumExps).toFixed(2)));
+        return exps.map(exp => parseFloat((exp / sumExps).toFixed(4))); // Increased precision for probabilities
     });
 }
 
@@ -3130,8 +3655,7 @@ const applyMask = (A: Matrix, maskValue = -Infinity): Matrix => {
     );
 };
 
-
-// --- Main Hook ---
+// --- Main Calculation Function ---
 
 interface Dims {
     d_model: number;
@@ -3141,165 +3665,173 @@ interface Dims {
     d_ff: number;
 }
 
-export const useTransformer = (dims: Dims): TransformerData | null => {
+export const calculateTransformer = (dims: Dims): TransformerData | null => {
+    const { d_model, h, seq_len, n_layers, d_ff } = dims;
+    if (d_model % h !== 0) return null;
+    const d_k = d_model / h;
 
-  return useMemo(() => {
-    try {
-        const { d_model, h, seq_len, n_layers, d_ff } = dims;
-        if (d_model % h !== 0) return null;
-        const d_k = d_model / h;
+    const weights = fixedWeights(dims);
+    const vocab = weights.vocab;
+    const VOCAB_SIZE = Object.keys(vocab).length;
 
-        // --- ENCODER ---
-        const inputEmbeddings = createRandomMatrix(seq_len, d_model);
-        const posEncodings: Matrix = Array.from({ length: seq_len }, (_, pos) =>
-          Array.from({ length: d_model }, (_, i) =>
-            parseFloat((i % 2 === 0
-              ? Math.sin(pos / (10000 ** (i / d_model)))
-              : Math.cos(pos / (10000 ** ((i - 1) / d_model)))).toFixed(2))
-          )
-        );
-        const encoderInput = addMatrices(inputEmbeddings, posEncodings);
+    // --- INPUT STAGE ---
+    const inputText = ["I", "am", "a", "student"].slice(0, seq_len);
+    const tokenizedInput = inputText.map(t => Object.keys(vocab).find(k => vocab[parseInt(k)] === t)!).map(Number);
 
-        let currentEncoderInput = encoderInput;
-        const encoderLayers: EncoderLayerData[] = [];
+    // --- ENCODER ---
+    const embeddingMatrix = createMatrixFrom2DArray(weights.embeddingMatrix);
+    const inputEmbeddings = tokenizedInput.map(token_id => embeddingMatrix[token_id]);
 
-        for (let i = 0; i < n_layers; i++) {
-            const encoder_input = currentEncoderInput;
-            const heads: AttentionHeadData[] = [];
-            const headOutputs: Matrix[] = [];
-            for(let j=0; j < h; j++) {
-                const Wq = createRandomMatrix(d_model, d_k);
-                const Wk = createRandomMatrix(d_model, d_k);
-                const Wv = createRandomMatrix(d_model, d_k);
-                const Q = multiplyMatrices(encoder_input, Wq);
-                const K = multiplyMatrices(encoder_input, Wk);
-                const V = multiplyMatrices(encoder_input, Wv);
-                const K_T = Array.from({ length: d_k }, (_, r) => Array.from({ length: seq_len }, (_, c) => K[c][r]));
-                const Scores = multiplyMatrices(Q, K_T);
-                const ScaledScores = scaleMatrix(Scores, Math.sqrt(d_k));
-                const AttentionWeights = softmaxByRow(ScaledScores);
-                const HeadOutput = multiplyMatrices(AttentionWeights, V);
-                heads.push({ Wq, Wk, Wv, Q, K, V, Scores, ScaledScores, AttentionWeights, HeadOutput });
-                headOutputs.push(HeadOutput);
-            }
-            const ConcatOutput = headOutputs.reduce((acc, current) => acc.map((row, rIdx) => [...row, ...current[rIdx]]), Array(seq_len).fill(0).map(() => []));
-            const Wo = createRandomMatrix(d_model, d_model);
-            const mha_output = multiplyMatrices(ConcatOutput, Wo);
-            const mha: MultiHeadAttentionData = { heads, Wo, output: mha_output };
-            const add_norm_1_output = layerNorm(addMatrices(encoder_input, mha_output));
-            const W1 = createRandomMatrix(d_model, d_ff);
-            const b1 = createRandomVector(d_ff);
-            const Intermediate = addBias(multiplyMatrices(add_norm_1_output, W1), b1);
-            const Activated = applyReLU(Intermediate);
-            const W2 = createRandomMatrix(d_ff, d_model);
-            const b2 = createRandomVector(d_model);
-            const ffn_output = addBias(multiplyMatrices(Activated, W2), b2);
-            const ffn: FFNData = { W1, b1, Intermediate, Activated, W2, b2, Output: ffn_output };
-            const add_norm_2_output = layerNorm(addMatrices(add_norm_1_output, ffn_output));
-            encoderLayers.push({ encoder_input, mha, mha_output, add_norm_1_output, ffn, ffn_output, add_norm_2_output });
-            currentEncoderInput = add_norm_2_output;
+    const posEncodings: Matrix = createMatrixFrom2DArray(weights.posEncodings).slice(0, seq_len);
+    const encoderInput = addMatrices(inputEmbeddings, posEncodings);
+
+    let currentEncoderInput = encoderInput;
+    const encoderLayers: EncoderLayerData[] = [];
+
+    for (let i = 0; i < n_layers; i++) {
+        const encoder_input = currentEncoderInput;
+        const heads: AttentionHeadData[] = [];
+        const headOutputs: Matrix[] = [];
+        for(let j=0; j < h; j++) {
+            const Wq = createMatrixFrom2DArray(weights.encoderLayers[i].mha.heads[j].Wq);
+            const Wk = createMatrixFrom2DArray(weights.encoderLayers[i].mha.heads[j].Wk);
+            const Wv = createMatrixFrom2DArray(weights.encoderLayers[i].mha.heads[j].Wv);
+            const Q = multiplyMatrices(encoder_input, Wq);
+            const K = multiplyMatrices(encoder_input, Wk);
+            const V = multiplyMatrices(encoder_input, Wv);
+            const K_T = Array.from({ length: d_k }, (_, r) => Array.from({ length: seq_len }, (_, c) => K[c][r]));
+            const Scores = multiplyMatrices(Q, K_T);
+            const ScaledScores = scaleMatrix(Scores, Math.sqrt(d_k));
+            const AttentionWeights = softmaxByRow(ScaledScores);
+            const HeadOutput = multiplyMatrices(AttentionWeights, V);
+            heads.push({ Wq, Wk, Wv, Q, K, V, Scores, ScaledScores, AttentionWeights, HeadOutput });
+            headOutputs.push(HeadOutput);
         }
-        const finalEncoderOutput = currentEncoderInput;
-
-        // --- DECODER ---
-        const outputEmbeddings = createRandomMatrix(seq_len, d_model);
-        const decoderPosEncodings = posEncodings;
-        const decoderInput = addMatrices(outputEmbeddings, decoderPosEncodings);
-
-        let currentDecoderInput = decoderInput;
-        const decoderLayers: DecoderLayerData[] = [];
-
-        for (let i = 0; i < n_layers; i++) {
-            const decoder_input = currentDecoderInput;
-
-            const masked_mha_heads: AttentionHeadData[] = [];
-            const masked_mha_headOutputs: Matrix[] = [];
-            for (let j = 0; j < h; j++) {
-                const Wq = createRandomMatrix(d_model, d_k);
-                const Wk = createRandomMatrix(d_model, d_k);
-                const Wv = createRandomMatrix(d_model, d_k);
-                const Q = multiplyMatrices(decoder_input, Wq);
-                const K = multiplyMatrices(decoder_input, Wk);
-                const V = multiplyMatrices(decoder_input, Wv);
-                const K_T = Array.from({ length: d_k }, (_, r) => Array.from({ length: seq_len }, (_, c) => K[c][r]));
-                const Scores = applyMask(multiplyMatrices(Q, K_T));
-                const ScaledScores = scaleMatrix(Scores, Math.sqrt(d_k));
-                const AttentionWeights = softmaxByRow(ScaledScores);
-                const HeadOutput = multiplyMatrices(AttentionWeights, V);
-                masked_mha_heads.push({ Wq, Wk, Wv, Q, K, V, Scores, ScaledScores, AttentionWeights, HeadOutput });
-                masked_mha_headOutputs.push(HeadOutput);
-            }
-            const masked_ConcatOutput = masked_mha_headOutputs.reduce((acc, current) => acc.map((row, rIdx) => [...row, ...current[rIdx]]), Array(seq_len).fill(0).map(() => []));
-            const masked_Wo = createRandomMatrix(d_model, d_model);
-            const masked_mha_output = multiplyMatrices(masked_ConcatOutput, masked_Wo);
-            const masked_mha: MultiHeadAttentionData = { heads: masked_mha_heads, Wo: masked_Wo, output: masked_mha_output };
-            const dec_add_norm_1_output = layerNorm(addMatrices(decoder_input, masked_mha_output));
-
-            const enc_dec_mha_heads: AttentionHeadData[] = [];
-            const enc_dec_mha_headOutputs: Matrix[] = [];
-             for (let j = 0; j < h; j++) {
-                const Wq = createRandomMatrix(d_model, d_k);
-                const Wk = createRandomMatrix(d_model, d_k);
-                const Wv = createRandomMatrix(d_model, d_k);
-                const Q = multiplyMatrices(dec_add_norm_1_output, Wq);
-                const K = multiplyMatrices(finalEncoderOutput, Wk);
-                const V = multiplyMatrices(finalEncoderOutput, Wv);
-                const K_T = Array.from({ length: d_k }, (_, r) => Array.from({ length: seq_len }, (_, c) => K[c][r]));
-                const Scores = multiplyMatrices(Q, K_T);
-                const ScaledScores = scaleMatrix(Scores, Math.sqrt(d_k));
-                const AttentionWeights = softmaxByRow(ScaledScores);
-                const HeadOutput = multiplyMatrices(AttentionWeights, V);
-                enc_dec_mha_heads.push({ Wq, Wk, Wv, Q, K, V, Scores, ScaledScores, AttentionWeights, HeadOutput });
-                enc_dec_mha_headOutputs.push(HeadOutput);
-            }
-            const enc_dec_ConcatOutput = enc_dec_mha_headOutputs.reduce((acc, current) => acc.map((row, rIdx) => [...row, ...current[rIdx]]), Array(seq_len).fill(0).map(() => []));
-            const enc_dec_Wo = createRandomMatrix(d_model, d_model);
-            const enc_dec_mha_output = multiplyMatrices(enc_dec_ConcatOutput, enc_dec_Wo);
-            const enc_dec_mha: MultiHeadAttentionData = { heads: enc_dec_mha_heads, Wo: enc_dec_Wo, output: enc_dec_mha_output };
-            const dec_add_norm_2_output = layerNorm(addMatrices(dec_add_norm_1_output, enc_dec_mha_output));
-
-            const W1 = createRandomMatrix(d_model, d_ff);
-            const b1 = createRandomVector(d_ff);
-            const Intermediate = addBias(multiplyMatrices(dec_add_norm_2_output, W1), b1);
-            const Activated = applyReLU(Intermediate);
-            const W2 = createRandomMatrix(d_ff, d_model);
-            const b2 = createRandomVector(d_model);
-            const ffn_output = addBias(multiplyMatrices(Activated, W2), b2);
-            const ffn: FFNData = { W1, b1, Intermediate, Activated, W2, b2, Output: ffn_output };
-            const dec_add_norm_3_output = layerNorm(addMatrices(dec_add_norm_2_output, ffn_output));
-
-            decoderLayers.push({ decoder_input, masked_mha, masked_mha_output, add_norm_1_output: dec_add_norm_1_output, enc_dec_mha, enc_dec_mha_output, add_norm_2_output: dec_add_norm_2_output, ffn, ffn_output, add_norm_3_output: dec_add_norm_3_output });
-            currentDecoderInput = dec_add_norm_3_output;
-        }
-        const finalDecoderOutput = currentDecoderInput;
-
-        const vocab_size = 50;
-        const finalLinear = createRandomMatrix(d_model, vocab_size);
-        const logits = multiplyMatrices(finalDecoderOutput, finalLinear);
-        const outputProbabilities = softmaxByRow(logits);
-
-        return {
-            inputEmbeddings,
-            posEncodings,
-            encoderInput,
-            encoderLayers,
-            finalEncoderOutput,
-            outputEmbeddings,
-            decoderPosEncodings,
-            decoderInput,
-            decoderLayers,
-            finalDecoderOutput,
-            finalLinear,
-            logits,
-            outputProbabilities
-        };
-    } catch (e) {
-        console.error("Error during transformer calculation:", e);
-        return null;
+        const ConcatOutput = headOutputs.reduce((acc, current) => acc.map((row, rIdx) => [...row, ...current[rIdx]]), Array(seq_len).fill(0).map(() => []));
+        const Wo = createMatrixFrom2DArray(weights.encoderLayers[i].mha.Wo);
+        const mha_output = multiplyMatrices(ConcatOutput, Wo);
+        const mha: MultiHeadAttentionData = { heads, Wo, output: mha_output };
+        const add_norm_1_output = layerNorm(addMatrices(encoder_input, mha_output));
+        const W1 = createMatrixFrom2DArray(weights.encoderLayers[i].ffn.W1);
+        const b1 = createVectorFrom1DArray(weights.encoderLayers[i].ffn.b1);
+        const Intermediate = addBias(multiplyMatrices(add_norm_1_output, W1), b1);
+        const Activated = applyReLU(Intermediate);
+        const W2 = createMatrixFrom2DArray(weights.encoderLayers[i].ffn.W2);
+        const b2 = createVectorFrom1DArray(weights.encoderLayers[i].ffn.b2);
+        const ffn_output = addBias(multiplyMatrices(Activated, W2), b2);
+        const ffn: FFNData = { W1, b1, Intermediate, Activated, W2, b2, Output: ffn_output };
+        const add_norm_2_output = layerNorm(addMatrices(add_norm_1_output, ffn_output));
+        encoderLayers.push({ encoder_input, mha, mha_output, add_norm_1_output, ffn, ffn_output, add_norm_2_output });
+        currentEncoderInput = add_norm_2_output;
     }
-  }, [dims]);
+    const finalEncoderOutput = currentEncoderInput;
+
+    // --- DECODER ---
+    const tokenizedDecoderInput = ["<SOS>", "我", "是", "学生"].slice(0, seq_len).map(t => Object.keys(vocab).find(k => vocab[parseInt(k)] === t)!).map(Number);
+    const outputEmbeddings = tokenizedDecoderInput.map(token_id => embeddingMatrix[token_id]);
+    const decoderPosEncodings = posEncodings;
+    const decoderInput = addMatrices(outputEmbeddings, decoderPosEncodings);
+
+    let currentDecoderInput = decoderInput;
+    const decoderLayers: DecoderLayerData[] = [];
+
+    for (let i = 0; i < n_layers; i++) {
+        const decoder_input = currentDecoderInput;
+        const decWeights = weights.decoderLayers[i];
+
+        const masked_mha_heads: AttentionHeadData[] = [];
+        const masked_mha_headOutputs: Matrix[] = [];
+        for (let j = 0; j < h; j++) {
+            const Wq = createMatrixFrom2DArray(decWeights.masked_mha.heads[j].Wq);
+            const Wk = createMatrixFrom2DArray(decWeights.masked_mha.heads[j].Wk);
+            const Wv = createMatrixFrom2DArray(decWeights.masked_mha.heads[j].Wv);
+            const Q = multiplyMatrices(decoder_input, Wq);
+            const K = multiplyMatrices(decoder_input, Wk);
+            const V = multiplyMatrices(decoder_input, Wv);
+            const K_T = Array.from({ length: d_k }, (_, r) => Array.from({ length: seq_len }, (_, c) => K[c][r]));
+            const Scores = applyMask(multiplyMatrices(Q, K_T));
+            const ScaledScores = scaleMatrix(Scores, Math.sqrt(d_k));
+            const AttentionWeights = softmaxByRow(ScaledScores);
+            const HeadOutput = multiplyMatrices(AttentionWeights, V);
+            masked_mha_heads.push({ Wq, Wk, Wv, Q, K, V, Scores, ScaledScores, AttentionWeights, HeadOutput });
+            masked_mha_headOutputs.push(HeadOutput);
+        }
+        const masked_ConcatOutput = masked_mha_headOutputs.reduce((acc, current) => acc.map((row, rIdx) => [...row, ...current[rIdx]]), Array(seq_len).fill(0).map(() => []));
+        const masked_Wo = createMatrixFrom2DArray(decWeights.masked_mha.Wo);
+        const masked_mha_output = multiplyMatrices(masked_ConcatOutput, masked_Wo);
+        const masked_mha: MultiHeadAttentionData = { heads: masked_mha_heads, Wo: masked_Wo, output: masked_mha_output };
+        const dec_add_norm_1_output = layerNorm(addMatrices(decoder_input, masked_mha_output));
+
+        const enc_dec_mha_heads: AttentionHeadData[] = [];
+        const enc_dec_mha_headOutputs: Matrix[] = [];
+         for (let j = 0; j < h; j++) {
+            const Wq = createMatrixFrom2DArray(decWeights.enc_dec_mha.heads[j].Wq);
+            const Wk = createMatrixFrom2DArray(decWeights.enc_dec_mha.heads[j].Wk);
+            const Wv = createMatrixFrom2DArray(decWeights.enc_dec_mha.heads[j].Wv);
+            const Q = multiplyMatrices(dec_add_norm_1_output, Wq);
+            const K = multiplyMatrices(finalEncoderOutput, Wk);
+            const V = multiplyMatrices(finalEncoderOutput, Wv);
+            const K_T = Array.from({ length: d_k }, (_, r) => Array.from({ length: seq_len }, (_, c) => K[c][r]));
+            const Scores = multiplyMatrices(Q, K_T);
+            const ScaledScores = scaleMatrix(Scores, Math.sqrt(d_k));
+            const AttentionWeights = softmaxByRow(ScaledScores);
+            const HeadOutput = multiplyMatrices(AttentionWeights, V);
+            enc_dec_mha_heads.push({ Wq, Wk, Wv, Q, K, V, Scores, ScaledScores, AttentionWeights, HeadOutput });
+            enc_dec_mha_headOutputs.push(HeadOutput);
+        }
+        const enc_dec_ConcatOutput = enc_dec_mha_headOutputs.reduce((acc, current) => acc.map((row, rIdx) => [...row, ...current[rIdx]]), Array(seq_len).fill(0).map(() => []));
+        const enc_dec_Wo = createMatrixFrom2DArray(decWeights.enc_dec_mha.Wo);
+        const enc_dec_mha_output = multiplyMatrices(enc_dec_ConcatOutput, enc_dec_Wo);
+        const enc_dec_mha: MultiHeadAttentionData = { heads: enc_dec_mha_heads, Wo: enc_dec_Wo, output: enc_dec_mha_output };
+        const dec_add_norm_2_output = layerNorm(addMatrices(dec_add_norm_1_output, enc_dec_mha_output));
+
+        const W1 = createMatrixFrom2DArray(decWeights.ffn.W1);
+        const b1 = createVectorFrom1DArray(decWeights.ffn.b1);
+        const Intermediate = addBias(multiplyMatrices(dec_add_norm_2_output, W1), b1);
+        const Activated = applyReLU(Intermediate);
+        const W2 = createMatrixFrom2DArray(decWeights.ffn.W2);
+        const b2 = createVectorFrom1DArray(decWeights.ffn.b2);
+        const ffn_output = addBias(multiplyMatrices(Activated, W2), b2);
+        const ffn: FFNData = { W1, b1, Intermediate, Activated, W2, b2, Output: ffn_output };
+        const dec_add_norm_3_output = layerNorm(addMatrices(dec_add_norm_2_output, ffn_output));
+
+        decoderLayers.push({ decoder_input, masked_mha, masked_mha_output, add_norm_1_output: dec_add_norm_1_output, enc_dec_mha, enc_dec_mha_output, add_norm_2_output: dec_add_norm_2_output, ffn, ffn_output, add_norm_3_output: dec_add_norm_3_output });
+        currentDecoderInput = dec_add_norm_3_output;
+    }
+    const finalDecoderOutput = currentDecoderInput;
+
+    const finalLinear = createMatrixFrom2DArray(weights.finalLinear);
+    const logits = multiplyMatrices(finalDecoderOutput, finalLinear);
+    const outputProbabilities = softmaxByRow(logits);
+
+    // --- DECODING STAGE ---
+    const decodedTokens = outputProbabilities.map(row => row.indexOf(Math.max(...row)));
+    const outputText = decodedTokens.map(id => vocab[id] || "[UNK]"); // Handle unknown tokens
+
+    return {
+        inputText,
+        tokenizedInput,
+        embeddingMatrix,
+        vocab,
+        inputEmbeddings,
+        posEncodings,
+        encoderInput,
+        encoderLayers,
+        finalEncoderOutput,
+        outputEmbeddings,
+        decoderPosEncodings,
+        decoderInput,
+        decoderLayers,
+        finalDecoderOutput,
+        finalLinear,
+        logits,
+        outputProbabilities,
+        decodedTokens,
+        outputText,
+    };
 };
-// END OF FILE: src/hooks/useTransformer.ts
+
+// END OF FILE: src/lib/transformer.ts
 
 
 ================================================================================

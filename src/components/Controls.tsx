@@ -1,4 +1,3 @@
-/* START OF FILE: src/components/Controls.tsx */
 // FILE: src/components/Controls.tsx
 import React from 'react';
 
@@ -47,7 +46,7 @@ export const Controls: React.FC<ControlsProps> = ({ dims, setDims }) => {
     <div className="controls-container">
       <div className="control-group">
         <label htmlFor="seq_len">序列长度 (seq_len)</label>
-        <input type="number" id="seq_len" value={dims.seq_len} onChange={handleInputChange} min="2" max="5" />
+        <input type="number" id="seq_len" value={dims.seq_len} onChange={handleInputChange} min="1" max="4" />
       </div>
       <div className="control-group">
         <label htmlFor="d_model">模型维度 (d_model)</label>
@@ -69,4 +68,3 @@ export const Controls: React.FC<ControlsProps> = ({ dims, setDims }) => {
   );
 };
 // END OF FILE: src/components/Controls.tsx
-/* END OF FILE: src/components/Controls.tsx */

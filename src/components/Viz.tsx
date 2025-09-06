@@ -5,6 +5,8 @@ import { EncoderLayer } from './EncoderLayer';
 import { DecoderLayer } from './DecoderLayer';
 import { Matrix } from './Matrix';
 import { InlineMath } from 'react-katex';
+import { TokenizationEmbedding } from './TokenizationEmbedding';
+import { Decoding } from './Decoding';
 
 interface VizProps {
     data: TransformerData;
@@ -13,18 +15,30 @@ interface VizProps {
 }
 
 export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => {
+    const isTokenEmbedActive = highlight.activeComponent === 'token_embed';
     const isInputEmbedActive = highlight.activeComponent === 'input_embed';
     const isOutputEmbedActive = highlight.activeComponent === 'output_embed';
     const isFinalOutputActive = highlight.activeComponent === 'final_output';
+    const isDecodingActive = highlight.activeComponent === 'decoding';
 
     const cols = data.inputEmbeddings[0]?.length || 0;
     const shouldBreak = cols > 15;
 
     return (
         <div>
+            {/* --- Input Stage --- */}
+            <TokenizationEmbedding
+                data={data}
+                highlight={highlight}
+                onElementClick={onElementClick}
+                isActive={isTokenEmbedActive}
+            />
+
+            <div className="arrow-down">↓</div>
+
             {/* --- Encoder Side --- */}
             <div className={`diagram-component ${isInputEmbedActive ? 'active' : ''}`}>
-                <div className="component-header">Encoder Input & Positional Encoding</div>
+                <div className="component-header">Positional Encoding Addition</div>
                 <div className="component-body">
                     {shouldBreak ? (
                          <>
@@ -102,6 +116,16 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
                     <Matrix name="outputProbabilities" data={data.outputProbabilities} highlight={highlight} onElementClick={onElementClick} />
                 </div>
             </div>
+
+            {/* --- Decoding Stage --- */}
+            <div className="arrow-down">↓</div>
+            <Decoding
+                data={data}
+                highlight={highlight}
+                onElementClick={onElementClick}
+                isActive={isDecodingActive}
+            />
+
         </div>
     );
 };
