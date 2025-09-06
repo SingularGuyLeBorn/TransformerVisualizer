@@ -34,8 +34,8 @@ EXCLUDE_DIRS = {'node_modules', '.git', 'build', 'dist'}
 
 def merge_code_from_sources():
     """
-    扫描指定的多个源代码目录，并将所有目标文件的内容合并到一个TXT文件中。
-    此版本【不会】修改任何源文件，更加安全。
+    扫描指定的多个源代码目录,并将所有目标文件的内容合并到一个TXT文件中. 
+    此版本【不会】修改任何源文件,更加安全. 
     """
 
     output_path = os.path.join(PROJECT_ROOT, OUTPUT_FILENAME)
@@ -45,16 +45,16 @@ def merge_code_from_sources():
     print("-" * 50)
 
     try:
-        # 使用写入模式 'w' 打开文件，每次运行时都会创建一个全新的合并文件
+        # 使用写入模式 'w' 打开文件,每次运行时都会创建一个全新的合并文件
         with open(output_path, 'w', encoding='utf-8') as outfile:
 
             # 遍历我们定义的所有源目录
             for source_dir in SOURCE_DIRECTORIES:
                 source_path = os.path.join(PROJECT_ROOT, source_dir)
 
-                # 检查目录是否存在，如果不存在则跳过
+                # 检查目录是否存在,如果不存在则跳过
                 if not os.path.isdir(source_path):
-                    print(f"  -> 警告: 目录不存在，已跳过: {source_path}")
+                    print(f"  -> 警告: 目录不存在,已跳过: {source_path}")
                     continue
 
                 print(f"\n--- 正在扫描 {source_dir} 目录 ---")
@@ -62,18 +62,18 @@ def merge_code_from_sources():
                 # os.walk 会递归地遍历目录
                 for dirpath, dirnames, filenames in os.walk(source_path):
 
-                    # 修改 dirnames 列表可以阻止 os.walk 进入这些目录，效率更高
+                    # 修改 dirnames 列表可以阻止 os.walk 进入这些目录,效率更高
                     dirnames[:] = [d for d in dirnames if d not in EXCLUDE_DIRS]
 
-                    # 对文件名进行排序，保证每次合并的顺序一致
+                    # 对文件名进行排序,保证每次合并的顺序一致
                     for filename in sorted(filenames):
                         # 检查文件扩展名是否是我们想要的
                         if filename.endswith(TARGET_EXTENSIONS):
                             full_path = os.path.join(dirpath, filename)
 
-                            # 获取相对于项目根目录的相对路径，用于显示
+                            # 获取相对于项目根目录的相对路径,用于显示
                             relative_path = os.path.relpath(full_path, PROJECT_ROOT)
-                            # 将 Windows 的反斜杠 \ 替换为斜杠 /，保持路径风格统一
+                            # 将 Windows 的反斜杠 \ 替换为斜杠 /,保持路径风格统一
                             display_path = relative_path.replace('\\', '/')
 
                             print(f"  -> 正在合并: {display_path}")
@@ -104,10 +104,10 @@ def merge_code_from_sources():
 
 
 if __name__ == "__main__":
-    print("此脚本将扫描 'src' 和 'public' 目录下的所有代码文件，并将它们合并成一个TXT文件。")
-    print("注意：此操作是只读的，不会修改您的任何源文件。")
+    print("此脚本将扫描 'src' 和 'public' 目录下的所有代码文件,并将它们合并成一个TXT文件. ")
+    print("注意:此操作是只读的,不会修改您的任何源文件. ")
     user_input = input("确定要继续吗？(y/n): ")
     if user_input.lower() == 'y':
         merge_code_from_sources()
     else:
-        print("操作已取消。")
+        print("操作已取消. ")

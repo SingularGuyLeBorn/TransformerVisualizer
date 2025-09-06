@@ -1142,41 +1142,41 @@ project_files = {
             <div>
                  <MathBlock id="input_embed" title="输入嵌入 (Input Embedding)" highlight={highlight}>
                     <BlockMath math="Z_0 = \\text{Embedding}(X) + \\text{PE}(X)" />
-                    <p>此步骤将输入的文本序列转换为模型可以处理的、包含位置信息的数值向量。我们以一个序列 (长度={dims.seq_len}) 为例，当前模型维度 <InlineMath math={`d_{model}=${dims.d_model}`} />。</p>
+                    <p>此步骤将输入的文本序列转换为模型可以处理的、包含位置信息的数值向量. 我们以一个序列 (长度={dims.seq_len}) 为例,当前模型维度 <InlineMath math={`d_{model}=${dims.d_model}`} />. </p>
                     <h5>1. 向量嵌入 (Embedding)</h5>
-                    <p>首先，通过一个大型的、可学习的嵌入表，将每个词元的 ID 转换为一个稠密向量。结果是一个矩阵，每一行代表一个词。</p>
+                    <p>首先,通过一个大型的、可学习的嵌入表,将每个词元的 ID 转换为一个稠密向量. 结果是一个矩阵,每一行代表一个词. </p>
                     <div className="formula-display">
                         <SymbolicMatrix name="inputEmbeddings" rows={dims.seq_len} cols={dims.d_model} prefix="e" highlight={highlight} />
                     </div>
                     <h5>2. 位置编码 (Positional Encoding)</h5>
-                    <p>接下来，我们创建一个同样大小的位置编码矩阵。该矩阵根据固定的 <InlineMath math="\\sin" /> 和 <InlineMath math="\\cos" /> 函数生成。</p>
+                    <p>接下来,我们创建一个同样大小的位置编码矩阵. 该矩阵根据固定的 <InlineMath math="\\sin" /> 和 <InlineMath math="\\cos" /> 函数生成. </p>
                     <div className="formula-display">
                         <SymbolicMatrix name="posEncodings" rows={dims.seq_len} cols={dims.d_model} prefix="pe" highlight={highlight} />
                     </div>
                  </MathBlock>
 
-                 <MathBlock id="encoder.0.mha" title="编码器：多头注意力 (Multi-Head Attention)" highlight={highlight}>
+                 <MathBlock id="encoder.0.mha" title="编码器:多头注意力 (Multi-Head Attention)" highlight={highlight}>
                     <BlockMath math={`\\text{MultiHead}(Z) = \\text{Concat}(\\text{head}_0, ..., \\text{head}_{${dims.h-1}})W^O`} />
-                     <p>多头注意力的核心思想是将输入拆分到 <InlineMath math={`h=${dims.h}`} /> 个“子空间”中并行处理，最后再将结果融合。这允许模型从不同角度关注信息。下方以单个头为例展示详细计算。</p>
+                     <p>多头注意力的核心思想是将输入拆分到 <InlineMath math={`h=${dims.h}`} /> 个“子空间”中并行处理,最后再将结果融合. 这允许模型从不同角度关注信息. 下方以单个头为例展示详细计算. </p>
 
                     <h5>为单个头生成 Q, K, V</h5>
-                    <p>输入矩阵 <InlineMath math="Z" /> (来自上一层) 与该头专属的权重矩阵 <InlineMath math="W^Q, W^K, W^V" /> 相乘，得到Q, K, V矩阵。</p>
+                    <p>输入矩阵 <InlineMath math="Z" /> (来自上一层) 与该头专属的权重矩阵 <InlineMath math="W^Q, W^K, W^V" /> 相乘,得到Q, K, V矩阵. </p>
                     <BlockMath math={`Q = Z W^Q, \\quad K = Z W^K, \\quad V = Z W^V`} />
                     {renderMatrixProduct('Z', 'Wq', 'Q', 'z', 'w^q', 'q', dims.seq_len, dims.d_model, dims.d_model, d_k)}
 
                     <h5>计算注意力分数</h5>
-                    <p>通过将 Query 矩阵与转置后的 Key 矩阵相乘，我们得到一个注意力分数矩阵。</p>
+                    <p>通过将 Query 矩阵与转置后的 Key 矩阵相乘,我们得到一个注意力分数矩阵. </p>
                     <BlockMath math="\\text{Scores} = Q K^T" />
                     {renderMatrixProduct('Q', 'K', 'Scores', 'q', 'k', 's', dims.seq_len, d_k, d_k, dims.seq_len, true)}
 
                     <h5>缩放、Softmax 和加权求和</h5>
                     <BlockMath math={`\\text{head}_i = \\text{softmax}\\left(\\frac{\\text{Scores}}{\\sqrt{d_k}}\\right)V`} />
-                    <p>为防止梯度过小，将分数矩阵中的所有元素都除以一个缩放因子 <InlineMath math={`\\sqrt{d_k}`} />。然后，对缩放后的分数矩阵<b>逐行</b>应用 Softmax 函数，将其转换为概率分布（权重）。最后，将得到的权重矩阵与 Value 矩阵 <InlineMath math="V" /> 相乘，得到该注意力头的最终输出。</p>
+                    <p>为防止梯度过小,将分数矩阵中的所有元素都除以一个缩放因子 <InlineMath math={`\\sqrt{d_k}`} />. 然后,对缩放后的分数矩阵<b>逐行</b>应用 Softmax 函数,将其转换为概率分布(权重). 最后,将得到的权重矩阵与 Value 矩阵 <InlineMath math="V" /> 相乘,得到该注意力头的最终输出. </p>
                  </MathBlock>
 
                  <MathBlock id="encoder.0.add_norm_1" title="残差连接与层归一化 (Add & Norm)" highlight={highlight}>
                     <BlockMath math="X_{out} = \\text{LayerNorm}(X_{in} + \\text{Sublayer}(X_{in}))" />
-                    <p>此步骤将子层（如MHA）的输出 <InlineMath math="\\text{Sublayer}(X_{in})"/> 与其输入 <InlineMath math="X_{in}"/> 进行逐元素相加（残差连接），然后对结果矩阵的每一行进行层归一化。</p>
+                    <p>此步骤将子层(如MHA)的输出 <InlineMath math="\\text{Sublayer}(X_{in})"/> 与其输入 <InlineMath math="X_{in}"/> 进行逐元素相加(残差连接),然后对结果矩阵的每一行进行层归一化. </p>
                     <div className="formula-display">
                         <SymbolicMatrix name="add_norm_1_in_residual" prefix="x" rows={dims.seq_len} cols={dims.d_model} highlight={highlight} />
                         <BlockMath math="+" />
@@ -1188,12 +1188,12 @@ project_files = {
 
                   <MathBlock id="encoder.0.ffn" title="前馈神经网络 (Feed-Forward Network)" highlight={highlight}>
                     <BlockMath math="\\text{FFN}(X) = \\text{ReLU}(XW_1 + b_1)W_2 + b_2" />
-                    <p>前馈网络 (FFN) 是一个简单的两层全连接神经网络，独立应用于序列中的每个位置。</p>
+                    <p>前馈网络 (FFN) 是一个简单的两层全连接神经网络,独立应用于序列中的每个位置. </p>
                     <h5>1. 第一次线性变换 (维度扩展)</h5>
-                    <p>输入矩阵首先会经过一个线性层，将其维度从 <InlineMath math={`d_{model}=${dims.d_model}`} /> 扩展到 <InlineMath math={`d_{ff}=${dims.d_ff}`} />。</p>
+                    <p>输入矩阵首先会经过一个线性层,将其维度从 <InlineMath math={`d_{model}=${dims.d_model}`} /> 扩展到 <InlineMath math={`d_{ff}=${dims.d_ff}`} />. </p>
                     {renderMatrixProduct('X', 'W1', 'H', 'x', 'w_1', 'h', dims.seq_len, dims.d_model, dims.d_model, dims.d_ff)}
                     <h5>2. 第二次线性变换 (维度投影)</h5>
-                    <p>经过ReLU激活后，矩阵再通过第二个线性层，将其从 <InlineMath math={`d_{ff}`} /> 投影回 <InlineMath math={`d_{model}`} />。</p>
+                    <p>经过ReLU激活后,矩阵再通过第二个线性层,将其从 <InlineMath math={`d_{ff}`} /> 投影回 <InlineMath math={`d_{model}`} />. </p>
                     {renderMatrixProduct('H_{act}', 'W2', 'X_{ffn}', 'h\'', 'w_2', 'y', dims.seq_len, dims.d_ff, dims.d_ff, dims.d_model)}
                  </MathBlock>
             </div>
@@ -1466,14 +1466,14 @@ def create_project():
 
     print("\\n项目文件生成完毕！\\n")
     print("--- 后续步骤 ---")
-    print("1. 请确保您已经安装了 Node.js 和 npm。")
-    print("2. 在您的终端中，导航到项目目录:")
+    print("1. 请确保您已经安装了 Node.js 和 npm. ")
+    print("2. 在您的终端中,导航到项目目录:")
     print(f"   cd {project_root}")
     print("3. 安装项目依赖 (这可能需要几分钟):")
     print("   npm install")
     print("4. 启动开发服务器:")
     print("   npm start")
-    print("5. 您的浏览器应该会自动打开 http://localhost:3000 查看应用。")
+    print("5. 您的浏览器应该会自动打开 http://localhost:3000 查看应用. ")
     print("--------------------\\n")
 
 

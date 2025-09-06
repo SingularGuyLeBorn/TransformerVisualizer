@@ -354,7 +354,7 @@ function App() {
           <div className="column-content">
               <h2>模型结构与数据流</h2>
                <p style={{textAlign: 'center', margin: '-10px 0 15px 0', fontSize: '0.9em', color: '#555'}}>
-                提示: 点击任何计算结果 (红色高亮) 的单元格，即可查看其详细计算过程。
+                提示: 点击任何计算结果 (红色高亮) 的单元格,即可查看其详细计算过程. 
                </p>
               <Viz
                 data={transformerData}
