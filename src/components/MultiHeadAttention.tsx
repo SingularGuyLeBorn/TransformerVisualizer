@@ -11,9 +11,10 @@ interface MHAProps {
     data: MultiHeadAttentionData;
     highlight: HighlightState;
     onElementClick: (element: ElementIdentifier) => void;
+    onComponentClick: (componentId: string) => void;
 }
 
-export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlight, onElementClick }) => {
+export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlight, onElementClick, onComponentClick }) => {
     const headData = data.heads[0];
     const headBaseName = `${baseName}.h0`;
     const isActive = highlight.activeComponent === 'mha';
@@ -63,10 +64,8 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
 
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}>
-            <div className="component-header">Multi-Head Attention</div>
+            <div className="component-header" onClick={() => onComponentClick('mha')}>Multi-Head Attention</div>
             <div className="component-body">
-                <p>Input (from previous layer)</p>
-                <div className="arrow-down">↓</div>
 
                 <div className="viz-formula-group">
                     <div className="viz-step-title">1. Generate Q, K, V (Head 1)</div>

@@ -86,9 +86,28 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
     });
   });
 
+  const isTargetMatrix = highlight.target?.name === name && !highlight.target.isInternal;
 
   return (
     <div className="matrix-wrapper">
+       {isTargetMatrix && (
+        <>
+          <div className="matrix-col-headers" style={{'--cols': visibleColIndices.length} as React.CSSProperties}>
+              {visibleColIndices.map((c, idx) => (
+                  <div key={`ch-${idx}`} className="matrix-header-item">
+                      {c}
+                  </div>
+              ))}
+          </div>
+          <div className="matrix-row-headers">
+              {visibleRowIndices.map((r, idx) => (
+                   <div key={`rh-${idx}`} className="matrix-header-item">
+                      {r}
+                  </div>
+              ))}
+          </div>
+        </>
+      )}
       <div className="matrix-container">
         <div className="matrix-grid" style={{ gridTemplateColumns }}>
           {gridElements}

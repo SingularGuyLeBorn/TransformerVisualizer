@@ -12,10 +12,11 @@ interface InteractiveSymbolicMatrixProps {
   cols: number;
   highlight: HighlightState;
   transpose?: boolean;
+  truncate?: boolean; // [ADDED] New prop to control truncation
   onSymbolClick: (element: ElementIdentifier) => void;
 }
 
-export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps> = React.memo(({ name, rows, cols, highlight, transpose = false, onSymbolClick }) => {
+export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps> = React.memo(({ name, rows, cols, highlight, transpose = false, truncate = true, onSymbolClick }) => {
   const displayRows = transpose ? cols : rows;
   const displayCols = transpose ? rows : cols;
   const symbol = getSymbolParts(name);
@@ -32,8 +33,9 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
   const highlightedSources = highlight.sources.filter(s => s.name === name);
   const highlightedDestinations = highlight.destinations?.filter(d => d.name === name) || [];
 
-  const visibleRowIndices = getVisibleIndices(displayRows, transpose ? focusCol : focusRow);
-  const visibleColIndices = getVisibleIndices(displayCols, transpose ? focusRow : focusCol);
+  // [MODIFIED] Conditionally apply truncation logic
+  const visibleRowIndices = truncate ? getVisibleIndices(displayRows, transpose ? focusCol : focusRow) : Array.from({ length: displayRows }, (_, i) => i);
+  const visibleColIndices = truncate ? getVisibleIndices(displayCols, transpose ? focusRow : focusCol) : Array.from({ length: displayCols }, (_, i) => i);
 
 
   const gridElements = visibleRowIndices.map((r, rIdx) => {

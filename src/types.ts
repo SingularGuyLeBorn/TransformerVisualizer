@@ -16,7 +16,7 @@ export interface ElementIdentifier {
 export interface HighlightSource extends ElementIdentifier {
   highlightRow?: boolean;
   highlightCol?: boolean;
-  highlightProbCol?: boolean; // [ADDED] For highlighting probability columns from input
+  highlightProbCol?: boolean;
 }
 
 export interface HighlightState {
@@ -25,6 +25,22 @@ export interface HighlightState {
   target: ElementIdentifier | null;
   sources: HighlightSource[];
   destinations?: HighlightSource[]; // For forward tracing
+}
+
+export interface CalculationStep {
+    a: Vector;
+    b: Vector;
+    op: string; // e.g., '·', '+', '...'
+    result: number;
+    aSymbol: string;
+    bSymbol: string;
+}
+
+export interface TooltipState {
+    target: ElementIdentifier;
+    opType: 'matmul' | 'add' | 'info';
+    steps: CalculationStep[];
+    title: string;
 }
 
 export interface AttentionHeadData {

@@ -9,13 +9,14 @@ interface TokenizationEmbeddingProps {
     data: TransformerData;
     highlight: HighlightState;
     onElementClick: (element: ElementIdentifier) => void;
+    onComponentClick: (componentId: string) => void;
     isActive: boolean;
 }
 
-export const TokenizationEmbedding: React.FC<TokenizationEmbeddingProps> = ({ data, highlight, onElementClick, isActive }) => {
+export const TokenizationEmbedding: React.FC<TokenizationEmbeddingProps> = ({ data, highlight, onElementClick, onComponentClick, isActive }) => {
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}>
-            <div className="component-header">Input: Tokenization & Embedding Lookup</div>
+            <div className="component-header" onClick={() => onComponentClick('token_embed')}>Input: Tokenization & Embedding Lookup</div>
             <div className="component-body">
                 <div className="viz-step-title">1. Raw Text to Token IDs</div>
                  <div className="token-row">

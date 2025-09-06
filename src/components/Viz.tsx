@@ -1,20 +1,25 @@
 // FILE: src/components/Viz.tsx
 import React from 'react';
-import { TransformerData, HighlightState, ElementIdentifier } from '../types';
+import { TransformerData, HighlightState, ElementIdentifier, TooltipState } from '../types';
 import { EncoderLayer } from './EncoderLayer';
 import { DecoderLayer } from './DecoderLayer';
 import { Matrix } from './Matrix';
 import { InlineMath } from 'react-katex';
 import { TokenizationEmbedding } from './TokenizationEmbedding';
 import { Decoding } from './Decoding';
+import { CalculationTooltip } from './CalculationTooltip';
+import { MATRIX_NAMES } from '../config/matrixNames';
 
 interface VizProps {
     data: TransformerData;
     highlight: HighlightState;
     onElementClick: (element: ElementIdentifier) => void;
+    onComponentClick: (componentId: string) => void;
+    tooltip: TooltipState | null;
+    closeTooltip: () => void;
 }
 
-export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => {
+export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick, onComponentClick, tooltip, closeTooltip }) => {
     const isTokenEmbedActive = highlight.activeComponent === 'token_embed';
     const isInputEmbedActive = highlight.activeComponent === 'input_embed';
     const isOutputEmbedActive = highlight.activeComponent === 'output_embed';
@@ -25,12 +30,15 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
     const shouldBreak = cols > 15;
 
     return (
-        <div>
+        <div style={{ position: 'relative' }}>
+            {tooltip && <CalculationTooltip tooltip={tooltip} onClose={closeTooltip} />}
+
             {/* --- Input Stage --- */}
             <TokenizationEmbedding
                 data={data}
                 highlight={highlight}
                 onElementClick={onElementClick}
+                onComponentClick={onComponentClick}
                 isActive={isTokenEmbedActive}
             />
 
@@ -38,7 +46,7 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
 
             {/* --- Encoder Side --- */}
             <div className={`diagram-component ${isInputEmbedActive ? 'active' : ''}`}>
-                <div className="component-header">Positional Encoding Addition</div>
+                <div className="component-header" onClick={() => onComponentClick('input_embed')}>Positional Encoding Addition</div>
                 <div className="component-body">
                     {shouldBreak ? (
                          <>
@@ -59,9 +67,9 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
             <div className="arrow-down">↓</div>
 
             <div className={`diagram-component ${isInputEmbedActive ? 'active' : ''}`}>
-                <div className="component-header">Encoder Input (<InlineMath math="Z_0" />)</div>
+                 <div className="component-header" onClick={() => onComponentClick('input_embed')}>Encoder Input (<InlineMath math="Z" />)</div>
                 <div className="component-body">
-                     <Matrix name="encoderInput" data={data.encoderInput} highlight={highlight} onElementClick={onElementClick} />
+                     <Matrix name={MATRIX_NAMES.layer(0).encoder_input} data={data.encoderInput} highlight={highlight} onElementClick={onElementClick} />
                 </div>
             </div>
 
@@ -72,12 +80,13 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
                     data={layer}
                     highlight={highlight}
                     onElementClick={onElementClick}
+                    onComponentClick={onComponentClick}
                 />
             ))}
 
             {/* --- Decoder Side --- */}
             <div className={`diagram-component ${isOutputEmbedActive ? 'active' : ''}`} style={{marginTop: '30px'}}>
-                <div className="component-header">Decoder Input & Positional Encoding</div>
+                <div className="component-header" onClick={() => onComponentClick('output_embed')}>Decoder Input & Positional Encoding</div>
                 <div className="component-body">
                      <div className="viz-formula-row">
                          <Matrix name="outputEmbeddings" data={data.outputEmbeddings} highlight={highlight} onElementClick={onElementClick} />
@@ -88,9 +97,9 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
             </div>
             <div className="arrow-down">↓</div>
             <div className={`diagram-component ${isOutputEmbedActive ? 'active' : ''}`}>
-                <div className="component-header">Decoder Input (<InlineMath math="Y_0" />)</div>
+                <div className="component-header" onClick={() => onComponentClick('output_embed')}>Decoder Input (<InlineMath math="Y" />)</div>
                 <div className="component-body">
-                     <Matrix name="decoderInput" data={data.decoderInput} highlight={highlight} onElementClick={onElementClick} />
+                     <Matrix name={MATRIX_NAMES.decoderLayer(0).decoder_input} data={data.decoderInput} highlight={highlight} onElementClick={onElementClick} />
                 </div>
             </div>
 
@@ -101,13 +110,14 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
                     data={layer}
                     highlight={highlight}
                     onElementClick={onElementClick}
+                    onComponentClick={onComponentClick}
                 />
             ))}
 
             {/* --- Final Output --- */}
             <div className="arrow-down">↓</div>
              <div className={`diagram-component ${isFinalOutputActive ? 'active' : ''}`}>
-                <div className="component-header">Final Linear & Softmax</div>
+                <div className="component-header" onClick={() => onComponentClick('final_output')}>Final Linear & Softmax</div>
                 <div className="component-body">
                     <Matrix name="finalLinear" data={data.finalLinear} highlight={highlight} onElementClick={onElementClick} />
                     <div className="arrow-down">↓</div>
@@ -123,6 +133,7 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick }) => 
                 data={data}
                 highlight={highlight}
                 onElementClick={onElementClick}
+                onComponentClick={onComponentClick}
                 isActive={isDecodingActive}
             />
 

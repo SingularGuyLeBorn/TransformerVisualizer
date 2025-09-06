@@ -11,9 +11,10 @@ interface MHAProps {
     data: MultiHeadAttentionData;
     highlight: HighlightState;
     onElementClick: (element: ElementIdentifier) => void;
+    onComponentClick: (componentId: string) => void;
 }
 
-export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlight, onElementClick }) => {
+export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlight, onElementClick, onComponentClick }) => {
     const layerIndex = parseInt(baseName.split('.')[1], 10);
     const headIndex = 0; // Assume we visualize head 0
     const headData = data.heads[headIndex];
@@ -21,7 +22,7 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
 
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}>
-            <div className="component-header">Masked Multi-Head Attention</div>
+            <div className="component-header" onClick={() => onComponentClick('masked_mha')}>Masked Multi-Head Attention</div>
             <div className="component-body">
                 {/* Visualizations for Q, K, V generation */}
                 <div className="viz-formula-group">

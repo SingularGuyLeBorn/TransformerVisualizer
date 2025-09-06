@@ -15,7 +15,7 @@ interface ResidualBlockProps {
 export const ResidualBlock: React.FC<ResidualBlockProps> = ({ id, type, matrixSymbol, matrixDims, highlight, onElementClick }) => {
   const isActive = highlight.activeResidual === id;
   const isStart = type === 'start';
-  const icon = isStart ? '↓' : '→';
+  const icon = isStart ? '↓' : '←'; // [MODIFIED] Changed end icon to left arrow
 
   const handleClick = () => {
     onElementClick({

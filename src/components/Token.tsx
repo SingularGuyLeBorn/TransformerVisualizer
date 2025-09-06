@@ -1,4 +1,4 @@
-// FILE: src/components/common/Token.tsx
+// FILE: src/components/Token.tsx
 import React from 'react';
 import { ElementIdentifier, HighlightState } from '../types';
 
@@ -40,4 +40,4 @@ export const Token: React.FC<TokenProps> = ({
     </div>
   );
 };
-// END OF FILE: src/components/common/Token.tsx
+// END OF FILE: src/components/Token.tsx

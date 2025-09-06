@@ -6,25 +6,31 @@ import { InlineMath } from 'react-katex';
 import { ResidualBlock } from './ResidualBlock';
 
 interface AddNormProps {
+    residualInput: MatrixType; // [MODIFIED] Pass the full residual input matrix
+    residualInputName: string; // [MODIFIED] Name of the residual input matrix
     inputSublayer: MatrixType;
     output: MatrixType;
     sublayerMatrixName: string;
     outputMatrixName: string;
     highlight: HighlightState;
     onElementClick: (element: ElementIdentifier) => void;
+    onComponentClick: (componentId: string) => void;
     activeId: string;
-    residualId: string; // e.g., "res-l0-1"
+    residualId: string;
     residualMatrixSymbol: string;
     residualMatrixDims: string;
 }
 
 export const AddNorm: React.FC<AddNormProps> = ({
+    residualInput,
+    residualInputName,
     inputSublayer,
     output,
     sublayerMatrixName,
     outputMatrixName,
     highlight,
     onElementClick,
+    onComponentClick,
     activeId,
     residualId,
     residualMatrixSymbol,
@@ -34,9 +40,11 @@ export const AddNorm: React.FC<AddNormProps> = ({
 
     return (
          <div className={`diagram-component ${isActive ? 'active' : ''}`}>
-            <div className="component-header">Add & LayerNorm</div>
+            <div className="component-header" onClick={() => onComponentClick(activeId)}>Add & LayerNorm</div>
             <div className="component-body add-norm-component-body">
                 <div className="add-norm-inputs">
+                    {/* [MODIFIED] Show the full matrix for the residual connection */}
+                    <Matrix name={residualInputName} data={residualInput} highlight={highlight} onElementClick={onElementClick} />
                     <ResidualBlock
                         id={residualId}
                         type="end"

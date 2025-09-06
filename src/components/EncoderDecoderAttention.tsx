@@ -11,9 +11,10 @@ interface EncDecAttentionProps {
     data: MultiHeadAttentionData;
     highlight: HighlightState;
     onElementClick: (element: ElementIdentifier) => void;
+    onComponentClick: (componentId: string) => void;
 }
 
-export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseName, data, highlight, onElementClick }) => {
+export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseName, data, highlight, onElementClick, onComponentClick }) => {
     const layerIndex = parseInt(baseName.split('.')[1], 10);
     const headIndex = 0; // Assume we visualize head 0
     const headData = data.heads[headIndex];
@@ -21,7 +22,7 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
 
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}>
-            <div className="component-header">Encoder-Decoder Attention</div>
+            <div className="component-header" onClick={() => onComponentClick('enc_dec_mha')}>Encoder-Decoder Attention</div>
             <div className="component-body">
                 <div className="viz-formula-group">
                     <div className="viz-step-title">1. Generate Q, K, V (Head 1)</div>

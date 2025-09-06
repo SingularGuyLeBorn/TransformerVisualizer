@@ -15,9 +15,10 @@ interface DecoderLayerProps {
   data: DecoderLayerData;
   highlight: HighlightState;
   onElementClick: (element: ElementIdentifier) => void;
+  onComponentClick: (componentId: string) => void;
 }
 
-export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, highlight, onElementClick }) => {
+export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, highlight, onElementClick, onComponentClick }) => {
   const baseName = `decoder.${layerIndex}`;
   const LN = MATRIX_NAMES.decoderLayer(layerIndex);
 
@@ -48,14 +49,18 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
                     data={data.masked_mha}
                     highlight={highlight}
                     onElementClick={onElementClick}
+                    onComponentClick={onComponentClick}
                 />
                 <AddNorm
+                    residualInput={data.decoder_input}
+                    residualInputName={LN.decoder_input}
                     inputSublayer={data.masked_mha_output}
                     output={data.add_norm_1_output}
                     sublayerMatrixName={LN.masked_mha_output}
                     outputMatrixName={LN.add_norm_1_output}
                     highlight={highlight}
                     onElementClick={onElementClick}
+                    onComponentClick={onComponentClick}
                     activeId="add_norm_1_dec"
                     residualId={`res-l${layerIndex}-d1`}
                     residualMatrixSymbol={mathSymbolRes1}
@@ -64,21 +69,24 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
                 <div className="arrow-down">↓</div>
 
                 {/* --- Encoder-Decoder Attention Sub-layer --- */}
-                <Matrix name={LN.add_norm_1_output} data={data.add_norm_1_output} highlight={highlight} onElementClick={onElementClick} />
                 <ResidualBlock id={`res-l${layerIndex}-d2`} type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes2} matrixDims={dimsRes2} />
                 <EncoderDecoderAttention
                     baseName={`${baseName}.enc_dec_mha`}
                     data={data.enc_dec_mha}
                     highlight={highlight}
                     onElementClick={onElementClick}
+                    onComponentClick={onComponentClick}
                 />
                 <AddNorm
+                    residualInput={data.add_norm_1_output}
+                    residualInputName={LN.add_norm_1_output}
                     inputSublayer={data.enc_dec_mha_output}
                     output={data.add_norm_2_output}
                     sublayerMatrixName={LN.enc_dec_mha_output}
                     outputMatrixName={LN.add_norm_2_output}
                     highlight={highlight}
                     onElementClick={onElementClick}
+                    onComponentClick={onComponentClick}
                     activeId="add_norm_2_dec"
                     residualId={`res-l${layerIndex}-d2`}
                     residualMatrixSymbol={mathSymbolRes2}
@@ -87,7 +95,6 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
                 <div className="arrow-down">↓</div>
 
                 {/* --- FFN Sub-layer --- */}
-                <Matrix name={LN.add_norm_2_output} data={data.add_norm_2_output} highlight={highlight} onElementClick={onElementClick} />
                 <ResidualBlock id={`res-l${layerIndex}-d3`} type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes3} matrixDims={dimsRes3} />
                 <FeedForward
                     baseName={`${baseName}.ffn`}
@@ -96,14 +103,18 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
                     data={data.ffn}
                     highlight={highlight}
                     onElementClick={onElementClick}
+                    onComponentClick={onComponentClick}
                 />
                 <AddNorm
+                    residualInput={data.add_norm_2_output}
+                    residualInputName={LN.add_norm_2_output}
                     inputSublayer={data.ffn_output}
                     output={data.add_norm_3_output}
                     sublayerMatrixName={LN.ffn_output}
                     outputMatrixName={LN.add_norm_3_output}
                     highlight={highlight}
                     onElementClick={onElementClick}
+                    onComponentClick={onComponentClick}
                     activeId="add_norm_3_dec"
                     residualId={`res-l${layerIndex}-d3`}
                     residualMatrixSymbol={mathSymbolRes3}

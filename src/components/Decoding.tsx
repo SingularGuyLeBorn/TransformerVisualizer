@@ -9,13 +9,14 @@ interface DecodingProps {
     data: TransformerData;
     highlight: HighlightState;
     onElementClick: (element: ElementIdentifier) => void;
+    onComponentClick: (componentId: string) => void;
     isActive: boolean;
 }
 
-export const Decoding: React.FC<DecodingProps> = ({ data, highlight, onElementClick, isActive }) => {
+export const Decoding: React.FC<DecodingProps> = ({ data, highlight, onElementClick, onComponentClick, isActive }) => {
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}>
-            <div className="component-header">Output: Decoding Probabilities to Text</div>
+            <div className="component-header" onClick={() => onComponentClick('decoding')}>Output: Decoding Probabilities to Text</div>
             <div className="component-body">
 
                 <div className="decoding-step">

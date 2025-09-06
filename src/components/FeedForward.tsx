@@ -12,12 +12,15 @@ interface FFNProps {
     data: FFNData;
     highlight: HighlightState;
     onElementClick: (element: ElementIdentifier) => void;
+    onComponentClick: (componentId: string) => void;
 }
 
-export const FeedForward: React.FC<FFNProps> = ({ baseName, input, inputName, data, highlight, onElementClick }) => {
-    const isActive = highlight.activeComponent === 'ffn';
+export const FeedForward: React.FC<FFNProps> = ({ baseName, input, inputName, data, highlight, onElementClick, onComponentClick }) => {
+    const isEncoder = baseName.includes('encoder');
+    const componentId = isEncoder ? 'ffn' : 'ffn_dec';
+    const isActive = highlight.activeComponent === componentId;
     const layerIndex = parseInt(baseName.split('.')[1], 10);
-    const LN = MATRIX_NAMES.layer(layerIndex);
+    const LN = isEncoder ? MATRIX_NAMES.layer(layerIndex) : MATRIX_NAMES.decoderLayer(layerIndex);
 
     // --- Layout Breaking Logic ---
     const inputCols1 = input[0]?.length || 0;
@@ -30,11 +33,8 @@ export const FeedForward: React.FC<FFNProps> = ({ baseName, input, inputName, da
 
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}>
-            <div className="component-header">Feed-Forward Network</div>
+            <div className="component-header" onClick={() => onComponentClick(componentId)}>Feed-Forward Network</div>
             <div className="component-body">
-                <Matrix name={inputName} data={input} highlight={highlight} onElementClick={onElementClick} />
-                <div className="arrow-down">↓</div>
-
                 <div className="viz-formula-group">
                     <div className="viz-step-title">1. First Linear Layer & ReLU</div>
                     {breakStep1 ? (

@@ -1,4 +1,4 @@
-/* FILE: src/App.css */
+/*// FILE: src/App.css*/
 :root {
   --highlight-color: #c0392b;
   --highlight-bg: rgba(192, 57, 43, 0.08);
@@ -12,13 +12,16 @@
   --residual-border: #dce775;
 
   /* Highlighting */
-  --highlight-target-bg: #e63946;
-  --highlight-target-color: #ffffff;
-  --highlight-source-bg: #606266; /* [MODIFIED] Changed from dark blue to gray */
-  --highlight-source-color: #f1faee;
-  /* 调整为半透明橙红色调 */
-  --highlight-formula-bg: rgba(252, 163, 17, 0.15); /* 橙红色（#fca311）的15%透明度 */
-  --highlight-formula-border: #fca311; /* 橙红色 */
+  /* [MODIFIED] Changed to softer, semi-transparent colors for better aesthetics */
+  --highlight-target-bg: rgba(230, 57, 70, 0.15);
+  --highlight-target-color: #d63031;
+  --highlight-target-border: #e63946;
+  --highlight-source-bg: rgba(96, 98, 102, 0.1);
+  --highlight-source-color: #2f3542;
+  --highlight-source-border: #606266;
+
+  --highlight-formula-bg: rgba(252, 163, 17, 0.15);
+  --highlight-formula-border: #fca311;
   --highlight-vector-bg: rgba(69, 123, 157, 0.2);
 }
 
@@ -63,6 +66,7 @@ h1 {
   overflow: hidden;
   padding: 20px;
   min-height: 0; /* Important for flex children scrolling */
+  position: relative; /* [ADDED] Needed for positioning the tooltip */
 }
 
 .column {
@@ -105,7 +109,14 @@ h1 {
   background-color: #fdfdfd;
   transition: all 0.3s ease;
 }
-/* 新增：左侧组件激活时的样式 */
+/* [MODIFIED] Style for component click-to-scroll */
+.diagram-component .component-header {
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.diagram-component .component-header:hover {
+    background-color: #f0f2f5;
+}
 .diagram-component.active {
     border-color: var(--highlight-formula-border) !important;
     box-shadow: 0 0 30px var(--highlight-formula-bg) !important;
@@ -199,15 +210,16 @@ h1 {
   z-index: 5;
 }
 
+/* [MODIFIED] Updated highlighting styles */
 .matrix-element.source {
   background-color: var(--highlight-source-bg);
   color: var(--highlight-source-color);
-  border: 1px solid var(--highlight-source-bg);
+  border: 1.5px solid var(--highlight-source-border);
 }
 .matrix-element.target {
   background-color: var(--highlight-target-bg);
   color: var(--highlight-target-color);
-  border: 1px solid var(--highlight-target-bg);
+  border: 1.5px solid var(--highlight-target-border);
 }
 
 .matrix-element.destination {
@@ -247,7 +259,47 @@ h1 {
     font-size: 2em;
     font-weight: bold;
     color: #909399;
+    align-self: center; /* [ADDED] Better alignment in flex */
 }
+
+/* [NEW] Styles for Matrix Index Headers */
+.matrix-col-headers {
+    position: absolute;
+    top: -18px; /* Position above the matrix container */
+    display: flex;
+    gap: 3px; /* Match grid gap */
+    padding: 0 5px; /* Match container padding */
+    box-sizing: border-box;
+}
+.matrix-row-headers {
+    position: absolute;
+    left: -28px; /* Position left of the matrix container */
+    display: flex;
+    flex-direction: column;
+    gap: 3px; /* Match grid gap */
+    padding: 5px 0; /* Match container padding */
+    box-sizing: border-box;
+}
+.matrix-header-item {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f0f2f5;
+    color: #909399;
+    font-family: monospace;
+    font-size: 0.7em;
+    font-weight: bold;
+    border-radius: 2px;
+}
+.matrix-col-headers .matrix-header-item {
+    width: 45px; /* Match element width */
+    height: 15px;
+}
+.matrix-row-headers .matrix-header-item {
+    width: 25px;
+    height: 25px; /* Match element height */
+}
+
 
 /* --- Right Column: Explanation --- */
 .math-block {
@@ -360,12 +412,12 @@ h1 {
     color: #aaa;
 }
 .symbolic-element.source {
-  background-color: rgba(96, 98, 102, 0.1);
-  border-color: var(--highlight-source-bg);
+  background-color: var(--highlight-source-bg);
+  border-color: var(--highlight-source-border);
 }
 .symbolic-element.target {
-  background-color: rgba(230, 57, 70, 0.1);
-  border-color: var(--highlight-target-bg);
+  background-color: var(--highlight-target-bg);
+  border-color: var(--highlight-target-border);
 }
 .symbolic-element.destination {
     background-color: var(--highlight-formula-bg);
@@ -554,12 +606,12 @@ h1 {
 .elementwise-op-element.source, .elementwise-op-element.sum.source {
     background-color: var(--highlight-source-bg) !important;
     color: var(--highlight-source-color) !important;
-    border-color: var(--highlight-source-bg) !important;
+    border-color: var(--highlight-source-border) !important;
 }
 .elementwise-op-element.target, .elementwise-op-element.sum.target {
     background-color: var(--highlight-target-bg) !important;
     color: var(--highlight-target-color) !important;
-    border-color: var(--highlight-target-bg) !important;
+    border-color: var(--highlight-target-border) !important;
 }
 
 /* [NEW] Styles for Residual Block */
@@ -637,12 +689,12 @@ h1 {
     background-color: rgba(0,0,0,0.02);
 }
 .token-container.target {
-    border-color: var(--highlight-target-bg);
-    background-color: rgba(230, 57, 70, 0.05);
+    border-color: var(--highlight-target-border);
+    background-color: var(--highlight-target-bg);
 }
 .token-container.source {
-    border-color: var(--highlight-source-bg);
-    background-color: rgba(96, 98, 102, 0.05);
+    border-color: var(--highlight-source-border);
+    background-color: var(--highlight-source-bg);
 }
 .token-text {
     padding: 4px 8px;
@@ -691,4 +743,87 @@ h1 {
 .decoding-token-wrapper {
     flex-shrink: 0;
 }
-/* END OF FILE: src/App.css */
+
+/* [NEW] Calculation Tooltip Styles */
+.calculation-tooltip {
+    position: absolute;
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+    padding: 15px;
+    z-index: 1000;
+    width: auto;
+    max-width: 90%;
+    font-size: 0.95em;
+    transition: opacity 0.2s ease-in-out;
+}
+.tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+}
+.tooltip-title {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+.tooltip-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: #999;
+    padding: 0 5px;
+}
+.tooltip-close-btn:hover {
+    color: #333;
+}
+.tooltip-body {
+    font-family: monospace;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.tooltip-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.tooltip-vector {
+    display: flex;
+    gap: 4px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 2px 4px;
+    background-color: #f9f9f9;
+}
+.tooltip-element {
+    padding: 2px 4px;
+    background-color: #fff;
+    border-radius: 2px;
+}
+.tooltip-element.source {
+    background-color: var(--highlight-source-bg);
+}
+.tooltip-op {
+    font-weight: bold;
+}
+.tooltip-result {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: var(--highlight-target-bg);
+    border: 1px solid var(--highlight-target-border);
+    color: var(--highlight-target-color);
+    font-weight: bold;
+}
+.tooltip-explanation {
+    margin-top: 10px;
+    font-style: italic;
+    color: #666;
+    font-size: 0.9em;
+    font-family: sans-serif;
+}
+/*// END OF FILE: src/App.css*/

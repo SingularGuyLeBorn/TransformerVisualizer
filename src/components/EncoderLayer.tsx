@@ -14,9 +14,10 @@ interface EncoderLayerProps {
   data: EncoderLayerData;
   highlight: HighlightState;
   onElementClick: (element: ElementIdentifier) => void;
+  onComponentClick: (componentId: string) => void;
 }
 
-export const EncoderLayer: React.FC<EncoderLayerProps> = ({ layerIndex, data, highlight, onElementClick }) => {
+export const EncoderLayer: React.FC<EncoderLayerProps> = ({ layerIndex, data, highlight, onElementClick, onComponentClick }) => {
   const baseName = `encoder.${layerIndex}`;
   const LN = MATRIX_NAMES.layer(layerIndex);
 
@@ -36,21 +37,24 @@ export const EncoderLayer: React.FC<EncoderLayerProps> = ({ layerIndex, data, hi
             <div className="component-body">
 
                 {/* --- MHA Sub-layer with Residual Connection --- */}
-                <Matrix name={LN.encoder_input} data={data.encoder_input} highlight={highlight} onElementClick={onElementClick} />
                 <ResidualBlock id={`res-l${layerIndex}-1`} type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes1} matrixDims={dimsRes1} />
                 <MultiHeadAttention
                     baseName={`${baseName}.mha`}
                     data={data.mha}
                     highlight={highlight}
                     onElementClick={onElementClick}
+                    onComponentClick={onComponentClick}
                 />
                 <AddNorm
+                    residualInput={data.encoder_input}
+                    residualInputName={LN.encoder_input}
                     inputSublayer={data.mha_output}
                     output={data.add_norm_1_output}
                     sublayerMatrixName={LN.mha_output}
                     outputMatrixName={LN.add_norm_1_output}
                     highlight={highlight}
                     onElementClick={onElementClick}
+                    onComponentClick={onComponentClick}
                     activeId="add_norm_1"
                     residualId={`res-l${layerIndex}-1`}
                     residualMatrixSymbol={mathSymbolRes1}
@@ -59,7 +63,6 @@ export const EncoderLayer: React.FC<EncoderLayerProps> = ({ layerIndex, data, hi
 
                 {/* --- FFN Sub-layer with Residual Connection --- */}
                 <div className="arrow-down">↓</div>
-                <Matrix name={LN.add_norm_1_output} data={data.add_norm_1_output} highlight={highlight} onElementClick={onElementClick} />
                 <ResidualBlock id={`res-l${layerIndex}-2`} type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes2} matrixDims={dimsRes2} />
                 <FeedForward
                     baseName={`${baseName}.ffn`}
@@ -68,14 +71,18 @@ export const EncoderLayer: React.FC<EncoderLayerProps> = ({ layerIndex, data, hi
                     data={data.ffn}
                     highlight={highlight}
                     onElementClick={onElementClick}
+                    onComponentClick={onComponentClick}
                 />
                 <AddNorm
+                    residualInput={data.add_norm_1_output}
+                    residualInputName={LN.add_norm_1_output}
                     inputSublayer={data.ffn_output}
                     output={data.add_norm_2_output}
                     sublayerMatrixName={LN.ffn_output}
                     outputMatrixName={LN.add_norm_2_output}
                     highlight={highlight}
                     onElementClick={onElementClick}
+                    onComponentClick={onComponentClick}
                     activeId="add_norm_2"
                     residualId={`res-l${layerIndex}-2`}
                     residualMatrixSymbol={mathSymbolRes2}
