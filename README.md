@@ -6,27 +6,33 @@
 
 ## ✨ 核心特性
 
-*   **端到端数据流可视化**: 从最初的文本输入到最终的概率输出，跟踪数据在编码器-解码器架构中每一步的流动和变换。
-*   **交互式计算分解**: 点击任何一个计算结果单元格（无论是矩阵乘法、层归一化还是Softmax），即可查看其详细、分步的数学计算过程。告别黑盒，理解每一个数字的由来。
-*   **数据与数学原理联动**: 左侧是具体的数值和矩阵变换，右侧是对应的数学公式和原理解释。点击任何一方的组件，另一方都会同步高亮，建立直观的联系。
-*   **动态参数调整**: 通过控制面板实时调整模型的关键维度（如 `d_model`, `h`, `n_layers`），并立即在界面上看到结构和数据的变化。
-*   **后端驱动的分词**: 集成 Python 后端，利用强大的 `tokenizers` 库实现如 BPE 等真实的亚词分词算法，让数据处理更贴近实际应用。
-*   **模块化与可扩展**: 基于 React 和 FastAPI 构建，代码结构清晰，便于未来扩展以支持更多模型架构或可视化功能。
+- **端到端数据流可视化**: 从最初的文本输入到最终的概率输出，跟踪数据在编码器-解码器架构中每一步的流动和变换。
+- **交互式计算分解**: 点击任何一个计算结果单元格（无论是矩阵乘法、层归一化还是Softmax），即可查看其详细、分步的数学计算过程。告别黑盒，理解每一个数字的由来。
+- **数据与数学原理联动**: 左侧是具体的数值和矩阵变换，右侧是对应的数学公式和原理解释。点击任何一方的组件，另一方都会同步高亮，建立直观的联系。
+- **动态参数调整**: 通过控制面板实时调整模型的关键维度（如 `d_model`, `h`, `n_layers`），并立即在界面上看到结构和数据的变化。
+- **后端驱动的分词**: 集成 Python 后端，利用强大的 `tokenizers` 库实现如 BPE 等真实的亚词分词算法，让数据处理更贴近实际应用。
+- **模块化与可扩展**: 基于 React 和 FastAPI 构建，代码结构清晰，便于未来扩展以支持更多模型架构或可视化功能。
 
 ## 🛠️ 技术栈
 
-*   **前端**:
-    *   [React](https://react.dev/) (使用 Create React App 搭建)
-    *   [TypeScript](https://www.typescriptlang.org/)
-    *   [KaTeX](https://katex.org/) 用于优美的数学公式渲染
-*   **后端**:
-    *   [Python 3.9+](https://www.python.org/)
-    *   [FastAPI](https://fastapi.tiangolo.com/) 用于构建高性能的 API
-    *   [Uvicorn](https://www.uvicorn.org/) ASGI 服务器
-    *   [tokenizers](https://github.com/huggingface/tokenizers) (Hugging Face) 用于专业级的分词处理
-*   **开发工具**:
-    *   [pnpm](https://pnpm.io/) 用于前端包管理
-    *   [concurrently](https://github.com/open-cli-tools/concurrently) 用于同时运行前后端服务
+- **前端**:
+
+  - [React](https://react.dev/) (使用 Create React App 搭建)
+  - [TypeScript](https://www.typescriptlang.org/)
+  - [KaTeX](https://katex.org/) 用于优美的数学公式渲染
+
+- **后端**:
+
+  - [Python 3.9+](https://www.python.org/)
+  - [FastAPI](https://fastapi.tiangolo.com/) 用于构建高性能的 API
+  - [Uvicorn](https://www.uvicorn.org/) ASGI 服务器
+  - [tokenizers](https://github.com/huggingface/tokenizers) (Hugging Face) 用于专业级的分词处理
+
+- **开发工具**:
+
+  - [pnpm](https://pnpm.io/) 用于前端包管理
+  - [concurrently](https://github.com/open-cli-tools/concurrently) 用于同时运行前后端服务
+
 
 ## 🚀 本地开发设置
 
@@ -82,14 +88,16 @@ pnpm start
 ```
 
 这将会：
-*   在 `http://localhost:3000` 启动 React 前端应用。
-*   在 `http://127.0.0.1:8000` 启动 FastAPI 后端服务。
+
+- 在 `http://localhost:3000` 启动 React 前端应用。
+- 在 `http://127.0.0.1:8000` 启动 FastAPI 后端服务。
 
 现在，您可以在浏览器中打开 `http://localhost:3000` 查看应用。前端的 API 请求会自动代理到后端服务，无需额外配置。
 
 ### 5. 验证后端 (可选)
 
 要验证后端服务是否独立正常工作，您可以访问
+  
 `http://127.0.0.1:8000/docs`
 
 您应该能看到 FastAPI 自动生成的交互式 API 文档页面。
@@ -97,3 +105,11 @@ pnpm start
 ## 📜 开源许可
 
 本项目采用 [MIT 许可证](LICENSE)。
+
+
+
+### 参与人员
+
+@我自己
+
+@Gemini2.5Pro From AI Sstudio
