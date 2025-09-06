@@ -156,9 +156,9 @@ const createBackwardHighlight = (element: ElementIdentifier, transformerData: Tr
         else if(baseName.includes('.ffn.')) activeComponent = 'ffn_dec';
     } else if (name === 'inputToken' || name === 'embeddingMatrix' || name === 'inputEmbeddings') {
         activeComponent = 'token_embed';
-    } else if ([MATRIX_NAMES.posEncodings, MATRIX_NAMES.encoderInput].includes(baseName)) {
+    } else if ([MATRIX_NAMES.posEncodings, MATRIX_NAMES.encoderInput].includes(baseName) || baseName === LNe.encoder_input) {
         activeComponent = 'input_embed';
-    } else if ([MATRIX_NAMES.outputEmbeddings, MATRIX_NAMES.decoderPosEncodings, MATRIX_NAMES.decoderInput].includes(baseName)) {
+    } else if ([MATRIX_NAMES.outputEmbeddings, MATRIX_NAMES.decoderPosEncodings, MATRIX_NAMES.decoderInput].includes(baseName) || baseName === LNd.decoder_input) {
         activeComponent = 'output_embed';
     } else if ([MATRIX_NAMES.finalLinear, MATRIX_NAMES.logits].includes(baseName)) {
         activeComponent = 'final_output';
@@ -245,6 +245,7 @@ function App() {
   const [dims, setDims] = useState({ d_model: 8, h: 2, seq_len: 2, n_layers: 1, d_ff: 32 });
   const [highlight, setHighlight] = useState<HighlightState>({ target: null, sources: [], destinations: [], activeComponent: null, activeResidual: null });
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const [isControlsVisible, setIsControlsVisible] = useState(false);
 
   const transformerData: TransformerData | null = useTransformer(dims);
 
@@ -286,9 +287,14 @@ function App() {
 
   return (
     <div className="app-container">
-      <h1>Transformer 深度探索器 (V5)</h1>
-      <Controls dims={dims} setDims={setDims} />
+      <h1>Transformer 深度探索器 (V6)</h1>
       <div className="main-layout">
+        <div className={`controls-panel ${!isControlsVisible ? 'collapsed' : ''}`}>
+             <button className="controls-toggle-btn" onClick={() => setIsControlsVisible(!isControlsVisible)}>
+                {isControlsVisible ? '×' : '⚙️'}
+            </button>
+            <Controls dims={dims} setDims={setDims} />
+        </div>
         <div className="column left-column">
           <div className="column-content">
               <h2>模型结构与数据流</h2>

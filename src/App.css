@@ -465,12 +465,64 @@ h1 {
     background-color: #f0f2f5;
 }
 
+/* [NEW] Floating Controls Panel */
+.controls-panel {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    background: var(--component-bg);
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    transition: all 0.3s ease-in-out;
+}
+.controls-panel.collapsed {
+    width: 50px;
+    height: 50px;
+    padding: 0;
+}
+.controls-toggle-btn {
+    width: 100%;
+    height: 100%;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 24px;
+    color: var(--text-color);
+    transition: transform 0.3s ease;
+}
+.controls-panel.collapsed .controls-toggle-btn {
+    transform: rotate(45deg);
+}
+.controls-panel:not(.collapsed) .controls-toggle-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 30px;
+    height: 30px;
+    font-size: 20px;
+}
+.controls-panel .controls-container {
+    border-bottom: none;
+    padding: 20px;
+    padding-top: 40px;
+    transition: opacity 0.3s ease;
+}
+.controls-panel.collapsed .controls-container {
+    opacity: 0;
+    pointer-events: none;
+}
+
+
 /* [MODIFIED] Grouping and Scrolling Logic */
 .viz-formula-group {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 100%;
+    width: 100%; /* Use 100% to enable internal scrolling */
+    max-width: 100%; /* Prevent overflow from parent */
     overflow-x: auto;
     padding: 15px 10px;
     border: 1px solid #eef;
@@ -487,8 +539,9 @@ h1 {
     align-items: center;
     gap: 15px;
     justify-content: center;
-    width: auto; /* Let the row size to its content */
+    width: max-content; /* Let the row size to its content */
     padding: 0 5px; /* Remove vertical padding */
+    flex-wrap: wrap; /* Allow wrapping for very wide rows */
 }
 .viz-formula-row > * {
     flex-shrink: 0;
@@ -825,5 +878,53 @@ h1 {
     color: #666;
     font-size: 0.9em;
     font-family: sans-serif;
+}
+
+/* [NEW] Styles for EmbeddingLookup Component */
+.embedding-lookup-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    position: relative;
+    padding: 10px;
+    box-sizing: border-box;
+}
+.embedding-lookup-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* Allow clicks to pass through */
+    z-index: 1;
+}
+.embedding-lookup-svg path {
+    fill: none;
+    stroke-width: 2px;
+    stroke: var(--arrow-color);
+    stroke-dasharray: 5 5;
+    transition: all 0.3s ease;
+}
+.embedding-lookup-svg path.highlighted {
+    stroke: var(--highlight-target-border);
+    stroke-width: 3px;
+    stroke-dasharray: none;
+}
+
+.embedding-lookup-column {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+    flex-shrink: 0;
+}
+.embedding-lookup-vocab {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 0; /* Allow shrinking */
 }
 /*// END OF FILE: src/App.css*/

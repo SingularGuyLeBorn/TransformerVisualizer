@@ -119,8 +119,12 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick, onCom
              <div className={`diagram-component ${isFinalOutputActive ? 'active' : ''}`}>
                 <div className="component-header" onClick={() => onComponentClick('final_output')}>Final Linear & Softmax</div>
                 <div className="component-body">
-                    <Matrix name="finalLinear" data={data.finalLinear} highlight={highlight} onElementClick={onElementClick} />
-                    <div className="arrow-down">↓</div>
+                    <div className="viz-formula-row">
+                         <Matrix name={MATRIX_NAMES.decoderLayer(data.decoderLayers.length - 1).add_norm_3_output} data={data.finalDecoderOutput} highlight={highlight} onElementClick={onElementClick} />
+                         <div className="op-symbol">×</div>
+                         <Matrix name="finalLinear" data={data.finalLinear} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                    <div className="arrow-down">= (Logits)</div>
                     <Matrix name="logits" data={data.logits} highlight={highlight} onElementClick={onElementClick} />
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Softmax}}" /></div>
                     <Matrix name="outputProbabilities" data={data.outputProbabilities} highlight={highlight} onElementClick={onElementClick} />

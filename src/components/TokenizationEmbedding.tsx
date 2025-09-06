@@ -1,9 +1,7 @@
 // FILE: src/components/TokenizationEmbedding.tsx
 import React from 'react';
 import { TransformerData, HighlightState, ElementIdentifier } from '../types';
-import { Matrix } from './Matrix';
-import { InlineMath } from 'react-katex';
-import { Token } from './Token';
+import { EmbeddingLookup } from './EmbeddingLookup';
 
 interface TokenizationEmbeddingProps {
     data: TransformerData;
@@ -14,35 +12,31 @@ interface TokenizationEmbeddingProps {
 }
 
 export const TokenizationEmbedding: React.FC<TokenizationEmbeddingProps> = ({ data, highlight, onElementClick, onComponentClick, isActive }) => {
+    // Create a list of ElementIdentifier for the input tokens
+    const inputTokensForLookup: ElementIdentifier[] = data.inputText.map((token, i) => ({
+        name: "inputToken",
+        row: i,
+        col: -1, // Not a cell in a matrix
+        tokenId: data.tokenizedInput[i],
+        tokenStr: token
+    }));
+
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}>
             <div className="component-header" onClick={() => onComponentClick('token_embed')}>Input: Tokenization & Embedding Lookup</div>
             <div className="component-body">
-                <div className="viz-step-title">1. Raw Text to Token IDs</div>
-                 <div className="token-row">
-                    {data.inputText.map((token, i) => (
-                        <Token
-                            key={i}
-                            tokenStr={token}
-                            tokenId={data.tokenizedInput[i]}
-                            position={i}
-                            name="inputToken"
-                            highlight={highlight}
-                            onElementClick={onElementClick}
-                        />
-                    ))}
-                </div>
-
-                <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Embedding Lookup}}" /></div>
-                <div className="viz-step-title">2. Use IDs to lookup vectors in Embedding Matrix</div>
-
-                 <div className="viz-formula-row">
-                     <span>(IDs)</span>
-                     <div className="op-symbol" style={{margin: '0 10px'}}> <InlineMath math="\in" /></div>
-                    <Matrix name="embeddingMatrix" data={data.embeddingMatrix} highlight={highlight} onElementClick={() => {}} />
-                </div>
-                 <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Lookup}}" /></div>
-                <Matrix name="inputEmbeddings" data={data.inputEmbeddings} highlight={highlight} onElementClick={onElementClick} />
+                <div className="viz-step-title">1. Text is tokenized, then each Token ID looks up its vector in the Embedding Matrix</div>
+                <p style={{textAlign: 'center', margin: '0 0 10px 0', fontSize: '0.9em', color: '#555'}}>Click a Token to see its corresponding row in the Embedding Matrix.</p>
+                <EmbeddingLookup
+                    mode="token-to-vector"
+                    tokens={inputTokensForLookup}
+                    embeddingMatrix={data.embeddingMatrix}
+                    matrixName="embeddingMatrix"
+                    outputVectors={data.inputEmbeddings}
+                    outputMatrixName="inputEmbeddings"
+                    highlight={highlight}
+                    onElementClick={onElementClick}
+                />
             </div>
         </div>
     );

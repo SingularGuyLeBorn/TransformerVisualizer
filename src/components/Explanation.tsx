@@ -175,15 +175,26 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
              <MathBlock id="enc_dec_mha" title="解码器子层2：编码器-解码器注意力" highlight={highlight}>
                 <h5>做什么？</h5>
                 <p>这是连接编码器和解码器的桥梁，也是 Transformer 架构的精髓所在。在这一层，解码器会“审视”编码器的全部输出，并判断输入序列中的哪些部分对于生成当前目标词最重要。</p>
+                 <h5>输入矩阵</h5>
+                 <div className="formula-display vertical">
+                    <div className="viz-formula-row">
+                        <InlineMath math="\text{Query Input (from Decoder)} = " />
+                        <InteractiveSymbolicMatrix name={LNd.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} truncate={false}/>
+                    </div>
+                     <div className="viz-formula-row">
+                        <InlineMath math="\text{Key/Value Input (from Encoder)} = " />
+                        <InteractiveSymbolicMatrix name={MATRIX_NAMES.finalEncoderOutput} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} truncate={false}/>
+                    </div>
+                 </div>
                  <h5>计算流程</h5>
                 <ol>
                     <li><b>Query (<InlineMath math="Q"/>)</b>: 来自解码器前一层的输出 (<InlineMath math="Y'"/>)。它代表了“我当前需要什么信息来生成下一个词？”</li>
                     <li><b>Key (<InlineMath math="K"/>) 和 Value (<InlineMath math="V"/>)</b>: <b>均来自编码器的最终输出 (<InlineMath math="Z_{final}"/>)</b>。它们代表了整个输入序列的上下文信息。</li>
                 </ol>
                  <div className="formula-display vertical">
-                    <div className="viz-formula-row"><InteractiveSymbolicMatrix name={LNd.add_norm_1_output} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_encdec.Wq} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_encdec.Q} rows={dims.seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <div className="viz-formula-row"><InteractiveSymbolicMatrix name={MATRIX_NAMES.finalEncoderOutput} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_encdec.Wk} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_encdec.K} rows={dims.seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <div className="viz-formula-row"><InteractiveSymbolicMatrix name={MATRIX_NAMES.finalEncoderOutput} rows={dims.seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_encdec.Wv} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_encdec.V} rows={dims.seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <div className="viz-formula-row"><InlineMath math="Y'" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_encdec.Wq} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_encdec.Q} rows={dims.seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <div className="viz-formula-row"><InlineMath math="Z_{final}" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_encdec.Wk} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_encdec.K} rows={dims.seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <div className="viz-formula-row"><InlineMath math="Z_{final}" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_encdec.Wv} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_encdec.V} rows={dims.seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
                 <p>通过计算 <InlineMath math="Q_{dec} \cdot K_{enc}^T"/>，解码器能够评估其当前的生成需求与输入序列中每个词的相关性，然后利用这个相关性（注意力权重）从 <InlineMath math="V_{enc}"/> 中加权提取最需要的信息来辅助生成。</p>
             </MathBlock>
@@ -248,10 +259,10 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                     <li><b>ID到文本映射:</b> 将得到的词元ID序列，通过反向查询词汇表，映射回原始的文本词元。</li>
                 </ol>
                 <h5>深入理解：从向量到文本的“翻译”</h5>
-                <p>这里是“魔法”发生逆转的地方。我们手上有一个 <b>概率矩阵</b>概率矩阵 <code>P</code>，它告诉我们在每个输出位置上，词汇表里每个单词的可能性。</p>
-                <p>以第一个输出位置为例，我们关注矩阵 <code>P</code> 的<b>第一行</b>第一行。这一行是一个长长的向量，比如 <b>[0.01, 0.03, ..., 0.85, ..., 0.02]</b>。这个向量的长度等于整个词汇表的大小。向量中第 j 个位置的数值，就代表词汇表中第 j 个单词是正确答案的概率。</p>
-                <p><b>Argmax</b> 函数的作用非常简单：它会扫描这一整行，找到那个最大的数字（比如 0.85），然后返回它的<b>位置索引</b>位置索引。假设 0.85 在第 8 个位置，Argmax 就会输出 8。</p>
-                <p>这个索引 8 就是模型预测出的 <b>Token ID！</b> </p>
+                <p>这里是“魔法”发生逆转的地方。我们手上有一个 <b>概率矩阵</b> <code>P</code>，它告诉我们在每个输出位置上，词汇表里每个单词的可能性。</p>
+                <p>以第一个输出位置为例，我们关注矩阵 <code>P</code> 的<b>第一行</b> (下标为0的那一行)。这一行是一个长长的向量，比如 <b>[0.01, 0.03, ..., 0.85, ..., 0.02]</b>。这个向量的长度等于整个词汇表的大小。向量中第 <code>j</code> 个位置的数值，就代表词汇表中 ID 为 <code>j</code> 的单词是正确答案的概率。</p>
+                <p><b>Argmax</b> 函数的作用非常简单：它会扫描这一整行，找到那个最大的数字（比如 0.85），然后返回它的<b>位置索引</b>。假设 0.85 在第 8 个位置，Argmax 就会输出 8。</p>
+                <p>这个索引 8 就是模型预测出的 <b>Token ID！</b></p>
                 <p>最后一步，我们拿着这个ID 8，去反查我们的“超级词典”（词汇表），发现ID为 8 的单词是“是”。于是，模型就成功地将一串概率数字“翻译”回了人类能懂的单词“是”。对每一行都重复这个过程，就能生成整个句子。</p>
             </MathBlock>
         </div>

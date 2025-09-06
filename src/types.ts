@@ -11,6 +11,7 @@ export interface ElementIdentifier {
   matrixDims?: string; // e.g., "3x8"
   tokenId?: number; // e.g., 10 for "I"
   tokenStr?: string; // e.g., "I"
+  probValue?: number; // For decoding, the probability of the chosen token
 }
 
 export interface HighlightSource extends ElementIdentifier {
