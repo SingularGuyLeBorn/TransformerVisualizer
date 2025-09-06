@@ -37,3 +37,5 @@ export const HomePage: React.FC = () => {
         </div>
     );
 };
+
+// END OF FILE: src/pages/HomePage/HomePage.tsx

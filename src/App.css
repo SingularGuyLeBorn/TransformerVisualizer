@@ -329,7 +329,8 @@ h1 {
 }
 .math-block p, .math-block li, .math-block h5 {
     line-height: 1.7;
-    margin: 1em 0;
+    margin-top: 0.5em; /* [MODIFIED] Reduced top margin for tighter layout */
+    margin-bottom: 0.5em;
 }
 .math-block h5 {
     font-size: 1.1em;
@@ -370,7 +371,7 @@ h1 {
 }
 
 .katex-display {
-    margin: 0 !important;
+    margin: 0.5em 0 !important; /* [MODIFIED] Added vertical margin for better spacing */
 }
 
 .matrix-scroll-wrapper {
@@ -591,107 +592,26 @@ h1 {
     margin-bottom: 10px;
 }
 
-/* Styling for Elementwise Operation Visualization */
-.elementwise-op-container {
-    width: 100%;
-    padding: 10px;
-    margin: 5px 0;
-    border: 1px dashed #ccc;
-    border-radius: 8px;
-    background-color: #f8f9fa;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    box-sizing: border-box;
-}
-.elementwise-op-label {
-    font-weight: bold;
-    font-size: 1.1em;
-}
-.elementwise-op-viz {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    font-family: monospace;
-    font-size: 1.2em;
-    padding-bottom: 5px;
-}
-.elementwise-op-viz > * {
-    flex-shrink: 0;
-}
-/* [ADDED] Wrapper for function call to keep items on one line */
-.elementwise-op-function-call {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
+/* [REMOVED] Elementwise Operation Visualization styles are now in topic-specific CSS */
+/*
+.elementwise-op-container { ... }
+.elementwise-op-label { ... }
+.elementwise-op-viz { ... }
+.elementwise-op-function-call { ... }
+.elementwise-op-row { ... }
+.elementwise-op-element { ... }
+.elementwise-op-element.symbolic-ellipsis { ... }
+*/
 
-.elementwise-op-row {
-    display: flex;
-    gap: 5px;
-    border: 1px solid #ddd;
-    padding: 4px;
-    border-radius: 4px;
-    background: #fff;
-    align-items: center;
-}
-.elementwise-op-element {
-  /* Inherits from .matrix-element */
-  width: 45px;
-  height: 25px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 2px;
-  font-family: monospace;
-  font-size: 0.8em;
-}
-/* [ADDED] Style for ellipsis in elementwise op */
-.elementwise-op-element.symbolic-ellipsis {
-    border: none;
-    background-color: transparent;
-    color: #aaa;
-    width: auto;
-}
-
-/* [NEW] Styles for ElementwiseCalculation */
-.elementwise-calc-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    font-size: 0.9em;
-}
-.calc-step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-.calc-label {
-    color: #555;
-    font-size: 0.9em;
-}
-.elementwise-op-element.sum {
-    width: auto;
-    padding: 0 10px;
-    font-weight: bold;
-}
-.elementwise-op-element.source, .elementwise-op-element.sum.source {
-    background-color: var(--highlight-source-bg) !important;
-    color: var(--highlight-source-color) !important;
-    border-color: var(--highlight-source-border) !important;
-}
-.elementwise-op-element.target, .elementwise-op-element.sum.target {
-    background-color: var(--highlight-target-bg) !important;
-    color: var(--highlight-target-color) !important;
-    border-color: var(--highlight-target-border) !important;
-}
+/* [REMOVED] ElementwiseCalculation styles are now in topic-specific CSS */
+/*
+.elementwise-calc-container { ... }
+.calc-step { ... }
+.calc-label { ... }
+.elementwise-op-element.sum { ... }
+.elementwise-op-element.source, .elementwise-op-element.sum.source { ... }
+.elementwise-op-element.target, .elementwise-op-element.sum.target { ... }
+*/
 
 /* [NEW] Styles for Residual Block */
 .residual-block {

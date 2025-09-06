@@ -11,9 +11,10 @@ interface MatrixProps {
   data: MatrixType;
   highlight: HighlightState;
   onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+  sideLabel?: boolean; // [ADDED] For alternative label positioning
 }
 
-export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick }) => {
+export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick, sideLabel = false }) => {
   if (!data || data.length === 0 || data[0].length === 0) {
     return <div>Invalid matrix data for {name}</div>;
   }
@@ -45,11 +46,7 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
   if(symbolParts.superscript) mathSymbol = `${mathSymbol}^{${symbolParts.superscript}}`;
   if(symbolParts.subscript) mathSymbol = `${mathSymbol}_{${symbolParts.subscript}}`;
 
-  return (
-    <div className="matrix-wrapper side-label" data-name={name}>
-      <div className="matrix-label-side">
-          <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
-      </div>
+  const matrixGrid = (
       <div className="matrix-container">
         <div className="matrix-grid" style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
             {/* Top-left corner & Column Headers */}
@@ -84,6 +81,25 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
                 </React.Fragment>
             ))}
         </div>
+      </div>
+  );
+
+  if (sideLabel) {
+    return (
+       <div className="matrix-wrapper side-label" data-name={name}>
+          <div className="matrix-label-side">
+              <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
+          </div>
+          {matrixGrid}
+       </div>
+    );
+  }
+
+  return (
+    <div className="matrix-wrapper" data-name={name}>
+      {matrixGrid}
+      <div className="matrix-label-container">
+        <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
       </div>
     </div>
   );

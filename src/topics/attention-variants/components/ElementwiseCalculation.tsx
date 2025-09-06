@@ -15,7 +15,11 @@ interface ElementwiseCalculationProps {
   variant: 'mha' | 'mqa' | 'gqa' | 'mla';
 }
 
-const formatNumber = (num: number, precision = 2) => num.toFixed(precision);
+const formatNumber = (num: number, precision = 4) => {
+    if (num === -Infinity) return '-∞';
+    if (num === Infinity) return '+∞';
+    return num.toFixed(precision);
+}
 
 export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
   opType,
@@ -41,7 +45,8 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
   };
 
   const isSource = (colIndex: number) => {
-      return highlight.sources.some(s => s.isInternal && s.row === rowIndex && s.col === colIndex);
+      // Check if the current element (or the sum) is a source in the internal calculation view
+      return highlight.sources.some(s => s.isInternal && s.row === rowIndex && s.col === colIndex && s.name === `${baseName}.internal`);
   }
   const isTarget = (colIndex: number) => {
       return highlight.target?.isInternal && highlight.target.row === rowIndex && highlight.target.col === colIndex;
@@ -57,23 +62,27 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
       const className = `elementwise-op-element ${isSource(col) ? 'source' : ''} ${isTarget(col) ? 'target' : ''}`;
       return (
         <div key={`${type}-${col}`} className={className} onClick={(e) => handleClick(e, col)}>
-          {typeof value === 'number' ? formatNumber(value, 4) : value}
+          {typeof value === 'number' ? formatNumber(value) : value}
         </div>
       );
     });
   };
 
   const renderSoftmax = () => {
-    const maxVal = Math.max(...inputRow);
-    const exps = inputRow.map(val => Math.exp(val - maxVal));
+    // Filter out -Infinity for max calculation, as it's a masked value
+    const finiteInputRow = inputRow.filter(v => isFinite(v));
+    const maxVal = finiteInputRow.length > 0 ? Math.max(...finiteInputRow) : 0;
+
+    const exps = inputRow.map(val => isFinite(val) ? Math.exp(val - maxVal) : 0);
     const sumExps = exps.reduce((a, b) => a + b, 0);
 
-    const fullSumIsSource = highlight.sources.some(s => s.isInternal && s.row === rowIndex && s.col === -1); // -1 indicates whole row/sum
+    const fullSumIsSource = isSource(-1); // -1 indicates whole row/sum
 
     return (
       <>
         {/* Step 1: exp(x - max(x)) */}
         <div className="calc-step">
+          {/* [FIXED] Used double backslashes for KaTeX commands */}
           <div className="calc-label"><InlineMath math="\\text{exp}(x_i - \\text{max}(\\mathbf{x}))" /></div>
           <div className="elementwise-op-row">
             {renderVisibleElements(exps, 'exp')}
@@ -81,13 +90,15 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
         </div>
         {/* Step 2: Sum */}
         <div className="calc-step">
+           {/* [FIXED] Used double backslashes for KaTeX commands */}
           <div className="calc-label"><InlineMath math="\\sum \\text{exp}(\\dots)" /></div>
           <div className={`elementwise-op-element sum ${fullSumIsSource ? 'source' : ''}`} onClick={(e) => handleClick(e, -1)}>
-            {formatNumber(sumExps, 4)}
+            {formatNumber(sumExps)}
           </div>
         </div>
         {/* Step 3: Division */}
         <div className="calc-step">
+           {/* [FIXED] Used double backslashes for KaTeX commands */}
           <div className="calc-label"><InlineMath math="\\text{exp}(\\dots) / \\sum" /></div>
           <div className="elementwise-op-row">{renderVisibleElements(outputRow, 'output')}</div>
         </div>
@@ -95,9 +106,14 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
     );
   };
 
+  // Dummy render for other opTypes
+  const renderOther = () => (
+      <div>Operation {opType} detail view not implemented.</div>
+  );
+
   return (
     <div className="elementwise-calc-container">
-        {opType === 'softmax' ? renderSoftmax() : null}
+        {opType === 'softmax' ? renderSoftmax() : renderOther()}
     </div>
   );
 };

@@ -26,8 +26,8 @@ export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
     let targetRowIndex = 0;
 
     if (highlight.target) {
-        if (highlight.target.name === outputMatrixName) {
-            targetRowIndex = highlight.target.row;
+        if (highlight.target.name === outputMatrixName || highlight.target.name.startsWith(outputMatrixName.split('.')[0] + ".heads." + outputMatrixName.split('.')[2] + ".Scores")) {
+             targetRowIndex = highlight.target.row;
         } else if (highlight.target.isInternal && highlight.target.name.startsWith(outputMatrixName)) {
             targetRowIndex = highlight.target.row;
         }
@@ -41,6 +41,7 @@ export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
     return (
         <div className="elementwise-op-container">
             <div className="elementwise-op-label">
+                {/* [FIXED] Used double backslashes for KaTeX commands */}
                 <InlineMath math={`\\text{Detailed Calculation: } ${opName}`} />
             </div>
             <p style={{margin: '0', fontSize: '0.8em', color: '#666'}}>* Showing calculation for Row {targetRowIndex}</p>

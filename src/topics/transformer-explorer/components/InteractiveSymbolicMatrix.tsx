@@ -51,7 +51,7 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
   if (symbol.subscript) {
     subscriptParts.push(symbol.subscript);
   }
-  subscriptParts.push(`${rows} \\times ${cols}`);
+  subscriptParts.push(`${rows} \times ${cols}`);
   mathSymbol += `_{${subscriptParts.join(',')}}`;
 
   return (

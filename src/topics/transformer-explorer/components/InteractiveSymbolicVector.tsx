@@ -49,7 +49,7 @@ export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps>
   if (symbol.subscript) {
     subscriptParts.push(symbol.subscript);
   }
-  subscriptParts.push(`1 \\times ${displayCols}`);
+  subscriptParts.push(`1 \times ${displayCols}`);
   mathSymbol += `_{${subscriptParts.join(',')}}`;
 
 

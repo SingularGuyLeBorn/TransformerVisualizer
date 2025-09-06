@@ -14,9 +14,10 @@ interface InteractiveSymbolicMatrixProps {
   onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
   transpose?: boolean;
   isPlaceholder?: boolean;
+  sideLabel?: boolean; // [ADDED] For alternative label positioning
 }
 
-export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps> = React.memo(({ name, rows, cols, highlight, onSymbolClick, transpose = false, isPlaceholder = false }) => {
+export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps> = React.memo(({ name, rows, cols, highlight, onSymbolClick, transpose = false, isPlaceholder = false, sideLabel = false }) => {
   const symbol = getSymbolParts(name);
   const variant = name.split('.')[0] as ElementIdentifier['variant'];
 
@@ -44,49 +45,63 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
 
   const subscriptParts = [];
   if (symbol.subscript) subscriptParts.push(symbol.subscript);
+  // [FIXED] Used double backslash for \times to prevent JS escape sequence issues
   subscriptParts.push(`${rows} \\times ${cols}`);
   mathSymbol += `_{${subscriptParts.join(',')}}`;
 
   const containerClassName = `symbolic-matrix-container ${isPlaceholder ? 'placeholder-matrix' : ''}`;
 
-  return (
-    <div className="matrix-wrapper side-label">
-      <div className="matrix-label-side"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
-      <div className={containerClassName}>
-         <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
-          {/* Top-left corner & Column Headers */}
-          {shouldShowHeaders && <div key="corner" />}
-          {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
-              <div key={`ch-${cIdx}`} className="symbolic-header-item">{c}</div>
-          ))}
+  const matrixGrid = (
+    <div className={containerClassName}>
+       <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
+        {/* Top-left corner & Column Headers */}
+        {shouldShowHeaders && <div key="corner" />}
+        {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
+            <div key={`ch-${cIdx}`} className="symbolic-header-item">{c}</div>
+        ))}
 
-          {/* Row Headers and Matrix Elements */}
-          {visibleRowIndices.map((r, rIdx) => (
-              <React.Fragment key={`row-frag-${rIdx}`}>
-                   {shouldShowHeaders && <div className="symbolic-header-item">{r}</div>}
-                   {visibleColIndices.map((c, cIdx) => {
-                      if (r === ELLIPSIS || c === ELLIPSIS) {
-                        return <div key={`ellipsis-r${rIdx}-c${cIdx}`} className="symbolic-ellipsis">{r === ELLIPSIS && c === ELLIPSIS ? '⋱' : '…'}</div>;
-                      }
-                       const originalRow = transpose ? c : r;
-                       const originalCol = transpose ? r : c;
-                      return (
-                        <InteractiveSymbolicElement
-                          key={`elem-r${r}-c${c}`}
-                          name={name}
-                          base={symbol.base}
-                          subscript={symbol.subscript}
-                          row={originalRow}
-                          col={originalCol}
-                          highlight={highlight}
-                          onClick={(event) => onSymbolClick({ variant, name, row: originalRow, col: originalCol }, event)}
-                        />
-                      );
-                  })}
-              </React.Fragment>
-          ))}
-        </div>
+        {/* Row Headers and Matrix Elements */}
+        {visibleRowIndices.map((r, rIdx) => (
+            <React.Fragment key={`row-frag-${rIdx}`}>
+                 {shouldShowHeaders && <div className="symbolic-header-item">{r}</div>}
+                 {visibleColIndices.map((c, cIdx) => {
+                    if (r === ELLIPSIS || c === ELLIPSIS) {
+                      return <div key={`ellipsis-r${rIdx}-c${cIdx}`} className="symbolic-ellipsis">{r === ELLIPSIS && c === ELLIPSIS ? '⋱' : '…'}</div>;
+                    }
+                     const originalRow = transpose ? c : r;
+                     const originalCol = transpose ? r : c;
+                    return (
+                      <InteractiveSymbolicElement
+                        key={`elem-r${r}-c${c}`}
+                        name={name}
+                        base={symbol.base}
+                        subscript={symbol.subscript}
+                        row={originalRow}
+                        col={originalCol}
+                        highlight={highlight}
+                        onClick={(event) => onSymbolClick({ variant, name, row: originalRow, col: originalCol }, event)}
+                      />
+                    );
+                })}
+            </React.Fragment>
+        ))}
       </div>
+    </div>
+  );
+
+  if (sideLabel) {
+    return (
+       <div className="matrix-wrapper side-label">
+        <div className="matrix-label-side"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+        {matrixGrid}
+       </div>
+    );
+  }
+
+  return (
+    <div className="matrix-wrapper">
+      <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+      {matrixGrid}
     </div>
   );
 });

@@ -333,7 +333,8 @@ h1 {
 }
 .math-block p, .math-block li, .math-block h5 {
     line-height: 1.7;
-    margin: 1em 0;
+    margin-top: 0.5em; /* [MODIFIED] Reduced top margin for tighter layout */
+    margin-bottom: 0.5em;
 }
 .math-block h5 {
     font-size: 1.1em;
@@ -374,7 +375,7 @@ h1 {
 }
 
 .katex-display {
-    margin: 0 !important;
+    margin: 0.5em 0 !important; /* [MODIFIED] Added vertical margin for better spacing */
 }
 
 .matrix-scroll-wrapper {
@@ -595,107 +596,26 @@ h1 {
     margin-bottom: 10px;
 }
 
-/* Styling for Elementwise Operation Visualization */
-.elementwise-op-container {
-    width: 100%;
-    padding: 10px;
-    margin: 5px 0;
-    border: 1px dashed #ccc;
-    border-radius: 8px;
-    background-color: #f8f9fa;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    box-sizing: border-box;
-}
-.elementwise-op-label {
-    font-weight: bold;
-    font-size: 1.1em;
-}
-.elementwise-op-viz {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    font-family: monospace;
-    font-size: 1.2em;
-    padding-bottom: 5px;
-}
-.elementwise-op-viz > * {
-    flex-shrink: 0;
-}
-/* [ADDED] Wrapper for function call to keep items on one line */
-.elementwise-op-function-call {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
+/* [REMOVED] Elementwise Operation Visualization styles are now in topic-specific CSS */
+/*
+.elementwise-op-container { ... }
+.elementwise-op-label { ... }
+.elementwise-op-viz { ... }
+.elementwise-op-function-call { ... }
+.elementwise-op-row { ... }
+.elementwise-op-element { ... }
+.elementwise-op-element.symbolic-ellipsis { ... }
+*/
 
-.elementwise-op-row {
-    display: flex;
-    gap: 5px;
-    border: 1px solid #ddd;
-    padding: 4px;
-    border-radius: 4px;
-    background: #fff;
-    align-items: center;
-}
-.elementwise-op-element {
-  /* Inherits from .matrix-element */
-  width: 45px;
-  height: 25px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 2px;
-  font-family: monospace;
-  font-size: 0.8em;
-}
-/* [ADDED] Style for ellipsis in elementwise op */
-.elementwise-op-element.symbolic-ellipsis {
-    border: none;
-    background-color: transparent;
-    color: #aaa;
-    width: auto;
-}
-
-/* [NEW] Styles for ElementwiseCalculation */
-.elementwise-calc-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    font-size: 0.9em;
-}
-.calc-step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-.calc-label {
-    color: #555;
-    font-size: 0.9em;
-}
-.elementwise-op-element.sum {
-    width: auto;
-    padding: 0 10px;
-    font-weight: bold;
-}
-.elementwise-op-element.source, .elementwise-op-element.sum.source {
-    background-color: var(--highlight-source-bg) !important;
-    color: var(--highlight-source-color) !important;
-    border-color: var(--highlight-source-border) !important;
-}
-.elementwise-op-element.target, .elementwise-op-element.sum.target {
-    background-color: var(--highlight-target-bg) !important;
-    color: var(--highlight-target-color) !important;
-    border-color: var(--highlight-target-border) !important;
-}
+/* [REMOVED] ElementwiseCalculation styles are now in topic-specific CSS */
+/*
+.elementwise-calc-container { ... }
+.calc-step { ... }
+.calc-label { ... }
+.elementwise-op-element.sum { ... }
+.elementwise-op-element.source, .elementwise-op-element.sum.source { ... }
+.elementwise-op-element.target, .elementwise-op-element.sum.target { ... }
+*/
 
 /* [NEW] Styles for Residual Block */
 .residual-block {
@@ -1119,47 +1039,29 @@ export {};
 // FILE: src/components/MarkdownRenderer.tsx
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
-import { InlineMath, BlockMath } from 'react-katex';
+import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 
 interface MarkdownRendererProps {
-    markdown: string;
+  children: string;
 }
 
-export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ markdown }) => {
-    // 定义我们所有的渲染组件，包括标准的和自定义的
-    const components = {
-        // [修复] 为 remark-math 插件生成的自定义节点提供渲染器
-        // 'math' 对应 $$...$$
-        // 'inlineMath' 对应 $...$
-        math: ({ value }: { value: string }) => <BlockMath math={value} />,
-        inlineMath: ({ value }: { value: string }) => <InlineMath math={value} />,
-        
-        // 我们也可以在这里覆盖标准HTML标签的样式
-        // 使用 'any' 类型来避免对 props 的繁琐类型定义
-        img: ({node, ...props}: any) => (
-            <img 
-                style={{maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} 
-                {...props} 
-                alt="" 
-            />
-        )
-    };
-
-    return (
-        <ReactMarkdown
-            remarkPlugins={[remarkGfm, remarkMath]}
-            // [最终解决方案] 将 components 对象断言为 'any' 类型。
-            // 这会告诉 TypeScript 编译器：“忽略类型检查，接受我提供的所有自定义渲染器”，
-            // 从而彻底解决 TS2322 错误。
-            components={components as any}
-        >
-            {markdown}
-        </ReactMarkdown>
-    );
+const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ children }) => {
+  // react-markdown expects children to be a string, not a React node array
+  // The content is passed directly as the child of ReactMarkdown
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkMath]}
+      rehypePlugins={[rehypeKatex]}
+    >
+      {children}
+    </ReactMarkdown>
+  );
 };
+
+export default MarkdownRenderer;
+// END OF FILE: src/components/MarkdownRenderer.tsx
 
 
 ================================================================================
@@ -1259,6 +1161,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ markdown }) 
     font-size: 0.8em;
 }
 
+/*// END OF FILE: src/pages/HomePage/HomePage.css*/
+
 
 ================================================================================
 ### 文件路径: src/pages/HomePage/HomePage.tsx
@@ -1304,12 +1208,16 @@ export const HomePage: React.FC = () => {
     );
 };
 
+// END OF FILE: src/pages/HomePage/HomePage.tsx
+
 
 ================================================================================
 ### 文件路径: src/pages/TopicPage/TopicPage.css
 ================================================================================
 
+/* FILE: src/pages/TopicPage/TopicPage.css */
 
+/*// END OF FILE: src/pages/TopicPage/TopicPage.css*/
 
 
 ================================================================================
@@ -1345,6 +1253,8 @@ export const TopicPage: React.FC = () => {
 };
 
 export {}
+
+// END OF FILE: src/pages/TopicPage/TopicPage.tsx
 
 
 ================================================================================
@@ -1565,7 +1475,6 @@ export {};
     color: var(--highlight-target-color) !important;
     border-color: var(--highlight-target-border) !important;
 }
-
 /* END OF FILE: src/topics/attention-variants/AttentionVariantsTopic.css */
 
 
@@ -1998,7 +1907,11 @@ interface ElementwiseCalculationProps {
   variant: 'mha' | 'mqa' | 'gqa' | 'mla';
 }
 
-const formatNumber = (num: number, precision = 2) => num.toFixed(precision);
+const formatNumber = (num: number, precision = 4) => {
+    if (num === -Infinity) return '-∞';
+    if (num === Infinity) return '+∞';
+    return num.toFixed(precision);
+}
 
 export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
   opType,
@@ -2024,7 +1937,8 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
   };
 
   const isSource = (colIndex: number) => {
-      return highlight.sources.some(s => s.isInternal && s.row === rowIndex && s.col === colIndex);
+      // Check if the current element (or the sum) is a source in the internal calculation view
+      return highlight.sources.some(s => s.isInternal && s.row === rowIndex && s.col === colIndex && s.name === `${baseName}.internal`);
   }
   const isTarget = (colIndex: number) => {
       return highlight.target?.isInternal && highlight.target.row === rowIndex && highlight.target.col === colIndex;
@@ -2040,23 +1954,27 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
       const className = `elementwise-op-element ${isSource(col) ? 'source' : ''} ${isTarget(col) ? 'target' : ''}`;
       return (
         <div key={`${type}-${col}`} className={className} onClick={(e) => handleClick(e, col)}>
-          {typeof value === 'number' ? formatNumber(value, 4) : value}
+          {typeof value === 'number' ? formatNumber(value) : value}
         </div>
       );
     });
   };
 
   const renderSoftmax = () => {
-    const maxVal = Math.max(...inputRow);
-    const exps = inputRow.map(val => Math.exp(val - maxVal));
+    // Filter out -Infinity for max calculation, as it's a masked value
+    const finiteInputRow = inputRow.filter(v => isFinite(v));
+    const maxVal = finiteInputRow.length > 0 ? Math.max(...finiteInputRow) : 0;
+
+    const exps = inputRow.map(val => isFinite(val) ? Math.exp(val - maxVal) : 0);
     const sumExps = exps.reduce((a, b) => a + b, 0);
 
-    const fullSumIsSource = highlight.sources.some(s => s.isInternal && s.row === rowIndex && s.col === -1); // -1 indicates whole row/sum
+    const fullSumIsSource = isSource(-1); // -1 indicates whole row/sum
 
     return (
       <>
         {/* Step 1: exp(x - max(x)) */}
         <div className="calc-step">
+          {/* [FIXED] Used double backslashes for KaTeX commands */}
           <div className="calc-label"><InlineMath math="\\text{exp}(x_i - \\text{max}(\\mathbf{x}))" /></div>
           <div className="elementwise-op-row">
             {renderVisibleElements(exps, 'exp')}
@@ -2064,13 +1982,15 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
         </div>
         {/* Step 2: Sum */}
         <div className="calc-step">
+           {/* [FIXED] Used double backslashes for KaTeX commands */}
           <div className="calc-label"><InlineMath math="\\sum \\text{exp}(\\dots)" /></div>
           <div className={`elementwise-op-element sum ${fullSumIsSource ? 'source' : ''}`} onClick={(e) => handleClick(e, -1)}>
-            {formatNumber(sumExps, 4)}
+            {formatNumber(sumExps)}
           </div>
         </div>
         {/* Step 3: Division */}
         <div className="calc-step">
+           {/* [FIXED] Used double backslashes for KaTeX commands */}
           <div className="calc-label"><InlineMath math="\\text{exp}(\\dots) / \\sum" /></div>
           <div className="elementwise-op-row">{renderVisibleElements(outputRow, 'output')}</div>
         </div>
@@ -2078,9 +1998,14 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
     );
   };
 
+  // Dummy render for other opTypes
+  const renderOther = () => (
+      <div>Operation {opType} detail view not implemented.</div>
+  );
+
   return (
     <div className="elementwise-calc-container">
-        {opType === 'softmax' ? renderSoftmax() : null}
+        {opType === 'softmax' ? renderSoftmax() : renderOther()}
     </div>
   );
 };
@@ -2119,8 +2044,8 @@ export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
     let targetRowIndex = 0;
 
     if (highlight.target) {
-        if (highlight.target.name === outputMatrixName) {
-            targetRowIndex = highlight.target.row;
+        if (highlight.target.name === outputMatrixName || highlight.target.name.startsWith(outputMatrixName.split('.')[0] + ".heads." + outputMatrixName.split('.')[2] + ".Scores")) {
+             targetRowIndex = highlight.target.row;
         } else if (highlight.target.isInternal && highlight.target.name.startsWith(outputMatrixName)) {
             targetRowIndex = highlight.target.row;
         }
@@ -2134,6 +2059,7 @@ export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
     return (
         <div className="elementwise-op-container">
             <div className="elementwise-op-label">
+                {/* [FIXED] Used double backslashes for KaTeX commands */}
                 <InlineMath math={`\\text{Detailed Calculation: } ${opName}`} />
             </div>
             <p style={{margin: '0', fontSize: '0.8em', color: '#666'}}>* Showing calculation for Row {targetRowIndex}</p>
@@ -2163,6 +2089,7 @@ import { HighlightState, ElementIdentifier } from '../types';
 import { InteractiveSymbolicMatrix } from './InteractiveSymbolicMatrix';
 import 'katex/dist/katex.min.css';
 import { BlockMath, InlineMath } from 'react-katex';
+import MarkdownRenderer from '../../../components/MarkdownRenderer';
 
 interface ExplanationProps {
   dims: { n_q_heads: number, n_kv_heads: number, d_head: number, d_model: number, seq_len: number };
@@ -2176,7 +2103,7 @@ const renderVariantExplanation = (
     highlight: HighlightState,
     onSymbolClick: ExplanationProps['onSymbolClick']
 ) => {
-    const { d_head, d_model, seq_len } = dims;
+    const { d_head, d_model, seq_len, n_q_heads } = dims;
 
     const q_head_name = `${variant}.heads.0.Q`;
     const k_head_name = `${variant}.heads.0.K`;
@@ -2184,20 +2111,20 @@ const renderVariantExplanation = (
     const scores_name = `${variant}.heads.0.Scores`;
     const weights_name = `${variant}.heads.0.Weights`;
     const output_head_name = `${variant}.heads.0.Output`;
+    const combined_name = `${variant}.combined`;
+    const final_output_name = `${variant}.output`;
 
-    // Layout breaking rules for explanation column (threshold = 8)
-    const break_qkv_proj = (d_model + d_head + d_head) > 8;
-    const break_scores = (d_head + seq_len + seq_len) > 8;
-    const break_output = (seq_len + d_head + d_head) > 8;
-    const break_final = (d_model + d_model + d_model) > 8;
+    // [MODIFIED] Stricter layout breaking rules for explanation column (threshold = 8)
+    const break_qkv_proj = (d_model + d_head) > 8;
+    const break_scores = (d_head + seq_len) > 8;
+    const break_output = (seq_len + d_head) > 8;
+    const break_final = (n_q_heads * d_head + d_model) > 8;
 
     return (
       <>
         <div className="attention-calculation-step">
           <div className="step-title">1. 线性投影与多头拆分</div>
-          <p>
-              输入 <InlineMath math="H"/> 乘以权重矩阵 <InlineMath math="W"/> 生成Q, K, V。在MHA中，每个头都有独立的 <InlineMath math="W_{Q,h}, W_{K,h}, W_{V,h}"/>。而在GQA/MQA中，<InlineMath math="W_K, W_V"/> 是分组共享或完全共享的。
-          </p>
+           <MarkdownRenderer>{`输入 **H** 乘以权重矩阵 **W** 生成Q, K, V。在MHA中，每个头都有独立的 \\(W_{Q,h}, W_{K,h}, W_{V,h}\\)。而在GQA/MQA中，K, V的权重矩阵是分组共享或完全共享的。Q的权重矩阵在所有变体中始终是每个头独立的。`}</MarkdownRenderer>
            <div className={`explanation-row ${break_qkv_proj ? 'vertical' : ''}`}>
                <InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
                <BlockMath math="\\times" />
@@ -2212,11 +2139,19 @@ const renderVariantExplanation = (
                <BlockMath math="=" />
                <InteractiveSymbolicMatrix name={k_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
             </div>
+             <div className={`explanation-row ${break_qkv_proj ? 'vertical' : ''}`}>
+               <InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+               <BlockMath math="\\times" />
+               <InteractiveSymbolicMatrix name={`${variant}.wv.0`} rows={d_model} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
+               <BlockMath math="=" />
+               <InteractiveSymbolicMatrix name={v_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
+            </div>
         </div>
 
         <div className="attention-calculation-step">
           <div className="step-title">2. 计算注意力分数 (Scaled Dot-Product)</div>
-          <BlockMath math={`\\text{Scores}_h = Q_h K_{\\text{group}(h)}^T`} />
+          <MarkdownRenderer>{`此步骤计算每个查询向量与所有键向量的相似度。点积结果越大，表示关联性越强。除以 \\(\\sqrt{d_{head}}\\) 是为了防止梯度在训练中过小或过大，保持数值稳定性。`}</MarkdownRenderer>
+          <BlockMath math={`\\text{Scores}_h = \\frac{Q_h K_{\\text{group}(h)}^T}{\\sqrt{d_{\\text{head}}}}`} />
            <div className={`explanation-row ${break_scores ? 'vertical' : ''}`}>
                 <InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                 <BlockMath math="\\times" />
@@ -2224,11 +2159,14 @@ const renderVariantExplanation = (
                 <BlockMath math="=" />
                 <InteractiveSymbolicMatrix name={scores_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} />
            </div>
-           <BlockMath math={`A_h = \\text{Softmax}\\left(\\frac{\\text{Scores}_h}{\\sqrt{d_{\\text{head}}}}\\right)`} />
+           <MarkdownRenderer>{`然后，应用Softmax函数将原始分数转换为一个和为1的概率分布，即“注意力权重” \\(A_h\\)。`}</MarkdownRenderer>
+           <BlockMath math={`A_h = \\text{Softmax}(\\text{Scores}_h)`} />
+            <InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} sideLabel={true} />
         </div>
 
         <div className="attention-calculation-step">
             <div className="step-title">3. 加权求和得到单头输出</div>
+            <MarkdownRenderer>{`使用上一步计算出的注意力权重 \\(A_h\\) 对值向量 \\(V_h\\) 进行加权求和，得到融合了上下文信息的单头输出 \\(H_h\\)。`}</MarkdownRenderer>
              <div className={`explanation-row ${break_output ? 'vertical' : ''}`}>
                   <InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} />
                   <BlockMath math="\\times" />
@@ -2240,13 +2178,14 @@ const renderVariantExplanation = (
 
         <div className="attention-calculation-step">
             <div className="step-title">4. 合并与最终投影</div>
-            <BlockMath math={`\\text{Output} = \\text{Concat}(\\text{head}_0, ..., \\text{head}_{N_q-1}) W_O`} />
+            <MarkdownRenderer>{`将所有 \\(N_q\\) 个头的输出 \\(H_h\\) 拼接（Concatenate）起来，然后通过一个最终的线性投影矩阵 \\(W^O\\) 将其维度变回 \\(d_{model}\\)，得到该子层的最终输出 \\(Z\\)。`}</MarkdownRenderer>
+            <BlockMath math={`Z = \\text{Concat}(\\text{head}_0, ..., \\text{head}_{N_q-1}) W_O`} />
             <div className={`explanation-row ${break_final ? 'vertical' : ''}`}>
-                <InteractiveSymbolicMatrix name={`${variant}.combined`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                <InteractiveSymbolicMatrix name={combined_name} rows={seq_len} cols={n_q_heads * d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                 <BlockMath math="\\times" />
-                <InteractiveSymbolicMatrix name={`${variant}.wo`} rows={d_model} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                <InteractiveSymbolicMatrix name={`${variant}.wo`} rows={n_q_heads * d_head} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
                 <BlockMath math="=" />
-                <InteractiveSymbolicMatrix name={`${variant}.output`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                <InteractiveSymbolicMatrix name={final_output_name} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
             </div>
         </div>
       </>
@@ -2254,28 +2193,43 @@ const renderVariantExplanation = (
 }
 
 export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSymbolClick }) => {
-  const { n_q_heads, n_kv_heads } = dims;
+  const { n_q_heads, n_kv_heads, d_model, d_head } = dims;
 
   return (
     <div>
+        <div className="math-block">
+          <h3>引言：为何需要注意力变体？</h3>
+          <MarkdownRenderer>{`随着模型规模和上下文长度的增长，Transformer核心的**多头注意力 (MHA)** 在自回归生成任务中面临巨大的计算和内存挑战。瓶颈在于**Key-Value (KV) Cache**的体积会随着序列长度线性增长，极大地限制了大型语言模型 (LLM) 的吞吐量和长文本处理能力。`}</MarkdownRenderer>
+          <MarkdownRenderer>{`为了解决这些问题，研究者们提出了各种注意力变体，旨在优化性能、降低成本。本专题将带您探索从**MHA**到**MQA**、**GQA**的演进之路，理解它们在KV Cache效率和模型性能之间的权衡。`}</MarkdownRenderer>
+        </div>
+
         <div className="attention-variant-section">
-            <div className="component-header">MHA (Multi-Head Attention)</div>
+            <div className="component-header">MHA (多头注意力)</div>
             <div className="component-body">
-                <p>{`每个查询头都有独立的K/V头 ($N_q=${n_q_heads}, N_{kv}=${n_q_heads}$)。`}</p>
+                <h5>设计思想：并行子空间的探索</h5>
+                <MarkdownRenderer>{`MHA是Transformer的基石。它将单一注意力计算分解为多个并行的“头”，每个头在输入的不同表示子空间中学习。这使得模型能同时关注来自不同位置、不同方面的多种信息，极大地增强了模型的表达能力。`}</MarkdownRenderer>
+                <MarkdownRenderer>{`**KV Cache分析**: 在MHA中，每个查询头都有独立的K/V头 \\($N_q=${n_q_heads}, N_{kv}=${n_q_heads}\\$)。因此，KV Cache的大小与查询头的数量成正比，公式为：`}</MarkdownRenderer>
+                <BlockMath math={`\\text{Cache}_{MHA} \\propto S \\times N_{q\\_heads} \\times d_{head} = S \\times d_{model}`} />
                 {renderVariantExplanation('mha', dims, highlight, onSymbolClick)}
             </div>
         </div>
         <div className="attention-variant-section">
-            <div className="component-header">GQA (Grouped-Query Attention)</div>
-            <div className="component-body">
-                <p>{`查询头被分成 ${n_kv_heads} 组，每组共享一个K/V头 ($N_q=${n_q_heads}, N_{kv}=${n_kv_heads}$)。`}</p>
+            <div className="component-header">GQA (分组查询注意力)</div>
+             <div className="component-body">
+                <h5>设计思想：平衡之道</h5>
+                <MarkdownRenderer>{`GQA是MHA和MQA之间的折中方案。它将查询头分组，每组共享一对K/V头，从而在保持接近MHA性能的同时，有效减少KV Cache。`}</MarkdownRenderer>
+                <MarkdownRenderer>{`**KV Cache分析**: 在GQA中，查询头被分成 ${n_kv_heads}$ 组，每组共享一个K/V头 \\($N_q=${n_q_heads}, N_{kv}=${n_kv_heads}\\$)。KV Cache的大小减少为MHA的 $${n_kv_heads}/${n_q_heads}$$ 倍。`}</MarkdownRenderer>
+                 <BlockMath math={`\\text{Cache}_{GQA} \\propto S \\times N_{kv\\_heads} \\times d_{head}`} />
                 {renderVariantExplanation('gqa', dims, highlight, onSymbolClick)}
             </div>
         </div>
         <div className="attention-variant-section">
-            <div className="component-header">MQA (Multi-Query Attention)</div>
+            <div className="component-header">MQA (多查询注意力)</div>
             <div className="component-body">
-                <p>{`所有查询头共享唯一的K/V头 ($N_q=${n_q_heads}, N_{kv}=1$ )。`}</p>
+                <h5>设计思想：极致的KV共享</h5>
+                <MarkdownRenderer>{`面对MHA高昂的KV Cache成本，MQA提出了一种极致的解决方案：让所有查询头共享**同一份**Key和Value。`}</MarkdownRenderer>
+                <MarkdownRenderer>{`**KV Cache分析**: 在MQA中，所有查询头共享唯一的K/V头 \\($N_q=${n_q_heads}, N_{kv}=1$\\$)。这使得KV Cache的大小减少为MHA的 $1/${n_q_heads}$ 倍，极大地节省了内存。`}</MarkdownRenderer>
+                 <BlockMath math={`\\text{Cache}_{MQA} \\propto S \\times 1 \\times d_{head}`} />
                 {renderVariantExplanation('mqa', dims, highlight, onSymbolClick)}
             </div>
         </div>
@@ -2344,9 +2298,10 @@ interface InteractiveSymbolicMatrixProps {
   onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
   transpose?: boolean;
   isPlaceholder?: boolean;
+  sideLabel?: boolean; // [ADDED] For alternative label positioning
 }
 
-export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps> = React.memo(({ name, rows, cols, highlight, onSymbolClick, transpose = false, isPlaceholder = false }) => {
+export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps> = React.memo(({ name, rows, cols, highlight, onSymbolClick, transpose = false, isPlaceholder = false, sideLabel = false }) => {
   const symbol = getSymbolParts(name);
   const variant = name.split('.')[0] as ElementIdentifier['variant'];
 
@@ -2374,49 +2329,63 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
 
   const subscriptParts = [];
   if (symbol.subscript) subscriptParts.push(symbol.subscript);
+  // [FIXED] Used double backslash for \times to prevent JS escape sequence issues
   subscriptParts.push(`${rows} \\times ${cols}`);
   mathSymbol += `_{${subscriptParts.join(',')}}`;
 
   const containerClassName = `symbolic-matrix-container ${isPlaceholder ? 'placeholder-matrix' : ''}`;
 
-  return (
-    <div className="matrix-wrapper side-label">
-      <div className="matrix-label-side"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
-      <div className={containerClassName}>
-         <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
-          {/* Top-left corner & Column Headers */}
-          {shouldShowHeaders && <div key="corner" />}
-          {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
-              <div key={`ch-${cIdx}`} className="symbolic-header-item">{c}</div>
-          ))}
+  const matrixGrid = (
+    <div className={containerClassName}>
+       <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
+        {/* Top-left corner & Column Headers */}
+        {shouldShowHeaders && <div key="corner" />}
+        {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
+            <div key={`ch-${cIdx}`} className="symbolic-header-item">{c}</div>
+        ))}
 
-          {/* Row Headers and Matrix Elements */}
-          {visibleRowIndices.map((r, rIdx) => (
-              <React.Fragment key={`row-frag-${rIdx}`}>
-                   {shouldShowHeaders && <div className="symbolic-header-item">{r}</div>}
-                   {visibleColIndices.map((c, cIdx) => {
-                      if (r === ELLIPSIS || c === ELLIPSIS) {
-                        return <div key={`ellipsis-r${rIdx}-c${cIdx}`} className="symbolic-ellipsis">{r === ELLIPSIS && c === ELLIPSIS ? '⋱' : '…'}</div>;
-                      }
-                       const originalRow = transpose ? c : r;
-                       const originalCol = transpose ? r : c;
-                      return (
-                        <InteractiveSymbolicElement
-                          key={`elem-r${r}-c${c}`}
-                          name={name}
-                          base={symbol.base}
-                          subscript={symbol.subscript}
-                          row={originalRow}
-                          col={originalCol}
-                          highlight={highlight}
-                          onClick={(event) => onSymbolClick({ variant, name, row: originalRow, col: originalCol }, event)}
-                        />
-                      );
-                  })}
-              </React.Fragment>
-          ))}
-        </div>
+        {/* Row Headers and Matrix Elements */}
+        {visibleRowIndices.map((r, rIdx) => (
+            <React.Fragment key={`row-frag-${rIdx}`}>
+                 {shouldShowHeaders && <div className="symbolic-header-item">{r}</div>}
+                 {visibleColIndices.map((c, cIdx) => {
+                    if (r === ELLIPSIS || c === ELLIPSIS) {
+                      return <div key={`ellipsis-r${rIdx}-c${cIdx}`} className="symbolic-ellipsis">{r === ELLIPSIS && c === ELLIPSIS ? '⋱' : '…'}</div>;
+                    }
+                     const originalRow = transpose ? c : r;
+                     const originalCol = transpose ? r : c;
+                    return (
+                      <InteractiveSymbolicElement
+                        key={`elem-r${r}-c${c}`}
+                        name={name}
+                        base={symbol.base}
+                        subscript={symbol.subscript}
+                        row={originalRow}
+                        col={originalCol}
+                        highlight={highlight}
+                        onClick={(event) => onSymbolClick({ variant, name, row: originalRow, col: originalCol }, event)}
+                      />
+                    );
+                })}
+            </React.Fragment>
+        ))}
       </div>
+    </div>
+  );
+
+  if (sideLabel) {
+    return (
+       <div className="matrix-wrapper side-label">
+        <div className="matrix-label-side"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+        {matrixGrid}
+       </div>
+    );
+  }
+
+  return (
+    <div className="matrix-wrapper">
+      <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+      {matrixGrid}
     </div>
   );
 });
@@ -2441,9 +2410,10 @@ interface MatrixProps {
   data: MatrixType;
   highlight: HighlightState;
   onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+  sideLabel?: boolean; // [ADDED] For alternative label positioning
 }
 
-export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick }) => {
+export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick, sideLabel = false }) => {
   if (!data || data.length === 0 || data[0].length === 0) {
     return <div>Invalid matrix data for {name}</div>;
   }
@@ -2475,11 +2445,7 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
   if(symbolParts.superscript) mathSymbol = `${mathSymbol}^{${symbolParts.superscript}}`;
   if(symbolParts.subscript) mathSymbol = `${mathSymbol}_{${symbolParts.subscript}}`;
 
-  return (
-    <div className="matrix-wrapper side-label" data-name={name}>
-      <div className="matrix-label-side">
-          <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
-      </div>
+  const matrixGrid = (
       <div className="matrix-container">
         <div className="matrix-grid" style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
             {/* Top-left corner & Column Headers */}
@@ -2514,6 +2480,25 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
                 </React.Fragment>
             ))}
         </div>
+      </div>
+  );
+
+  if (sideLabel) {
+    return (
+       <div className="matrix-wrapper side-label" data-name={name}>
+          <div className="matrix-label-side">
+              <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
+          </div>
+          {matrixGrid}
+       </div>
+    );
+  }
+
+  return (
+    <div className="matrix-wrapper" data-name={name}>
+      {matrixGrid}
+      <div className="matrix-label-container">
+        <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
       </div>
     </div>
   );
@@ -2551,13 +2536,13 @@ const AttentionVariantViz: React.FC<{
 }> = ({ variantName, title, variantData, commonData, dims, highlight, onElementClick }) => {
 
     const headData = variantData.heads[0];
-    const { d_model, d_head, seq_len } = dims;
+    const { d_model, d_head, seq_len, n_q_heads } = dims;
 
-    // Layout breaking rules (threshold = 15)
-    const break_qkv_proj = (d_model + d_head + d_head) > 15;
-    const break_scores = (d_head + seq_len + seq_len) > 15;
-    const break_output = (seq_len + d_head + d_head) > 15;
-    const break_final = (d_model + d_model + d_model) > 15;
+    // [MODIFIED] Stricter layout breaking rules for viz column (threshold = 15)
+    const break_qkv_proj = (d_model + d_head) > 15;
+    const break_scores = (d_head + seq_len) > 15;
+    const break_output = (seq_len + d_head) > 15;
+    const break_final = (n_q_heads * d_head + d_model) > 15;
 
     const q_head_name = `${variantName}.heads.0.Q`;
     const k_head_name = `${variantName}.heads.0.K`;
@@ -2569,6 +2554,7 @@ const AttentionVariantViz: React.FC<{
     // For head 0, the kv group is always 0
     const wq_name = `${variantName}.wq.0`;
     const wk_name = `${variantName}.wk.0`;
+    const wv_name = `${variantName}.wv.0`; // V projection also needs a name
 
     return (
         <div className="attention-variant-section">
@@ -2578,7 +2564,6 @@ const AttentionVariantViz: React.FC<{
                 <div className="attention-calculation-step">
                     <div className="step-title">1. 生成 Q, K, V (以头 0 为例)</div>
                      <div className={`viz-row ${break_qkv_proj ? 'vertical' : ''}`}>
-                        <InteractiveSymbolicMatrix name={`${variantName}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onElementClick} isPlaceholder />
                         <Matrix name={`${variantName}.input`} data={commonData.input} highlight={highlight} onElementClick={onElementClick} />
                         <InlineMath math="\\times" />
                         <Matrix name={wq_name} data={commonData.Wq[0]} highlight={highlight} onElementClick={onElementClick} />
@@ -2586,12 +2571,18 @@ const AttentionVariantViz: React.FC<{
                         <Matrix name={q_head_name} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                      <div className={`viz-row ${break_qkv_proj ? 'vertical' : ''}`}>
-                        <InteractiveSymbolicMatrix name={`${variantName}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onElementClick} isPlaceholder />
                         <Matrix name={`${variantName}.input`} data={commonData.input} highlight={highlight} onElementClick={onElementClick} />
                         <InlineMath math="\\times" />
                         <Matrix name={wk_name} data={commonData.Wk[0]} highlight={highlight} onElementClick={onElementClick} />
                         <InlineMath math="=" />
                         <Matrix name={k_head_name} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                     <div className={`viz-row ${break_qkv_proj ? 'vertical' : ''}`}>
+                        <Matrix name={`${variantName}.input`} data={commonData.input} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="\\times" />
+                        <Matrix name={wv_name} data={commonData.Wv[0]} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="=" />
+                        <Matrix name={v_head_name} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                 </div>
 
@@ -2616,7 +2607,7 @@ const AttentionVariantViz: React.FC<{
                         onElementClick={onElementClick}
                         variant={variantName}
                     />
-                     <Matrix name={weights_name} data={headData.Weights} highlight={highlight} onElementClick={onElementClick} />
+                     <Matrix name={weights_name} data={headData.Weights} highlight={highlight} onElementClick={onElementClick} sideLabel={true}/>
                 </div>
 
                 <div className="arrow-down">↓</div>
@@ -5221,7 +5212,7 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
   if (symbol.subscript) {
     subscriptParts.push(symbol.subscript);
   }
-  subscriptParts.push(`${rows} \\times ${cols}`);
+  subscriptParts.push(`${rows} \times ${cols}`);
   mathSymbol += `_{${subscriptParts.join(',')}}`;
 
   return (
@@ -5330,7 +5321,7 @@ export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps>
   if (symbol.subscript) {
     subscriptParts.push(symbol.subscript);
   }
-  subscriptParts.push(`1 \\times ${displayCols}`);
+  subscriptParts.push(`1 \times ${displayCols}`);
   mathSymbol += `_{${subscriptParts.join(',')}}`;
 
 
