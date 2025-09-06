@@ -1,4 +1,4 @@
-// FILE: src/lib/fixedWeights.ts
+// FILE: lib/fixedWeights.ts
 // This file provides a deterministic set of weights for the Transformer model.
 // All values are hardcoded to ensure the visualization is reproducible.
 // This replaces the previous random number generation.
@@ -23,13 +23,13 @@ const createSeededRandom = (seed: number) => {
 const createFixedMatrix = (rows: number, cols: number, seed: number): number[][] => {
     const random = createSeededRandom(seed);
     return Array.from({ length: rows }, () =>
-        Array.from({ length: cols }, () => parseFloat(random().toFixed(2)))
+        Array.from({ length: cols }, () => random())
     );
 };
 
 const createFixedVector = (size: number, seed: number): number[] => {
     const random = createSeededRandom(seed);
-    return Array.from({ length: size }, () => parseFloat(random().toFixed(2)));
+    return Array.from({ length: size }, () => random());
 };
 
 export const fixedWeights = (dims: Dims) => {
@@ -46,9 +46,9 @@ export const fixedWeights = (dims: Dims) => {
     const embeddingMatrix = createFixedMatrix(VOCAB_SIZE, d_model, 1);
     const posEncodings = Array.from({ length: 10 }, (_, pos) => // Max seq_len of 10
       Array.from({ length: d_model }, (_, i) =>
-        parseFloat((i % 2 === 0
+        i % 2 === 0
           ? Math.sin(pos / (10000 ** (i / d_model)))
-          : Math.cos(pos / (10000 ** ((i - 1) / d_model)))).toFixed(2))
+          : Math.cos(pos / (10000 ** ((i - 1) / d_model)))
       )
     );
 
@@ -105,4 +105,4 @@ export const fixedWeights = (dims: Dims) => {
         finalLinear,
     };
 };
-// END OF FILE: src/lib/fixedWeights.ts
+// END OF FILE: lib/fixedWeights.ts

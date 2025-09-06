@@ -13,7 +13,7 @@ interface EncoderLayerProps {
   layerIndex: number;
   data: EncoderLayerData;
   highlight: HighlightState;
-  onElementClick: (element: ElementIdentifier) => void;
+  onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
   onComponentClick: (componentId: string) => void;
 }
 

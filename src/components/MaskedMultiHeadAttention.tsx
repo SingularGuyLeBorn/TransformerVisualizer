@@ -10,7 +10,7 @@ interface MHAProps {
     baseName: string; // e.g., decoder.0.masked_mha
     data: MultiHeadAttentionData;
     highlight: HighlightState;
-    onElementClick: (element: ElementIdentifier) => void;
+    onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
     onComponentClick: (componentId: string) => void;
 }
 
@@ -19,6 +19,20 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
     const headIndex = 0; // Assume we visualize head 0
     const headData = data.heads[headIndex];
     const isActive = highlight.activeComponent === 'masked_mha';
+    const numHeads = data.heads.length;
+
+    const renderConcatHeads = () => {
+        const headsToShow = [];
+        headsToShow.push(<Matrix key={0} name={MATRIX_NAMES.maskedMhaHead(layerIndex, 0).HeadOutput} data={data.heads[0].HeadOutput} highlight={highlight} onElementClick={onElementClick} />);
+        if (numHeads > 2) {
+            headsToShow.push(<div key="ellipsis-start" className="op-symbol">...</div>);
+            headsToShow.push(<Matrix key={numHeads-1} name={MATRIX_NAMES.maskedMhaHead(layerIndex, numHeads-1).HeadOutput} data={data.heads[numHeads-1].HeadOutput} highlight={highlight} onElementClick={onElementClick} />);
+        } else if (numHeads === 2) {
+            headsToShow.push(<Matrix key={1} name={MATRIX_NAMES.maskedMhaHead(layerIndex, 1).HeadOutput} data={data.heads[1].HeadOutput} highlight={highlight} onElementClick={onElementClick} />);
+        }
+        return headsToShow;
+    };
+
 
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}>
@@ -64,13 +78,11 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
                     </div>
 
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Scale by } / \sqrt{d_k}}" /></div>
-                    <div className="viz-formula-row">
-                         <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
-                    </div>
 
                     <ElementwiseOperation
                         opType="softmax"
                         inputMatrix={headData.ScaledScores}
+                        inputMatrixName={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).ScaledScores}
                         outputMatrix={headData.AttentionWeights}
                         outputMatrixName={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).AttentionWeights}
                         highlight={highlight}
@@ -78,10 +90,6 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
                         layerIndex={layerIndex}
                         headIndex={headIndex}
                     />
-
-                    <div className="viz-formula-row">
-                         <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
-                    </div>
 
                     <div className="viz-formula-row">
                         <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
@@ -100,7 +108,7 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
                 <div className="viz-formula-group">
                     <div className="viz-step-title">3. Concat & Final Projection</div>
                     <div className="viz-formula-row">
-                       <InlineMath math="\text{Concat}(H_0, \dots, H_{N})" />
+                       {renderConcatHeads()}
                      </div>
                      <div className="viz-formula-row">
                        <span>(Concatenated) ×</span>

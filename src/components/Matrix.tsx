@@ -10,7 +10,7 @@ interface MatrixProps {
   name: string;
   data: MatrixType;
   highlight: HighlightState;
-  onElementClick: (element: ElementIdentifier) => void;
+  onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
   isTransposed?: boolean;
 }
 
@@ -49,68 +49,64 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
   const visibleRowIndices = getVisibleIndices(displayRows, isTransposed ? focusCol : focusRow);
   const visibleColIndices = getVisibleIndices(displayCols, isTransposed ? focusRow : focusCol);
 
-  const gridTemplateColumns = `repeat(${visibleColIndices.length}, auto)`;
-
   const symbolParts = getSymbolParts(name);
   let mathSymbol = symbolParts.base;
   if(symbolParts.superscript) mathSymbol = `${mathSymbol}^{${symbolParts.superscript}}`;
   if(symbolParts.subscript) mathSymbol = `${mathSymbol}_{${symbolParts.subscript}}`;
   if(isTransposed) mathSymbol = `${mathSymbol}^T`;
 
-  const gridElements = visibleRowIndices.map((r, rIdx) => {
-    if (r === ELLIPSIS) {
-        return visibleColIndices.map((c, cIdx) => (
-             <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>
-        ));
-    }
-    return visibleColIndices.map((c, cIdx) => {
-        if (c === ELLIPSIS) {
-            return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
-        }
-        const displayRow = r;
-        const displayCol = c;
-        const originalRow = isTransposed ? displayCol : displayRow;
-        const originalCol = isTransposed ? displayRow : displayCol;
-        const value = data[originalRow][originalCol];
-        return (
-             <Element
-              key={`${name}-${originalRow}-${originalCol}`}
-              name={name}
-              row={originalRow}
-              col={originalCol}
-              value={value}
-              highlight={highlight}
-              onElementClick={onElementClick}
-            />
-        )
-    });
-  });
-
   const isTargetMatrix = highlight.target?.name === name && !highlight.target.isInternal;
 
+  const gridStyle: React.CSSProperties = {
+      gridTemplateColumns: isTargetMatrix
+          ? `auto repeat(${visibleColIndices.length}, auto)`
+          : `repeat(${visibleColIndices.length}, auto)`,
+  };
+
   return (
-    <div className="matrix-wrapper">
-       {isTargetMatrix && (
-        <>
-          <div className="matrix-col-headers" style={{'--cols': visibleColIndices.length} as React.CSSProperties}>
-              {visibleColIndices.map((c, idx) => (
-                  <div key={`ch-${idx}`} className="matrix-header-item">
-                      {c}
-                  </div>
-              ))}
-          </div>
-          <div className="matrix-row-headers">
-              {visibleRowIndices.map((r, idx) => (
-                   <div key={`rh-${idx}`} className="matrix-header-item">
-                      {r}
-                  </div>
-              ))}
-          </div>
-        </>
-      )}
+    <div className="matrix-wrapper" data-name={name}>
       <div className="matrix-container">
-        <div className="matrix-grid" style={{ gridTemplateColumns }}>
-          {gridElements}
+        <div className="matrix-grid" data-name={name} style={gridStyle}>
+            {/* Top-left corner & Column Headers */}
+            {isTargetMatrix && <div key="corner" />}
+            {isTargetMatrix && visibleColIndices.map((c, cIdx) => (
+                <div key={`ch-${cIdx}`} className="matrix-header-item">{c}</div>
+            ))}
+
+            {/* Row Headers & Matrix Elements */}
+            {visibleRowIndices.map((r, rIdx) => {
+                const rowContent = visibleColIndices.map((c, cIdx) => {
+                    if (r === ELLIPSIS) {
+                        return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
+                    }
+                    if (c === ELLIPSIS) {
+                        return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
+                    }
+                    const displayRow = r;
+                    const displayCol = c;
+                    const originalRow = isTransposed ? displayCol : displayRow;
+                    const originalCol = isTransposed ? displayRow : displayCol;
+                    const value = data[originalRow][originalCol];
+                    return (
+                        <Element
+                            key={`${name}-${originalRow}-${originalCol}`}
+                            name={name}
+                            row={originalRow}
+                            col={originalCol}
+                            value={value}
+                            highlight={highlight}
+                            onElementClick={onElementClick}
+                        />
+                    );
+                });
+
+                return (
+                    <React.Fragment key={`row-frag-${rIdx}`}>
+                        {isTargetMatrix && <div className="matrix-header-item">{r}</div>}
+                        {rowContent}
+                    </React.Fragment>
+                );
+            })}
         </div>
       </div>
       <div className="matrix-label-container">

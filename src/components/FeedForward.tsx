@@ -11,7 +11,7 @@ interface FFNProps {
     inputName: string;
     data: FFNData;
     highlight: HighlightState;
-    onElementClick: (element: ElementIdentifier) => void;
+    onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
     onComponentClick: (componentId: string) => void;
 }
 
@@ -62,6 +62,7 @@ export const FeedForward: React.FC<FFNProps> = ({ baseName, input, inputName, da
                     <ElementwiseOperation
                         opType="relu"
                         inputMatrix={data.Intermediate}
+                        inputMatrixName={LN.Intermediate}
                         outputMatrix={data.Activated}
                         outputMatrixName={LN.Activated}
                         highlight={highlight}

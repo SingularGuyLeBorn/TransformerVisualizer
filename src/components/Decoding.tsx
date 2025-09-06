@@ -8,7 +8,7 @@ import { EmbeddingLookup } from './EmbeddingLookup';
 interface DecodingProps {
     data: TransformerData;
     highlight: HighlightState;
-    onElementClick: (element: ElementIdentifier) => void;
+    onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
     onComponentClick: (componentId: string) => void;
     isActive: boolean;
 }
@@ -27,6 +27,8 @@ export const Decoding: React.FC<DecodingProps> = ({ data, highlight, onElementCl
             probValue: maxProb
         };
     });
+
+    const shouldBreak = (data.embeddingMatrix[0]?.length || 0) > 10;
 
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}>
@@ -51,6 +53,7 @@ export const Decoding: React.FC<DecodingProps> = ({ data, highlight, onElementCl
                         matrixName="embeddingMatrix"
                         highlight={highlight}
                         onElementClick={onElementClick}
+                        shouldBreak={shouldBreak}
                      />
                 </div>
 

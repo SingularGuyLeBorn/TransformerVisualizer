@@ -9,7 +9,7 @@ interface ResidualBlockProps {
   matrixSymbol: string;
   matrixDims: string;
   highlight: HighlightState;
-  onElementClick: (element: ElementIdentifier) => void;
+  onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
 }
 
 export const ResidualBlock: React.FC<ResidualBlockProps> = ({ id, type, matrixSymbol, matrixDims, highlight, onElementClick }) => {
@@ -17,14 +17,14 @@ export const ResidualBlock: React.FC<ResidualBlockProps> = ({ id, type, matrixSy
   const isStart = type === 'start';
   const icon = isStart ? '↓' : '←'; // [MODIFIED] Changed end icon to left arrow
 
-  const handleClick = () => {
+  const handleClick = (event: React.MouseEvent) => {
     onElementClick({
       name: `residual.${id}.${type}`,
       row: -1,
       col: -1,
       matrixSymbol,
       matrixDims,
-    });
+    }, event);
   };
 
   return (

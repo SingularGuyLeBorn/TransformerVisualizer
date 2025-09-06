@@ -1,6 +1,7 @@
 // FILE: src/components/Element.tsx
 import React from 'react';
 import { HighlightState, ElementIdentifier } from '../types';
+import { useHighlighting } from '../hooks/useHighlighting';
 
 interface ElementProps {
   name: string;
@@ -8,31 +9,17 @@ interface ElementProps {
   col: number;
   value: number;
   highlight: HighlightState;
-  onElementClick: (element: ElementIdentifier) => void;
+  onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
 }
 
 export const Element: React.FC<ElementProps> = React.memo(({ name, row, col, value, highlight, onElementClick }) => {
-
-  const isTarget = highlight.target?.name === name && highlight.target?.row === row && highlight.target?.col === col && !highlight.target.isInternal;
-
-  const isSource = highlight.sources.some(s => {
-    if (s.name !== name || s.isInternal) return false;
-    if (s.highlightRow) return s.row === row;
-    if (s.highlightCol) return s.col === col;
-    return s.row === row && s.col === col;
-  });
-
-  const isDestination = highlight.destinations?.some(d => {
-    if (d.name !== name || d.isInternal) return false;
-    if (d.highlightRow) return d.row === row;
-    if (d.highlightCol) return d.col === col;
-    return d.row === row && d.col === col;
-  });
+  // [MODIFIED] Centralized highlighting logic by using the new hook.
+  const { isTarget, isSource, isDestination } = useHighlighting(name, row, col, highlight);
 
   const className = `matrix-element ${isTarget ? 'target' : ''} ${isSource ? 'source' : ''} ${isDestination ? 'destination' : ''}`;
 
-  const handleClick = () => {
-    onElementClick({ name, row, col });
+  const handleClick = (event: React.MouseEvent) => {
+    onElementClick({ name, row, col }, event);
   };
 
   const displayValue = () => {

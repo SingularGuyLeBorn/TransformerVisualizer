@@ -9,7 +9,7 @@ interface ElementwiseCalculationProps {
   inputRow: number[];
   outputRow: number[];
   highlight: HighlightState;
-  onElementClick: (element: ElementIdentifier) => void;
+  onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
   baseName: string; // e.g., "encoder.0.mha.h0.AttentionWeights"
   rowIndex: number;
 }
@@ -28,13 +28,13 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
   const targetCol = highlight.target?.isInternal && highlight.target.row === rowIndex ? highlight.target.col : -1;
   const visibleCols = getVisibleIndices(inputRow.length, targetCol);
 
-  const handleClick = (colIndex: number) => {
+  const handleClick = (event: React.MouseEvent, colIndex: number) => {
     onElementClick({
       name: `${baseName}.internal`, // Special name for internal calculation
       row: rowIndex,
       col: colIndex,
       isInternal: true,
-    });
+    }, event);
   };
 
   const isSource = (colIndex: number) => {
@@ -53,7 +53,7 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
       const value = data[col];
       const className = `elementwise-op-element ${isSource(col) ? 'source' : ''} ${isTarget(col) ? 'target' : ''}`;
       return (
-        <div key={`${type}-${col}`} className={className} onClick={() => handleClick(col)}>
+        <div key={`${type}-${col}`} className={className} onClick={(e) => handleClick(e, col)}>
           {typeof value === 'number' ? formatNumber(value) : value}
         </div>
       );
@@ -79,7 +79,7 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
         {/* Step 2: Sum */}
         <div className="calc-step">
           <div className="calc-label"><InlineMath math="\sum \text{exp}(\dots)" /></div>
-          <div className={`elementwise-op-element sum ${fullSumIsSource ? 'source' : ''}`} onClick={() => handleClick(-1)}>
+          <div className={`elementwise-op-element sum ${fullSumIsSource ? 'source' : ''}`} onClick={(e) => handleClick(e, -1)}>
             {formatNumber(sumExps, 4)}
           </div>
         </div>

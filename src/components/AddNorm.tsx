@@ -13,7 +13,7 @@ interface AddNormProps {
     sublayerMatrixName: string;
     outputMatrixName: string;
     highlight: HighlightState;
-    onElementClick: (element: ElementIdentifier) => void;
+    onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
     onComponentClick: (componentId: string) => void;
     activeId: string;
     residualId: string;
@@ -49,7 +49,7 @@ export const AddNorm: React.FC<AddNormProps> = ({
                         id={residualId}
                         type="end"
                         highlight={highlight}
-                        onElementClick={onElementClick}
+                        onElementClick={(el, e) => onElementClick(el, e)}
                         matrixSymbol={residualMatrixSymbol}
                         matrixDims={residualMatrixDims}
                     />

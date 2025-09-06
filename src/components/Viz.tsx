@@ -1,25 +1,22 @@
 // FILE: src/components/Viz.tsx
 import React from 'react';
-import { TransformerData, HighlightState, ElementIdentifier, TooltipState } from '../types';
+import { TransformerData, HighlightState, ElementIdentifier } from '../types';
 import { EncoderLayer } from './EncoderLayer';
 import { DecoderLayer } from './DecoderLayer';
 import { Matrix } from './Matrix';
 import { InlineMath } from 'react-katex';
 import { TokenizationEmbedding } from './TokenizationEmbedding';
 import { Decoding } from './Decoding';
-import { CalculationTooltip } from './CalculationTooltip';
 import { MATRIX_NAMES } from '../config/matrixNames';
 
 interface VizProps {
     data: TransformerData;
     highlight: HighlightState;
-    onElementClick: (element: ElementIdentifier) => void;
+    onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
     onComponentClick: (componentId: string) => void;
-    tooltip: TooltipState | null;
-    closeTooltip: () => void;
 }
 
-export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick, onComponentClick, tooltip, closeTooltip }) => {
+export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick, onComponentClick }) => {
     const isTokenEmbedActive = highlight.activeComponent === 'token_embed';
     const isInputEmbedActive = highlight.activeComponent === 'input_embed';
     const isOutputEmbedActive = highlight.activeComponent === 'output_embed';
@@ -31,7 +28,7 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick, onCom
 
     return (
         <div style={{ position: 'relative' }}>
-            {tooltip && <CalculationTooltip tooltip={tooltip} onClose={closeTooltip} />}
+            {/* Tooltip is now managed in App.tsx to sit on top of the entire layout */}
 
             {/* --- Input Stage --- */}
             <TokenizationEmbedding
@@ -111,6 +108,7 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick, onCom
                     highlight={highlight}
                     onElementClick={onElementClick}
                     onComponentClick={onComponentClick}
+                    finalEncoderOutput={data.finalEncoderOutput}
                 />
             ))}
 

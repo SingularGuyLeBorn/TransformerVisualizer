@@ -11,7 +11,7 @@ interface InteractiveSymbolicVectorProps {
   name: string;
   data: VectorType;
   highlight: HighlightState;
-  onSymbolClick: (element: ElementIdentifier) => void;
+  onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
 }
 
 export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps> = React.memo(({ name, data, highlight, onSymbolClick }) => {
@@ -22,8 +22,6 @@ export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps>
   if (highlight.target?.name === name) {
     focusCol = highlight.target.col;
   }
-  const highlightedSources = highlight.sources.filter(s => s.name === name);
-  const highlightedDestinations = highlight.destinations?.filter(d => d.name === name) || [];
 
   const visibleColIndices = getVisibleIndices(displayCols, focusCol);
 
@@ -32,20 +30,15 @@ export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps>
         return <div key={`ellipsis-c-${cIdx}`} className="symbolic-ellipsis">…</div>;
     }
 
-    const isTarget = highlight.target?.name === name && highlight.target.col === c;
-    const isSource = highlightedSources.some(s => s.col === c);
-    const isDestination = highlightedDestinations.some(d => d.col === c);
-
     return (
         <InteractiveSymbolicElement
             key={`elem-${c}`}
+            name={name}
             base={symbol.base}
             subscript={symbol.subscript}
             col={c}
-            isTarget={isTarget}
-            isSource={isSource}
-            isDestination={isDestination}
-            onClick={() => onSymbolClick({ name, row: 0, col: c })}
+            highlight={highlight}
+            onClick={(event) => onSymbolClick({ name, row: 0, col: c }, event)}
         />
     );
   });

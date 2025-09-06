@@ -28,20 +28,30 @@ export interface HighlightState {
   destinations?: HighlightSource[]; // For forward tracing
 }
 
-export interface CalculationStep {
-    a: Vector;
-    b: Vector;
-    op: string; // e.g., '·', '+', '...'
-    result: number;
-    aSymbol: string;
-    bSymbol: string;
+export interface CalculationComponent {
+    a: number;
+    b: number;
 }
+
+export interface CalculationStep {
+    description?: string; // [MODIFIED] Optional description for the step
+    a?: Vector; // [MODIFIED] Made optional
+    b?: Vector; // [MODIFIED] Made optional
+    op: string; // e.g., '·', '+', '...'
+    result: number | Vector; // [MODIFIED] Result can be a number or a vector
+    aSymbol?: string; // [MODIFIED] Made optional
+    bSymbol?: string; // [MODIFIED] Made optional
+    components?: CalculationComponent[];
+}
+
+export type OpType = 'matmul' | 'add' | 'layernorm' | 'scale' | 'relu' | 'softmax' | 'info' | 'matmul_bias';
 
 export interface TooltipState {
     target: ElementIdentifier;
-    opType: 'matmul' | 'add' | 'info';
+    opType: OpType;
     steps: CalculationStep[];
     title: string;
+    initialPosition: { x: number, y: number };
 }
 
 export interface AttentionHeadData {

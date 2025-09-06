@@ -34,10 +34,10 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
     output: { base: 'M' },
     mha_output: { base: 'M' },
 
-    // Add & Norm
-    add_norm_1_output: { base: "Z'" },
-    add_norm_2_output: { base: "Z''" },
-    add_norm_3_output: { base: "Z'''" },
+    // Add & Norm (Context-dependent, see getSymbolParts)
+    add_norm_1_output: { base: "Z'" }, // Default for Encoder
+    add_norm_2_output: { base: "Z''" }, // Default for Encoder
+    add_norm_3_output: { base: "Y", subscript: "final" }, // Default for Decoder
 
     // FFN
     W1: { base: 'W', subscript: '1' },
@@ -73,6 +73,18 @@ const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
  */
 export const getSymbolParts = (name: string): SymbolParts => {
     const conceptualName = name.split('.').pop() || '';
+    const isDecoderContext = name.includes('decoder');
+
+    // [MODIFIED] Handle context-sensitive Add & Norm symbols
+    if (isDecoderContext) {
+        if (conceptualName === 'add_norm_1_output') return { base: "Y'" };
+        if (conceptualName === 'add_norm_2_output') return { base: "Y''" };
+        if (conceptualName === 'add_norm_3_output') return { base: "Y", subscript: "final" };
+    } else { // Encoder context
+        if (conceptualName === 'add_norm_1_output') return { base: "Z'" };
+        if (conceptualName === 'add_norm_2_output') return { base: "Z", subscript: "final" };
+    }
+
     if (conceptualName.startsWith('Wq') || conceptualName.startsWith('Wk') || conceptualName.startsWith('Wv') || conceptualName.startsWith('Wo')) {
         return SYMBOL_CONFIG[conceptualName.substring(0,2)];
     }

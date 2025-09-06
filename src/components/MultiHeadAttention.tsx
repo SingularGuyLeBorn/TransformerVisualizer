@@ -10,7 +10,7 @@ interface MHAProps {
     baseName: string;
     data: MultiHeadAttentionData;
     highlight: HighlightState;
-    onElementClick: (element: ElementIdentifier) => void;
+    onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
     onComponentClick: (componentId: string) => void;
 }
 
@@ -155,13 +155,11 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                     </div>
 
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Scale by } / \sqrt{d_k}}" /></div>
-                    <div className="viz-formula-row">
-                        <Matrix name={`${headBaseName}.ScaledScores`} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
-                    </div>
 
                     <ElementwiseOperation
                         opType="softmax"
                         inputMatrix={headData.ScaledScores}
+                        inputMatrixName={`${headBaseName}.ScaledScores`}
                         outputMatrix={headData.AttentionWeights}
                         outputMatrixName={`${headBaseName}.AttentionWeights`}
                         highlight={highlight}
@@ -172,26 +170,10 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
 
                     <div className="viz-formula-row">
                         <Matrix name={`${headBaseName}.AttentionWeights`} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
+                        <InlineMath math="\times" />
+                        <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
                     </div>
-
-                    {breakHeadOutput ? (
-                        <>
-                            <div className="viz-formula-row">
-                                <Matrix name={`${headBaseName}.AttentionWeights`} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
-                            </div>
-                            <div className="op-symbol">×</div>
-                            <div className="viz-formula-row">
-                                <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                        </>
-                    ) : (
-                        <div className="viz-formula-row">
-                            <Matrix name={`${headBaseName}.AttentionWeights`} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
-                            <InlineMath math="\times" />
-                            <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
-                        </div>
-                    )}
-                    <div className="arrow-down">=</div>
+                     <div className="arrow-down">=</div>
                     <div className="viz-formula-row">
                         <Matrix name={`${headBaseName}.HeadOutput`} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
@@ -202,9 +184,7 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                 <div className="viz-formula-group">
                     <div className="viz-step-title">3. Concat & Final Projection</div>
                     <div className="viz-formula-row">
-                       <InlineMath math="\text{Concat}(" />
-                        {renderConcatHeads()}
-                       <InlineMath math=")" />
+                       {renderConcatHeads()}
                      </div>
 
                      <div className="viz-formula-row">

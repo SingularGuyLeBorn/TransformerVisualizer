@@ -8,7 +8,7 @@ interface TokenProps {
   position: number;
   name: string; // "inputToken" or "outputToken"
   highlight: HighlightState;
-  onElementClick: (element: ElementIdentifier) => void;
+  onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
 }
 
 export const Token: React.FC<TokenProps> = ({
@@ -25,8 +25,8 @@ export const Token: React.FC<TokenProps> = ({
     (s) => s.name === name && s.row === position
   );
 
-  const handleClick = () => {
-    onElementClick({ name, row: position, col: -1, tokenStr, tokenId });
+  const handleClick = (event: React.MouseEvent) => {
+    onElementClick({ name, row: position, col: -1, tokenStr, tokenId }, event);
   };
 
   const className = `token-container ${isTarget ? 'target' : ''} ${

@@ -6,7 +6,7 @@ import { EmbeddingLookup } from './EmbeddingLookup';
 interface TokenizationEmbeddingProps {
     data: TransformerData;
     highlight: HighlightState;
-    onElementClick: (element: ElementIdentifier) => void;
+    onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
     onComponentClick: (componentId: string) => void;
     isActive: boolean;
 }
@@ -20,6 +20,8 @@ export const TokenizationEmbedding: React.FC<TokenizationEmbeddingProps> = ({ da
         tokenId: data.tokenizedInput[i],
         tokenStr: token
     }));
+
+    const shouldBreak = (data.embeddingMatrix[0]?.length || 0) > 10;
 
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}>
@@ -36,6 +38,7 @@ export const TokenizationEmbedding: React.FC<TokenizationEmbeddingProps> = ({ da
                     outputMatrixName="inputEmbeddings"
                     highlight={highlight}
                     onElementClick={onElementClick}
+                    shouldBreak={shouldBreak}
                 />
             </div>
         </div>

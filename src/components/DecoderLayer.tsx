@@ -1,6 +1,6 @@
 // FILE: src/components/DecoderLayer.tsx
 import React from 'react';
-import { DecoderLayerData, HighlightState, ElementIdentifier } from '../types';
+import { DecoderLayerData, HighlightState, ElementIdentifier, Matrix as MatrixType } from '../types';
 import { AddNorm } from './AddNorm';
 import { FeedForward } from './FeedForward';
 import { MATRIX_NAMES } from '../config/matrixNames';
@@ -14,11 +14,12 @@ interface DecoderLayerProps {
   layerIndex: number;
   data: DecoderLayerData;
   highlight: HighlightState;
-  onElementClick: (element: ElementIdentifier) => void;
+  onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
   onComponentClick: (componentId: string) => void;
+  finalEncoderOutput: MatrixType; // [ADDED]
 }
 
-export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, highlight, onElementClick, onComponentClick }) => {
+export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, highlight, onElementClick, onComponentClick, finalEncoderOutput }) => {
   const baseName = `decoder.${layerIndex}`;
   const LN = MATRIX_NAMES.decoderLayer(layerIndex);
 
@@ -76,6 +77,7 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
                     highlight={highlight}
                     onElementClick={onElementClick}
                     onComponentClick={onComponentClick}
+                    finalEncoderOutput={finalEncoderOutput}
                 />
                 <AddNorm
                     residualInput={data.add_norm_1_output}
