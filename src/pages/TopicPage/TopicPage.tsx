@@ -1,7 +1,7 @@
-// FILE: src/pages/TopicPage.tsx
+// FILE: src/pages/TopicPage/TopicPage.tsx
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { topics } from '../topics';
+import { topics } from '../../topics';
 
 export const TopicPage: React.FC = () => {
     const { topicId } = useParams<{ topicId: string }>();

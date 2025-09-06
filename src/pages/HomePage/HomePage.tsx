@@ -1,7 +1,7 @@
-// FILE: src/pages/HomePage.tsx
+// FILE: src/pages/HomePage/HomePage.tsx
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { topics, Topic } from '../topics';
+import { topics, Topic } from '../../topics';
 import './HomePage.css';
 
 const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {

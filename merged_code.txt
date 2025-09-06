@@ -1033,8 +1033,9 @@ h1 {
 // FILE: src/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { HomePage } from './pages/HomePage';
-import { TopicPage } from './pages/TopicPage';
+// [FIXED] Corrected import paths based on our new flat 'pages' directory structure
+import { HomePage } from './pages/HomePage/HomePage';
+import { TopicPage } from './pages/TopicPage/TopicPage';
 import './App.css'; // Global styles remain
 
 function App() {
@@ -1069,8 +1070,12 @@ const globalStyles = `
   }
   .app-main-content {
     flex-grow: 1;
-    overflow-y: auto; /* Allow main content to scroll */
-    height: calc(100vh - 78px); /* Full height minus header */
+    overflow: hidden; /* It should NOT scroll itself */
+    min-height: 0; /* Crucial for nested flex scrolling */
+  }
+  .topic-page-container {
+      height: 100%;
+      overflow-y: auto; /* This container will scroll for standard articles */
   }
 `;
 
@@ -1078,9 +1083,9 @@ const styleSheet = document.createElement("style");
 styleSheet.innerText = globalStyles;
 document.head.appendChild(styleSheet);
 
-
 export default App;
 
+// END OF FILE: src/App.tsx
 
 
 ================================================================================
@@ -1158,10 +1163,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ markdown }) 
 
 
 ================================================================================
-### 文件路径: src/pages/HomePage.css
+### 文件路径: src/pages/HomePage/HomePage.css
 ================================================================================
 
-/* FILE: src/pages/HomePage.css */
+/* FILE: src/pages/HomePage/HomePage.css */
 .homepage-container {
     max-width: 1200px;
     margin: 0 auto;
@@ -1256,13 +1261,13 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ markdown }) 
 
 
 ================================================================================
-### 文件路径: src/pages/HomePage.tsx
+### 文件路径: src/pages/HomePage/HomePage.tsx
 ================================================================================
 
-// FILE: src/pages/HomePage.tsx
+// FILE: src/pages/HomePage/HomePage.tsx
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { topics, Topic } from '../topics';
+import { topics, Topic } from '../../topics';
 import './HomePage.css';
 
 const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {
@@ -1301,13 +1306,20 @@ export const HomePage: React.FC = () => {
 
 
 ================================================================================
-### 文件路径: src/pages/TopicPage.tsx
+### 文件路径: src/pages/TopicPage/TopicPage.css
 ================================================================================
 
-// FILE: src/pages/TopicPage.tsx
+
+
+
+================================================================================
+### 文件路径: src/pages/TopicPage/TopicPage.tsx
+================================================================================
+
+// FILE: src/pages/TopicPage/TopicPage.tsx
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { topics } from '../topics';
+import { topics } from '../../topics';
 
 export const TopicPage: React.FC = () => {
     const { topicId } = useParams<{ topicId: string }>();
@@ -1357,9 +1369,9 @@ export const topics: Topic[] = [
     {
         id: 'attention-variants',
         title: '多头注意力变体: 从MHA, MQA, GQA到MLA',
-        description: '深入探讨注意力机制从Multi-Head到Multi-head Latent的演进过程，分析其设计理念、数学原理，以及对KV Cache效率和性能的影响。',
+        description: '通过交互式图表，深入探讨注意力机制从Multi-Head到Multi-head Latent的演进过程，直观理解其设计理念以及对KV Cache效率和性能的影响。',
         date: '2025年9月7日',
-        tags: ['Attention', 'LLM', 'GQA', 'MLA', '深度剖析'],
+        tags: ['Attention', 'LLM', 'GQA', 'MLA', 'Visualization'],
         component: AttentionVariantsTopic,
     },
     {
@@ -1377,96 +1389,184 @@ export const topics: Topic[] = [
 // 是最明确、最可靠地将其标记为模块的方式，可以彻底解决 TS1208 错误。
 export {};
 
+// END OF FILE: src/topics/index.tsx
+
 
 ================================================================================
 ### 文件路径: src/topics/attention-variants/AttentionVariantsTopic.css
 ================================================================================
 
 /* FILE: src/topics/attention-variants/AttentionVariantsTopic.css */
-.attention-variants-container {
-    background-color: #fff;
-    padding: 30px 40px;
+/* This file contains all necessary styles for the attention-variants topic,
+   ensuring it is fully self-contained. Many styles are adapted from the
+   transformer-explorer topic to maintain visual consistency. */
+
+.attention-variant-section {
+    border: 3px solid var(--border-color);
     border-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-    max-width: 900px;
-    margin: 20px auto; /* Add margin for spacing from header */
-    font-size: 16px;
-    line-height: 1.8;
+    margin-bottom: 25px;
+    background-color: #fdfdfd;
+    transition: all 0.3s ease;
+    overflow: hidden;
 }
 
-.attention-variants-container h1,
-.attention-variants-container h2,
-.attention-variants-container h3,
-.attention-variants-container h4,
-.attention-variants-container h5 {
-    color: #000;
-    border-bottom: 1px solid #e4e7ed;
-    padding-bottom: 10px;
-    margin-top: 2em;
-    margin-bottom: 1.2em;
+.attention-variant-section .component-header {
+    background-color: var(--component-header-bg);
+    padding: 12px 20px;
+    font-weight: bold;
+    font-size: 1.3em;
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 8px 8px 0 0;
 }
 
-.attention-variants-container h1 {
-    font-size: 2.2em;
+.attention-variant-section .component-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.attention-calculation-step {
+    width: 100%;
+    border: 1px solid #eef;
+    border-radius: 8px;
+    padding: 15px;
+    background-color: rgba(0,0,0,0.015);
+}
+
+.step-title {
+    width: 100%;
     text-align: center;
-    border-bottom: 2px solid #dcdfe6;
+    font-weight: bold;
+    color: #303133;
+    font-size: 1.1em;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed var(--border-color);
 }
 
-.attention-variants-container h2 {
-    font-size: 1.8em;
+.viz-row, .explanation-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    width: 100%;
+    flex-wrap: nowrap;
+    margin-bottom: 10px;
 }
 
-.attention-variants-container p {
-    margin-bottom: 1.2em;
+.viz-row.vertical, .explanation-row.vertical {
+    flex-direction: column;
 }
 
-.attention-variants-container ul,
-.attention-variants-container ol {
-    padding-left: 25px;
-    margin-bottom: 1.2em;
+
+.explanation-row p {
+    flex-basis: 100%;
+    text-align: center;
+    color: #606266;
+    margin: 5px 0 15px 0;
 }
 
-.attention-variants-container li {
-    margin-bottom: 0.5em;
+.placeholder-matrix {
+    opacity: 0.3;
 }
 
-.attention-variants-container code {
-    background-color: #e9ecef;
-    padding: 2px 5px;
-    border-radius: 4px;
-    font-family: monospace;
+/* [NEW] Styles for side-label matrix layout */
+.matrix-wrapper.side-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.matrix-label-side {
+    flex-shrink: 0;
+}
+
+/* [NEW] Styles for Elementwise Operation Visualization */
+.elementwise-op-container {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0;
+    border: 1px dashed #ccc;
+    border-radius: 8px;
+    background-color: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    box-sizing: border-box;
+}
+.elementwise-op-label {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+/* [NEW] Styles for ElementwiseCalculation */
+.elementwise-calc-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
     font-size: 0.9em;
 }
-
-.attention-variants-container blockquote {
-    border-left: 4px solid #dcdfe6;
-    padding-left: 15px;
-    margin: 1.5em 0;
-    color: #606266;
-    background-color: #f8f9fa;
+.calc-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
 }
-
-.attention-variants-container table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 2em 0;
+.calc-label {
+    color: #555;
+    font-size: 0.9em;
 }
-
-.attention-variants-container th,
-.attention-variants-container td {
-    border: 1px solid #dcdfe6;
-    padding: 12px 15px;
-    text-align: left;
+.elementwise-op-row {
+    display: flex;
+    gap: 5px;
+    border: 1px solid #ddd;
+    padding: 4px;
+    border-radius: 4px;
+    background: #fff;
+    align-items: center;
 }
-
-.attention-variants-container th {
-    background-color: #f8f9fa;
+.elementwise-op-element {
+  width: 45px;
+  height: 25px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 2px;
+  font-family: monospace;
+  font-size: 0.8em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.elementwise-op-element.symbolic-ellipsis {
+    border: none;
+    background-color: transparent;
+    color: #aaa;
+    width: auto;
+}
+.elementwise-op-element.sum {
+    width: auto;
+    padding: 0 10px;
     font-weight: bold;
 }
-
-.attention-variants-container tr:nth-child(even) {
-    background-color: #fcfcfc;
+.elementwise-op-element.source, .elementwise-op-element.sum.source {
+    background-color: var(--highlight-source-bg) !important;
+    color: var(--highlight-source-color) !important;
+    border-color: var(--highlight-source-border) !important;
 }
+.elementwise-op-element.target, .elementwise-op-element.sum.target {
+    background-color: var(--highlight-target-bg) !important;
+    color: var(--highlight-target-color) !important;
+    border-color: var(--highlight-target-border) !important;
+}
+
+/* END OF FILE: src/topics/attention-variants/AttentionVariantsTopic.css */
 
 
 ================================================================================
@@ -1474,42 +1574,1402 @@ export {};
 ================================================================================
 
 // FILE: src/topics/attention-variants/AttentionVariantsTopic.tsx
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import './AttentionVariantsTopic.css';
+import { Controls } from './components/Controls';
+import { Viz } from './components/Viz';
+import { Explanation } from './components/Explanation';
+import { useAttention } from './hooks/useAttention';
+import { HighlightState, ElementIdentifier, AttentionData, HighlightSource } from './types';
+
+// =======================
+//   HIGHLIGHTING LOGIC
+// =======================
+const createBackwardHighlight = (element: ElementIdentifier, data: AttentionData): HighlightState => {
+    const { variant, name, row, col, isInternal } = element;
+    const sources: HighlightSource[] = [];
+
+    // Short-circuit for MLA as it has a different structure not yet fully visualized
+    if (variant === 'mla') {
+        return { target: element, sources: [] };
+    }
+
+    const dims = {
+        d_head: data.mha.heads[0].Q[0].length,
+        n_q_heads: data.gqa.heads.length,
+        n_kv_heads_gqa: data.gqa.K_proj[0].length / data.mha.heads[0].Q[0].length,
+    };
+
+    const conceptualName = name.split('.').pop() || '';
+    const headIndexMatch = name.match(/heads\.(\d+)/);
+    const headIndex = headIndexMatch ? parseInt(headIndexMatch[1], 10) : 0;
+
+    // Handle clicks inside the ElementwiseCalculation component
+    if (isInternal) {
+        const baseName = name.replace('.internal', '');
+        const baseElementName = `${baseName.split('.')[0]}.heads.${headIndex}.Scores`;
+        if (col === -1) { // Clicked on the sum
+             sources.push({ ...element, name: baseElementName, row: row, col: -1, highlightRow: true, isInternal: true });
+        } else { // Clicked on an element
+             sources.push({ ...element, name: baseElementName, row: row, col: col, isInternal: true });
+        }
+        return { target: element, sources };
+    }
+
+
+    if (conceptualName === 'output') { // FinalOutput
+        sources.push({ ...element, name: `${variant}.combined`, row: row, col: -1, highlightRow: true });
+        sources.push({ ...element, name: `${variant}.wo`, row: -1, col: col, highlightCol: true });
+    }
+    else if (conceptualName === 'combined') { // CombinedOutput
+        const headIndexForCol = Math.floor(col / dims.d_head);
+        sources.push({ ...element, name: `${variant}.heads.${headIndexForCol}.Output`, row: row, col: col % dims.d_head });
+    }
+    else if (conceptualName === 'Output') {
+        sources.push({ ...element, name: `${variant}.heads.${headIndex}.Weights`, row: row, col: -1, highlightRow: true });
+        sources.push({ ...element, name: `${variant}.heads.${headIndex}.V`, row: -1, col: col, highlightCol: true });
+    }
+    else if (conceptualName === 'Weights') {
+        sources.push({ ...element, name: `${variant}.heads.${headIndex}.Scores`, row: row, col: -1, highlightRow: true });
+        // Add an internal highlight target for the ElementwiseOperation component
+        sources.push({ ...element, name: `${name}.internal`, row: row, col: col, isInternal: true });
+    }
+    else if (conceptualName === 'Scores') {
+        sources.push({ ...element, name: `${variant}.heads.${headIndex}.Q`, row: row, col: -1, highlightRow: true });
+        sources.push({ ...element, name: `${variant}.heads.${headIndex}.K`, row: col, col: -1, highlightRow: true });
+    }
+    else if (['Q', 'K', 'V'].includes(conceptualName)) {
+        const type = conceptualName.toLowerCase() as 'q' | 'k' | 'v';
+        let weightIndex = 0;
+
+        if (type === 'q') {
+            weightIndex = headIndex;
+        } else { // K or V
+            if (variant === 'mha') {
+                weightIndex = headIndex;
+            } else if (variant === 'gqa') {
+                const q_heads_per_kv_gqa = dims.n_q_heads / dims.n_kv_heads_gqa;
+                weightIndex = Math.floor(headIndex / q_heads_per_kv_gqa);
+            } // for MQA, weightIndex remains 0
+        }
+
+        sources.push({ ...element, name: `${variant}.input`, row: row, col: -1, highlightRow: true });
+        sources.push({ ...element, name: `${variant}.w${type}.${weightIndex}`, row: -1, col: col, highlightCol: true });
+    }
+
+    return { target: element, sources };
+};
+
 
 export const AttentionVariantsTopic: React.FC = () => {
+    const [dims, setDims] = useState({
+        seq_len: 4,
+        d_model: 16,
+        n_q_heads: 4,
+        n_kv_heads: 2,
+        d_head: 4,
+    });
+
+    const [highlight, setHighlight] = useState<HighlightState>({ target: null, sources: [] });
+
+    const attentionData: AttentionData | null = useAttention(dims);
+
+    const handleInteraction = useCallback((element: ElementIdentifier, event: React.MouseEvent) => {
+        if (!attentionData) return;
+        const newHighlight = createBackwardHighlight(element, attentionData);
+        setHighlight(newHighlight);
+    }, [attentionData]);
+
+    if (!attentionData) {
+        return <div style={{ padding: "20px", textAlign: "center" }}>正在加载或维度设置无效... (确保 d_model = n_q_heads * d_head 且 n_q_heads 能被 n_kv_heads 整除)</div>;
+    }
+
     return (
-        <div className="attention-variants-container">
-            <h2>多头注意力变体: 从MHA, MQA, GQA到MLA</h2>
-            <p style={{ textAlign: 'center', fontSize: '1.2em', color: '#606266' }}>
-                此专题内容正在准备中，敬请期待...
-            </p>
-            {/*
-                当您准备好 markdown 文件后，
-                可以用下面这段代码替换上面的 <p> 标签和 <h2> 标签，
-                并确保 MarkdownRenderer 组件存在。
-
-                const [content, setContent] = useState('');
-
-                useEffect(() => {
-                    fetch(rawMarkdown)
-                        .then(response => response.text())
-                        .then(text => setContent(text.replace('# FILE: src/topics/attention-variants/content.md', '')));
-                }, []);
-
-                if (!content) {
-                    return <div>Loading content...</div>;
-                }
-
-                return (
-                    <div className="attention-variants-container">
-                        <MarkdownRenderer markdown={content} />
-                    </div>
-                );
-            */}
+        <div className="main-layout" style={{ height: '100%' }}>
+            <Controls dims={dims} setDims={setDims} />
+            <div className="column left-column">
+                <div className="column-content">
+                    <h2>数值模拟</h2>
+                    <Viz data={attentionData} dims={dims} highlight={highlight} onElementClick={handleInteraction} />
+                </div>
+            </div>
+            <div className="column right-column">
+                <div className="column-content">
+                    <h2>理论推导</h2>
+                    <Explanation dims={dims} highlight={highlight} onSymbolClick={handleInteraction} />
+                </div>
+            </div>
         </div>
     );
 };
+// END OF FILE: src/topics/attention-variants/AttentionVariantsTopic.tsx
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/types.ts
+================================================================================
+
+// FILE: src/topics/attention-variants/types.ts
+// 该文件为注意力变体专题定义了所有必要的类型
+
+export type Matrix = number[][];
+export type Vector = number[];
+
+// 用于标识被点击的元素
+export interface ElementIdentifier {
+  variant: 'mha' | 'mqa' | 'gqa' | 'mla'; // 所属的注意力变体
+  name: string; // 矩阵或向量的唯一名称, e.g., "mha.heads.0.Q" or "gqa.wk.1"
+  row: number;
+  col: number;
+  isInternal?: boolean; // True if it's part of an internal calculation visualization
+}
+
+// 用于定义高亮的来源
+export interface HighlightSource extends ElementIdentifier {
+  highlightRow?: boolean;
+  highlightCol?: boolean;
+}
+
+// 全局高亮状态
+export interface HighlightState {
+  target: ElementIdentifier | null;
+  sources: HighlightSource[];
+}
+
+// 单个注意力头的计算结果
+export interface AttentionHeadData {
+  Q: Matrix;
+  K: Matrix;
+  V: Matrix;
+  Scores: Matrix;
+  Weights: Matrix;
+  Output: Matrix;
+}
+
+// MHA, MQA, GQA 的计算结果结构
+export interface AttentionVariantData {
+  Q_proj: Matrix;
+  K_proj: Matrix;
+  V_proj: Matrix;
+  heads: AttentionHeadData[];
+  CombinedOutput: Matrix;
+  FinalOutput: Matrix;
+}
+
+// MLA 的特定计算结果结构
+export interface MLAData {
+  C_kv: Matrix; // 潜在KV向量
+  C_q: Matrix; // 潜在Q向量
+  K_rope: Matrix; // RoPE部分的K
+  // ... 其他MLA中间量，此处为简化示例
+  FinalOutput: Matrix;
+}
+
+// 包含所有注意力变体计算结果的总数据结构
+export interface AttentionData {
+  input: Matrix;
+  Wq: Matrix[]; // N_q_heads 个 Wq 矩阵
+  Wk: Matrix[]; // N_kv_heads 个 Wk 矩阵
+  Wv: Matrix[]; // N_kv_heads 个 Wv 矩阵
+  Wo: Matrix;
+  mha: AttentionVariantData;
+  mqa: AttentionVariantData;
+  gqa: AttentionVariantData;
+  mla: MLAData; // MLA结构不同，单独定义
+}
+
+// END OF FILE: src/topics/attention-variants/types.ts
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/components/Controls.css
+================================================================================
+
+/* FILE: src/topics/attention-variants/components/Controls.css */
+/* Styles copied and adapted from src/topics/transformer-explorer/components/Controls.css */
+/* This ensures the component is self-contained within its topic. */
+
+.controls-panel {
+    position: fixed;
+    top: 85px; /* Position below main title */
+    right: 20px;
+    z-index: 100;
+    background: var(--component-bg);
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+    transition: width 0.3s ease-in-out, height 0.3s ease-in-out;
+    max-width: 90vw;
+}
+
+.controls-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: var(--component-bg);
+  border-bottom: 1px solid var(--border-color);
+  gap: 20px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.control-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.control-group label {
+  font-size: 0.9em;
+  margin-bottom: 5px;
+  color: #606266;
+}
+.control-group input[type="number"] {
+  width: 60px;
+  padding: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  text-align: center;
+  font-size: 1em;
+}
+
+.d_k-value {
+    width: auto;
+    min-width: 60px;
+    padding: 6px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 1em;
+    font-weight: bold;
+    background-color: #f0f2f5;
+}
+
+/*// END OF FILE: src/topics/attention-variants/components/Controls.css*/
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/components/Controls.tsx
+================================================================================
+
+// FILE: src/topics/attention-variants/components/Controls.tsx
+import React from 'react';
+import './Controls.css'; // 使用独立的CSS文件
+
+interface ControlsProps {
+  dims: {
+    n_q_heads: number;
+    n_kv_heads: number;
+    d_head: number;
+  };
+  setDims: React.Dispatch<React.SetStateAction<any>>;
+}
+
+export const Controls: React.FC<ControlsProps> = ({ dims, setDims }) => {
+    const handleDimChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target;
+        const numValue = parseInt(value, 10);
+
+        setDims((prevDims: any) => {
+            const newDims = { ...prevDims, [id]: numValue };
+
+            if (id === 'n_q_heads') {
+                if (numValue % newDims.n_kv_heads !== 0) {
+                    // 寻找一个能被新 n_q_heads 整除的 n_kv_heads
+                    let new_kv_heads = newDims.n_kv_heads;
+                    while(numValue % new_kv_heads !== 0) {
+                        new_kv_heads--;
+                    }
+                    newDims.n_kv_heads = Math.max(1, new_kv_heads);
+                }
+            }
+
+            if (id === 'n_kv_heads') {
+                if (newDims.n_q_heads % numValue !== 0) {
+                     newDims.n_q_heads = numValue * Math.round(newDims.n_q_heads / numValue);
+                }
+            }
+
+            newDims.d_model = newDims.n_q_heads * newDims.d_head;
+            return newDims;
+        });
+    };
+
+    return (
+        <div className="controls-panel">
+            <div className="controls-container" style={{ paddingTop: '15px' }}>
+                <div className="control-group">
+                    <label htmlFor="n_q_heads">查询头 (N_q_heads)</label>
+                    <input type="number" id="n_q_heads" value={dims.n_q_heads} onChange={handleDimChange} step={1} min={1} max={16} />
+                </div>
+                <div className="control-group">
+                    <label htmlFor="n_kv_heads">键/值头 (N_kv_heads)</label>
+                    <input type="number" id="n_kv_heads" value={dims.n_kv_heads} onChange={handleDimChange} step={1} min={1} max={dims.n_q_heads} />
+                </div>
+                 <div className="control-group">
+                    <label htmlFor="d_head">头维度 (d_head)</label>
+                    <input type="number" id="d_head" value={dims.d_head} onChange={handleDimChange} step={2} min={2} max={32} />
+                </div>
+                 <div className="control-group">
+                    <label>模型维度 (d_model)</label>
+                    <div className="d_k-value">{dims.n_q_heads * dims.d_head}</div>
+                </div>
+            </div>
+        </div>
+    );
+};
+// END OF FILE: src/topics/attention-variants/components/Controls.tsx
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/components/Element.tsx
+================================================================================
+
+// FILE: src/topics/attention-variants/components/Element.tsx
+import React from 'react';
+import { HighlightState, ElementIdentifier } from '../types';
+
+interface ElementProps {
+  name: string;
+  row: number;
+  col: number;
+  value: number;
+  highlight: HighlightState;
+  onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+  isProbMax?: boolean;
+}
+
+export const Element: React.FC<ElementProps> = React.memo(({ name, row, col, value, highlight, onElementClick, isProbMax = false }) => {
+
+  const isTarget = highlight.target?.name === name && highlight.target?.row === row && highlight.target?.col === col;
+
+  const isSource = highlight.sources.some(s => {
+    if (s.name !== name) return false;
+    if (s.highlightRow) return s.row === row;
+    if (s.highlightCol) return s.col === col;
+    return s.row === row && s.col === col;
+  });
+
+  const classNames = ['matrix-element'];
+  if (isTarget) classNames.push('target');
+  if (isSource) classNames.push('source');
+  if (isProbMax) classNames.push('prob-max');
+
+  const handleClick = (event: React.MouseEvent) => {
+    // Assuming ElementIdentifier needs variant, which should be passed down or derived
+    const variant = name.split('.')[0] as 'mha' | 'mqa' | 'gqa' | 'mla';
+    onElementClick({ variant, name, row, col }, event);
+  };
+
+  const displayValue = () => {
+      if (value === -Infinity) return '-∞';
+      if (value === Infinity) return '+∞';
+      return value.toFixed(2);
+  }
+
+  return (
+    <div className={classNames.join(' ')} onClick={handleClick}>
+      {displayValue()}
+    </div>
+  );
+});
+
+// END OF FILE: src/topics/attention-variants/components/Element.tsx
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/components/ElementwiseCalculation.tsx
+================================================================================
+
+// FILE: src/topics/attention-variants/components/ElementwiseCalculation.tsx
+import React from 'react';
+import { InlineMath } from 'react-katex';
+import { ElementIdentifier, HighlightState } from '../types';
+import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
+
+interface ElementwiseCalculationProps {
+  opType: 'softmax' | 'relu';
+  inputRow: number[];
+  outputRow: number[];
+  highlight: HighlightState;
+  onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+  baseName: string; // e.g., "mha.heads.0.Weights"
+  rowIndex: number;
+  variant: 'mha' | 'mqa' | 'gqa' | 'mla';
+}
+
+const formatNumber = (num: number, precision = 2) => num.toFixed(precision);
+
+export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
+  opType,
+  inputRow,
+  outputRow,
+  highlight,
+  onElementClick,
+  baseName,
+  rowIndex,
+  variant,
+}) => {
+  const targetCol = highlight.target?.isInternal && highlight.target.row === rowIndex ? highlight.target.col : -1;
+  const visibleCols = getVisibleIndices(inputRow.length, targetCol);
+
+  const handleClick = (event: React.MouseEvent, colIndex: number) => {
+    onElementClick({
+      variant,
+      name: `${baseName}.internal`, // Special name for internal calculation
+      row: rowIndex,
+      col: colIndex,
+      isInternal: true,
+    }, event);
+  };
+
+  const isSource = (colIndex: number) => {
+      return highlight.sources.some(s => s.isInternal && s.row === rowIndex && s.col === colIndex);
+  }
+  const isTarget = (colIndex: number) => {
+      return highlight.target?.isInternal && highlight.target.row === rowIndex && highlight.target.col === colIndex;
+  }
+
+
+  const renderVisibleElements = (data: (number | string)[], type: 'input' | 'output' | 'exp' | 'sum') => {
+    return visibleCols.map((col, i) => {
+      if (col === ELLIPSIS) {
+        return <div key={`ellipsis-${i}`} className="elementwise-op-element symbolic-ellipsis">...</div>;
+      }
+      const value = data[col];
+      const className = `elementwise-op-element ${isSource(col) ? 'source' : ''} ${isTarget(col) ? 'target' : ''}`;
+      return (
+        <div key={`${type}-${col}`} className={className} onClick={(e) => handleClick(e, col)}>
+          {typeof value === 'number' ? formatNumber(value, 4) : value}
+        </div>
+      );
+    });
+  };
+
+  const renderSoftmax = () => {
+    const maxVal = Math.max(...inputRow);
+    const exps = inputRow.map(val => Math.exp(val - maxVal));
+    const sumExps = exps.reduce((a, b) => a + b, 0);
+
+    const fullSumIsSource = highlight.sources.some(s => s.isInternal && s.row === rowIndex && s.col === -1); // -1 indicates whole row/sum
+
+    return (
+      <>
+        {/* Step 1: exp(x - max(x)) */}
+        <div className="calc-step">
+          <div className="calc-label"><InlineMath math="\\text{exp}(x_i - \\text{max}(\\mathbf{x}))" /></div>
+          <div className="elementwise-op-row">
+            {renderVisibleElements(exps, 'exp')}
+          </div>
+        </div>
+        {/* Step 2: Sum */}
+        <div className="calc-step">
+          <div className="calc-label"><InlineMath math="\\sum \\text{exp}(\\dots)" /></div>
+          <div className={`elementwise-op-element sum ${fullSumIsSource ? 'source' : ''}`} onClick={(e) => handleClick(e, -1)}>
+            {formatNumber(sumExps, 4)}
+          </div>
+        </div>
+        {/* Step 3: Division */}
+        <div className="calc-step">
+          <div className="calc-label"><InlineMath math="\\text{exp}(\\dots) / \\sum" /></div>
+          <div className="elementwise-op-row">{renderVisibleElements(outputRow, 'output')}</div>
+        </div>
+      </>
+    );
+  };
+
+  return (
+    <div className="elementwise-calc-container">
+        {opType === 'softmax' ? renderSoftmax() : null}
+    </div>
+  );
+};
+// END OF FILE: src/topics/attention-variants/components/ElementwiseCalculation.tsx
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/components/ElementwiseOperation.tsx
+================================================================================
+
+// FILE: src/topics/attention-variants/components/ElementwiseOperation.tsx
+import React from 'react';
+import { Matrix, HighlightState, ElementIdentifier } from '../types';
+import { InlineMath } from 'react-katex';
+import { ElementwiseCalculation } from './ElementwiseCalculation';
+
+interface ElementwiseOperationProps {
+    opType: 'softmax';
+    inputMatrix: Matrix;
+    outputMatrix: Matrix;
+    outputMatrixName: string;
+    highlight: HighlightState;
+    onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+    variant: 'mha' | 'mqa' | 'gqa' | 'mla';
+}
+
+export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
+    opType,
+    inputMatrix,
+    outputMatrix,
+    outputMatrixName,
+    highlight,
+    onElementClick,
+    variant
+}) => {
+    let targetRowIndex = 0;
+
+    if (highlight.target) {
+        if (highlight.target.name === outputMatrixName) {
+            targetRowIndex = highlight.target.row;
+        } else if (highlight.target.isInternal && highlight.target.name.startsWith(outputMatrixName)) {
+            targetRowIndex = highlight.target.row;
+        }
+    }
+
+    const inputRow = inputMatrix[targetRowIndex] || [];
+    const outputRow = outputMatrix[targetRowIndex] || [];
+
+    const opName = opType.charAt(0).toUpperCase() + opType.slice(1);
+
+    return (
+        <div className="elementwise-op-container">
+            <div className="elementwise-op-label">
+                <InlineMath math={`\\text{Detailed Calculation: } ${opName}`} />
+            </div>
+            <p style={{margin: '0', fontSize: '0.8em', color: '#666'}}>* Showing calculation for Row {targetRowIndex}</p>
+            <ElementwiseCalculation
+                opType={opType}
+                inputRow={inputRow}
+                outputRow={outputRow}
+                highlight={highlight}
+                onElementClick={onElementClick}
+                baseName={outputMatrixName}
+                rowIndex={targetRowIndex}
+                variant={variant}
+            />
+        </div>
+    );
+};
+// END OF FILE: src/topics/attention-variants/components/ElementwiseOperation.tsx
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/components/Explanation.tsx
+================================================================================
+
+// FILE: src/topics/attention-variants/components/Explanation.tsx
+import React from 'react';
+import { HighlightState, ElementIdentifier } from '../types';
+import { InteractiveSymbolicMatrix } from './InteractiveSymbolicMatrix';
+import 'katex/dist/katex.min.css';
+import { BlockMath, InlineMath } from 'react-katex';
+
+interface ExplanationProps {
+  dims: { n_q_heads: number, n_kv_heads: number, d_head: number, d_model: number, seq_len: number };
+  highlight: HighlightState;
+  onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+}
+
+const renderVariantExplanation = (
+    variant: 'mha' | 'mqa' | 'gqa',
+    dims: ExplanationProps['dims'],
+    highlight: HighlightState,
+    onSymbolClick: ExplanationProps['onSymbolClick']
+) => {
+    const { d_head, d_model, seq_len } = dims;
+
+    const q_head_name = `${variant}.heads.0.Q`;
+    const k_head_name = `${variant}.heads.0.K`;
+    const v_head_name = `${variant}.heads.0.V`;
+    const scores_name = `${variant}.heads.0.Scores`;
+    const weights_name = `${variant}.heads.0.Weights`;
+    const output_head_name = `${variant}.heads.0.Output`;
+
+    // Layout breaking rules for explanation column (threshold = 8)
+    const break_qkv_proj = (d_model + d_head + d_head) > 8;
+    const break_scores = (d_head + seq_len + seq_len) > 8;
+    const break_output = (seq_len + d_head + d_head) > 8;
+    const break_final = (d_model + d_model + d_model) > 8;
+
+    return (
+      <>
+        <div className="attention-calculation-step">
+          <div className="step-title">1. 线性投影与多头拆分</div>
+          <p>
+              输入 <InlineMath math="H"/> 乘以权重矩阵 <InlineMath math="W"/> 生成Q, K, V。在MHA中，每个头都有独立的 <InlineMath math="W_{Q,h}, W_{K,h}, W_{V,h}"/>。而在GQA/MQA中，<InlineMath math="W_K, W_V"/> 是分组共享或完全共享的。
+          </p>
+           <div className={`explanation-row ${break_qkv_proj ? 'vertical' : ''}`}>
+               <InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+               <BlockMath math="\\times" />
+               <InteractiveSymbolicMatrix name={`${variant}.wq.0`} rows={d_model} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
+               <BlockMath math="=" />
+               <InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
+            </div>
+             <div className={`explanation-row ${break_qkv_proj ? 'vertical' : ''}`}>
+               <InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+               <BlockMath math="\\times" />
+               <InteractiveSymbolicMatrix name={`${variant}.wk.0`} rows={d_model} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
+               <BlockMath math="=" />
+               <InteractiveSymbolicMatrix name={k_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
+            </div>
+        </div>
+
+        <div className="attention-calculation-step">
+          <div className="step-title">2. 计算注意力分数 (Scaled Dot-Product)</div>
+          <BlockMath math={`\\text{Scores}_h = Q_h K_{\\text{group}(h)}^T`} />
+           <div className={`explanation-row ${break_scores ? 'vertical' : ''}`}>
+                <InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
+                <BlockMath math="\\times" />
+                <InteractiveSymbolicMatrix name={k_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} transpose={true} />
+                <BlockMath math="=" />
+                <InteractiveSymbolicMatrix name={scores_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} />
+           </div>
+           <BlockMath math={`A_h = \\text{Softmax}\\left(\\frac{\\text{Scores}_h}{\\sqrt{d_{\\text{head}}}}\\right)`} />
+        </div>
+
+        <div className="attention-calculation-step">
+            <div className="step-title">3. 加权求和得到单头输出</div>
+             <div className={`explanation-row ${break_output ? 'vertical' : ''}`}>
+                  <InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} />
+                  <BlockMath math="\\times" />
+                  <InteractiveSymbolicMatrix name={v_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
+                  <BlockMath math="=" />
+                  <InteractiveSymbolicMatrix name={output_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
+             </div>
+        </div>
+
+        <div className="attention-calculation-step">
+            <div className="step-title">4. 合并与最终投影</div>
+            <BlockMath math={`\\text{Output} = \\text{Concat}(\\text{head}_0, ..., \\text{head}_{N_q-1}) W_O`} />
+            <div className={`explanation-row ${break_final ? 'vertical' : ''}`}>
+                <InteractiveSymbolicMatrix name={`${variant}.combined`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                <BlockMath math="\\times" />
+                <InteractiveSymbolicMatrix name={`${variant}.wo`} rows={d_model} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                <BlockMath math="=" />
+                <InteractiveSymbolicMatrix name={`${variant}.output`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+            </div>
+        </div>
+      </>
+    )
+}
+
+export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSymbolClick }) => {
+  const { n_q_heads, n_kv_heads } = dims;
+
+  return (
+    <div>
+        <div className="attention-variant-section">
+            <div className="component-header">MHA (Multi-Head Attention)</div>
+            <div className="component-body">
+                <p>{`每个查询头都有独立的K/V头 ($N_q=${n_q_heads}, N_{kv}=${n_q_heads}$)。`}</p>
+                {renderVariantExplanation('mha', dims, highlight, onSymbolClick)}
+            </div>
+        </div>
+        <div className="attention-variant-section">
+            <div className="component-header">GQA (Grouped-Query Attention)</div>
+            <div className="component-body">
+                <p>{`查询头被分成 ${n_kv_heads} 组，每组共享一个K/V头 ($N_q=${n_q_heads}, N_{kv}=${n_kv_heads}$)。`}</p>
+                {renderVariantExplanation('gqa', dims, highlight, onSymbolClick)}
+            </div>
+        </div>
+        <div className="attention-variant-section">
+            <div className="component-header">MQA (Multi-Query Attention)</div>
+            <div className="component-body">
+                <p>{`所有查询头共享唯一的K/V头 ($N_q=${n_q_heads}, N_{kv}=1$ )。`}</p>
+                {renderVariantExplanation('mqa', dims, highlight, onSymbolClick)}
+            </div>
+        </div>
+    </div>
+  );
+};
+// END OF FILE: src/topics/attention-variants/components/Explanation.tsx
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/components/InteractiveSymbolicElement.tsx
+================================================================================
+
+// FILE: src/topics/attention-variants/components/InteractiveSymbolicElement.tsx
+import React from 'react';
+import { InlineMath } from 'react-katex';
+import { HighlightState } from '../types';
+import { useHighlighting } from '../hooks/useHighlighting';
+
+interface InteractiveSymbolicElementProps {
+  name: string;
+  base: string;
+  subscript?: string;
+  row?: number;
+  col?: number;
+  highlight: HighlightState;
+  onClick: (event: React.MouseEvent) => void;
+}
+
+export const InteractiveSymbolicElement: React.FC<InteractiveSymbolicElementProps> = React.memo(({ name, base, subscript, row, col, highlight, onClick }) => {
+  const { isTarget, isSource } = useHighlighting(name, row ?? 0, col ?? 0, highlight);
+
+  const elementBase = base.toLowerCase().replace(/'/g, '').replace(/_{.*}/, '');
+  const subscriptContent = [subscript, row, col].filter(s => s !== undefined && s !== null).join(',');
+  const mathString = `${elementBase}_{${subscriptContent}}`;
+
+  const className = `symbolic-element ${isTarget ? 'target' : ''} ${isSource ? 'source' : ''}`;
+
+  return (
+    <div className={className} onClick={onClick} style={{cursor: 'pointer'}}>
+      <InlineMath math={mathString} />
+    </div>
+  );
+});
+
+// END OF FILE: src/topics/attention-variants/components/InteractiveSymbolicElement.tsx
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/components/InteractiveSymbolicMatrix.tsx
+================================================================================
+
+// FILE: src/topics/attention-variants/components/InteractiveSymbolicMatrix.tsx
+import React from 'react';
+import { HighlightState, ElementIdentifier } from '../types';
+import { InlineMath } from 'react-katex';
+import { InteractiveSymbolicElement } from './InteractiveSymbolicElement';
+import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
+import { getSymbolParts } from '../lib/symbolMapping';
+
+interface InteractiveSymbolicMatrixProps {
+  name: string;
+  rows: number;
+  cols: number;
+  highlight: HighlightState;
+  onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+  transpose?: boolean;
+  isPlaceholder?: boolean;
+}
+
+export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps> = React.memo(({ name, rows, cols, highlight, onSymbolClick, transpose = false, isPlaceholder = false }) => {
+  const symbol = getSymbolParts(name);
+  const variant = name.split('.')[0] as ElementIdentifier['variant'];
+
+  const displayRows = transpose ? cols : rows;
+  const displayCols = transpose ? rows : cols;
+
+  let focusRow = -1;
+  let focusCol = -1;
+
+  if (highlight.target?.name === name) {
+    focusRow = highlight.target.row;
+    focusCol = highlight.target.col;
+  }
+
+  const isTargetMatrix = !!highlight.target && highlight.target.name === name;
+  const isSourceMatrix = highlight.sources.some(s => s.name === name);
+  const shouldShowHeaders = isTargetMatrix || isSourceMatrix;
+
+  const visibleRowIndices = getVisibleIndices(displayRows, transpose ? focusCol : focusRow);
+  const visibleColIndices = getVisibleIndices(displayCols, transpose ? focusRow : focusCol);
+
+  let mathSymbol = symbol.base;
+  if (symbol.superscript) mathSymbol += `^{${symbol.superscript}}`;
+  if (transpose) mathSymbol += '^T';
+
+  const subscriptParts = [];
+  if (symbol.subscript) subscriptParts.push(symbol.subscript);
+  subscriptParts.push(`${rows} \\times ${cols}`);
+  mathSymbol += `_{${subscriptParts.join(',')}}`;
+
+  const containerClassName = `symbolic-matrix-container ${isPlaceholder ? 'placeholder-matrix' : ''}`;
+
+  return (
+    <div className="matrix-wrapper side-label">
+      <div className="matrix-label-side"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+      <div className={containerClassName}>
+         <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
+          {/* Top-left corner & Column Headers */}
+          {shouldShowHeaders && <div key="corner" />}
+          {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
+              <div key={`ch-${cIdx}`} className="symbolic-header-item">{c}</div>
+          ))}
+
+          {/* Row Headers and Matrix Elements */}
+          {visibleRowIndices.map((r, rIdx) => (
+              <React.Fragment key={`row-frag-${rIdx}`}>
+                   {shouldShowHeaders && <div className="symbolic-header-item">{r}</div>}
+                   {visibleColIndices.map((c, cIdx) => {
+                      if (r === ELLIPSIS || c === ELLIPSIS) {
+                        return <div key={`ellipsis-r${rIdx}-c${cIdx}`} className="symbolic-ellipsis">{r === ELLIPSIS && c === ELLIPSIS ? '⋱' : '…'}</div>;
+                      }
+                       const originalRow = transpose ? c : r;
+                       const originalCol = transpose ? r : c;
+                      return (
+                        <InteractiveSymbolicElement
+                          key={`elem-r${r}-c${c}`}
+                          name={name}
+                          base={symbol.base}
+                          subscript={symbol.subscript}
+                          row={originalRow}
+                          col={originalCol}
+                          highlight={highlight}
+                          onClick={(event) => onSymbolClick({ variant, name, row: originalRow, col: originalCol }, event)}
+                        />
+                      );
+                  })}
+              </React.Fragment>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// END OF FILE: src/topics/attention-variants/components/InteractiveSymbolicMatrix.tsx
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/components/Matrix.tsx
+================================================================================
+
+// FILE: src/topics/attention-variants/components/Matrix.tsx
+import React from 'react';
+import { Element } from './Element';
+import { Matrix as MatrixType, HighlightState, ElementIdentifier } from '../types';
+import { InlineMath } from 'react-katex';
+import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
+import { getSymbolParts } from '../lib/symbolMapping';
+
+interface MatrixProps {
+  name: string;
+  data: MatrixType;
+  highlight: HighlightState;
+  onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+}
+
+export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick }) => {
+  if (!data || data.length === 0 || data[0].length === 0) {
+    return <div>Invalid matrix data for {name}</div>;
+  }
+
+  const numRows = data.length;
+  const numCols = data[0].length;
+
+  let focusRow = -1;
+  let focusCol = -1;
+
+  const isTargetMatrix = !!highlight.target && highlight.target.name === name;
+  const isSourceMatrix = highlight.sources.some(s => s.name === name);
+  const shouldShowHeaders = isTargetMatrix || isSourceMatrix;
+
+  if (isTargetMatrix) {
+    focusRow = highlight.target!.row;
+    focusCol = highlight.target!.col;
+  } else if (isSourceMatrix) {
+      const relevantSource = highlight.sources.find(s => s.name === name)!;
+      focusRow = relevantSource.row === -1 ? focusRow : relevantSource.row;
+      focusCol = relevantSource.col === -1 ? focusCol : relevantSource.col;
+  }
+
+  const visibleRowIndices = getVisibleIndices(numRows, focusRow);
+  const visibleColIndices = getVisibleIndices(numCols, focusCol);
+
+  const symbolParts = getSymbolParts(name);
+  let mathSymbol = symbolParts.base;
+  if(symbolParts.superscript) mathSymbol = `${mathSymbol}^{${symbolParts.superscript}}`;
+  if(symbolParts.subscript) mathSymbol = `${mathSymbol}_{${symbolParts.subscript}}`;
+
+  return (
+    <div className="matrix-wrapper side-label" data-name={name}>
+      <div className="matrix-label-side">
+          <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
+      </div>
+      <div className="matrix-container">
+        <div className="matrix-grid" style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
+            {/* Top-left corner & Column Headers */}
+            {shouldShowHeaders && <div key="corner" />}
+            {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
+                <div key={`ch-${cIdx}`} className="matrix-header-item">{c}</div>
+            ))}
+
+            {/* Row Headers & Matrix Elements */}
+            {visibleRowIndices.map((r, rIdx) => (
+                <React.Fragment key={`row-frag-${rIdx}`}>
+                    {shouldShowHeaders && <div className="matrix-header-item">{r}</div>}
+                    {visibleColIndices.map((c, cIdx) => {
+                      if (r === ELLIPSIS) {
+                        return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
+                      }
+                      if (c === ELLIPSIS) {
+                        return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
+                      }
+                      return (
+                        <Element
+                          key={`${name}-${r}-${c}`}
+                          name={name}
+                          row={r}
+                          col={c}
+                          value={data[r][c]}
+                          highlight={highlight}
+                          onElementClick={onElementClick}
+                        />
+                      );
+                    })}
+                </React.Fragment>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+// END OF FILE: src/topics/attention-variants/components/Matrix.tsx
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/components/Viz.tsx
+================================================================================
+
+// FILE: src/topics/attention-variants/components/Viz.tsx
+import React from 'react';
+import { AttentionData, HighlightState, ElementIdentifier, AttentionVariantData } from '../types';
+import { Matrix } from './Matrix';
+import { InteractiveSymbolicMatrix } from './InteractiveSymbolicMatrix';
+import { InlineMath } from 'react-katex';
+import { ElementwiseOperation } from './ElementwiseOperation';
+
+interface VizProps {
+  data: AttentionData;
+  dims: { n_q_heads: number, n_kv_heads: number, d_head: number, d_model: number, seq_len: number };
+  highlight: HighlightState;
+  onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+}
+
+const AttentionVariantViz: React.FC<{
+    variantName: 'mha' | 'mqa' | 'gqa';
+    title: string;
+    variantData: AttentionVariantData;
+    commonData: { input: any; Wo: any; Wq: any; Wk: any; Wv: any };
+    dims: { n_q_heads: number, n_kv_heads: number, d_head: number, d_model: number, seq_len: number };
+    highlight: HighlightState;
+    onElementClick: VizProps['onElementClick'];
+}> = ({ variantName, title, variantData, commonData, dims, highlight, onElementClick }) => {
+
+    const headData = variantData.heads[0];
+    const { d_model, d_head, seq_len } = dims;
+
+    // Layout breaking rules (threshold = 15)
+    const break_qkv_proj = (d_model + d_head + d_head) > 15;
+    const break_scores = (d_head + seq_len + seq_len) > 15;
+    const break_output = (seq_len + d_head + d_head) > 15;
+    const break_final = (d_model + d_model + d_model) > 15;
+
+    const q_head_name = `${variantName}.heads.0.Q`;
+    const k_head_name = `${variantName}.heads.0.K`;
+    const v_head_name = `${variantName}.heads.0.V`;
+    const scores_name = `${variantName}.heads.0.Scores`;
+    const weights_name = `${variantName}.heads.0.Weights`;
+    const output_head_name = `${variantName}.heads.0.Output`;
+
+    // For head 0, the kv group is always 0
+    const wq_name = `${variantName}.wq.0`;
+    const wk_name = `${variantName}.wk.0`;
+
+    return (
+        <div className="attention-variant-section">
+            <div className="component-header">{title}</div>
+            <div className="component-body">
+
+                <div className="attention-calculation-step">
+                    <div className="step-title">1. 生成 Q, K, V (以头 0 为例)</div>
+                     <div className={`viz-row ${break_qkv_proj ? 'vertical' : ''}`}>
+                        <InteractiveSymbolicMatrix name={`${variantName}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onElementClick} isPlaceholder />
+                        <Matrix name={`${variantName}.input`} data={commonData.input} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="\\times" />
+                        <Matrix name={wq_name} data={commonData.Wq[0]} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="=" />
+                        <Matrix name={q_head_name} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                     <div className={`viz-row ${break_qkv_proj ? 'vertical' : ''}`}>
+                        <InteractiveSymbolicMatrix name={`${variantName}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onElementClick} isPlaceholder />
+                        <Matrix name={`${variantName}.input`} data={commonData.input} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="\\times" />
+                        <Matrix name={wk_name} data={commonData.Wk[0]} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="=" />
+                        <Matrix name={k_head_name} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                </div>
+
+                <div className="arrow-down">↓</div>
+
+                <div className="attention-calculation-step">
+                    <div className="step-title">2. 计算注意力分数 (头 0)</div>
+                     <div className={`viz-row ${break_scores ? 'vertical' : ''}`}>
+                        <Matrix name={q_head_name} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="\\times" />
+                        <Matrix name={k_head_name} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="=" />
+                        <Matrix name={scores_name} data={headData.Scores} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+
+                    <ElementwiseOperation
+                        opType="softmax"
+                        inputMatrix={headData.Scores}
+                        outputMatrix={headData.Weights}
+                        outputMatrixName={weights_name}
+                        highlight={highlight}
+                        onElementClick={onElementClick}
+                        variant={variantName}
+                    />
+                     <Matrix name={weights_name} data={headData.Weights} highlight={highlight} onElementClick={onElementClick} />
+                </div>
+
+                <div className="arrow-down">↓</div>
+
+                <div className="attention-calculation-step">
+                    <div className="step-title">3. 加权求和 (头 0)</div>
+                    <div className={`viz-row ${break_output ? 'vertical' : ''}`}>
+                        <Matrix name={weights_name} data={headData.Weights} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="\\times" />
+                        <Matrix name={v_head_name} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="=" />
+                        <Matrix name={output_head_name} data={headData.Output} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                </div>
+
+                <div className="arrow-down">↓</div>
+
+                <div className="attention-calculation-step">
+                    <div className="step-title">4. 合并与最终投影</div>
+                     <div className={`viz-row ${break_final ? 'vertical' : ''}`}>
+                        <Matrix name={`${variantName}.combined`} data={variantData.CombinedOutput} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="\\times" />
+                        <Matrix name={`${variantName}.wo`} data={commonData.Wo} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="=" />
+                        <Matrix name={`${variantName}.output`} data={variantData.FinalOutput} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+export const Viz: React.FC<VizProps> = ({ data, dims, highlight, onElementClick }) => {
+  const commonData = { input: data.input, Wo: data.Wo, Wq: data.Wq, Wk: data.Wk, Wv: data.Wv };
+
+  return (
+    <div>
+        <AttentionVariantViz variantName="mha" title="MHA (Multi-Head Attention)" variantData={data.mha} commonData={commonData} dims={dims} highlight={highlight} onElementClick={onElementClick} />
+        <AttentionVariantViz variantName="gqa" title="GQA (Grouped-Query Attention)" variantData={data.gqa} commonData={commonData} dims={dims} highlight={highlight} onElementClick={onElementClick} />
+        <AttentionVariantViz variantName="mqa" title="MQA (Multi-Query Attention)" variantData={data.mqa} commonData={commonData} dims={dims} highlight={highlight} onElementClick={onElementClick} />
+    </div>
+  );
+};
+// END OF FILE: src/topics/attention-variants/components/Viz.tsx
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/hooks/useAttention.ts
+================================================================================
+
+// FILE: src/topics/attention-variants/hooks/useAttention.ts
+import { useMemo } from 'react';
+import { AttentionData } from '../types';
+import { calculateAttentionVariants } from '../lib/attention';
+
+interface Dims {
+  seq_len: number;
+  d_model: number;
+  d_head: number;
+  n_q_heads: number;
+  n_kv_heads: number;
+}
+
+export const useAttention = (dims: Dims): AttentionData | null => {
+  return useMemo(() => {
+    try {
+      return calculateAttentionVariants(dims);
+    } catch (e) {
+      console.error("在注意力计算中发生错误:", e);
+      return null;
+    }
+  }, [dims]);
+};
+
+// END OF FILE: src/topics/attention-variants/hooks/useAttention.ts
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/hooks/useHighlighting.ts
+================================================================================
+
+// FILE: src/topics/attention-variants/hooks/useHighlighting.ts
+import { useMemo } from 'react';
+import { HighlightState } from '../types';
+
+export const useHighlighting = (
+  name: string,
+  row: number,
+  col: number,
+  highlight: HighlightState
+) => {
+  return useMemo(() => {
+    const { target, sources } = highlight;
+
+    const isTarget =
+      !!target &&
+      target.name === name &&
+      target.row === row &&
+      target.col === col;
+
+    const isSource = sources.some(s => {
+      if (s.name !== name) return false;
+      if (s.highlightRow) return s.row === row;
+      if (s.highlightCol) return s.col === col;
+      return s.row === row && s.col === col;
+    });
+
+    return { isTarget, isSource };
+  }, [name, row, col, highlight]);
+};
+
+// END OF FILE: src/topics/attention-variants/hooks/useHighlighting.ts
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/lib/attention.ts
+================================================================================
+
+// FILE: src/topics/attention-variants/lib/attention.ts
+import { AttentionData, AttentionVariantData, Matrix, Vector } from '../types';
+
+// ----------------- 辅助数学函数 -----------------
+
+const createMatrix = (rows: number, cols: number, seed: number): Matrix => {
+    const random = createSeededRandom(seed);
+    return Array.from({ length: rows }, () => Array.from({ length: cols }, () => parseFloat(random().toFixed(2))));
+};
+
+const createSeededRandom = (seed: number) => {
+    let state = seed;
+    return () => {
+        state = (state * 9301 + 49297) % 233280;
+        return (state / 233280.0) * 2 - 1;
+    };
+};
+
+const multiplyMatrices = (A: Matrix, B: Matrix): Matrix => {
+  const rowsA = A.length, colsA = A[0].length, colsB = B[0].length;
+  const C: Matrix = Array(rowsA).fill(0).map(() => Array(colsB).fill(0));
+  for (let i = 0; i < rowsA; i++) {
+    for (let j = 0; j < colsB; j++) {
+      let sum = 0;
+      for (let k = 0; k < colsA; k++) {
+        sum += A[i][k] * B[k][j];
+      }
+      C[i][j] = sum;
+    }
+  }
+  return C;
+};
+
+const scaleMatrix = (A: Matrix, scalar: number): Matrix => A.map(row => row.map(val => val * scalar));
+
+const softmaxByRow = (A: Matrix): Matrix => {
+    return A.map(row => {
+        const maxVal = Math.max(...row);
+        const exps = row.map(val => Math.exp(val - maxVal));
+        const sumExps = exps.reduce((a, b) => a + b, 0);
+        return exps.map(exp => exp / sumExps);
+    });
+};
+
+const concatMatricesHorizontally = (...matrices: Matrix[]): Matrix => {
+    const numRows = matrices[0].length;
+    const result: Matrix = Array(numRows).fill(0).map(() => []);
+    for (let i = 0; i < numRows; i++) {
+        for (const matrix of matrices) {
+            result[i].push(...matrix[i]);
+        }
+    }
+    return result;
+};
+
+// ----------------- 核心计算逻辑 -----------------
+
+interface Dims {
+  seq_len: number;
+  d_model: number;
+  d_head: number;
+  n_q_heads: number;
+  n_kv_heads: number;
+}
+
+function calculateAttention(input: Matrix, Wq: Matrix[], Wk: Matrix[], Wv: Matrix[], Wo: Matrix, dims: Dims, n_kv_heads_variant: number): AttentionVariantData {
+    const { seq_len, d_head, n_q_heads } = dims;
+    const q_heads_per_kv = n_q_heads / n_kv_heads_variant;
+
+    const Q_proj = concatMatricesHorizontally(...Wq.map(wq => multiplyMatrices(input, wq)));
+    const K_proj = concatMatricesHorizontally(...Wk.slice(0, n_kv_heads_variant).map(wk => multiplyMatrices(input, wk)));
+    const V_proj = concatMatricesHorizontally(...Wv.slice(0, n_kv_heads_variant).map(wv => multiplyMatrices(input, wv)));
+
+    const heads = [];
+    for (let i = 0; i < n_q_heads; i++) {
+        const q_head = Q_proj.map(row => row.slice(i * d_head, (i + 1) * d_head));
+
+        const kv_group_index = Math.floor(i / q_heads_per_kv);
+        const k_head = K_proj.map(row => row.slice(kv_group_index * d_head, (kv_group_index + 1) * d_head));
+        const v_head = V_proj.map(row => row.slice(kv_group_index * d_head, (kv_group_index + 1) * d_head));
+
+        const k_head_T = k_head[0].map((_, colIndex) => k_head.map(row => row[colIndex]));
+
+        const scores = scaleMatrix(multiplyMatrices(q_head, k_head_T), 1 / Math.sqrt(d_head));
+        const weights = softmaxByRow(scores);
+        const output = multiplyMatrices(weights, v_head);
+
+        heads.push({ Q: q_head, K: k_head, V: v_head, Scores: scores, Weights: weights, Output: output });
+    }
+
+    const CombinedOutput = concatMatricesHorizontally(...heads.map(h => h.Output));
+    const FinalOutput = multiplyMatrices(CombinedOutput, Wo);
+
+    return { Q_proj, K_proj, V_proj, heads, CombinedOutput, FinalOutput };
+}
+
+export const calculateAttentionVariants = (dims: Dims): AttentionData | null => {
+    const { seq_len, d_model, d_head, n_q_heads, n_kv_heads } = dims;
+
+    if (d_model !== n_q_heads * d_head) return null; // 确保维度匹配
+
+    // 1. 生成固定的输入和权重矩阵，确保可复现性
+    const input = createMatrix(seq_len, d_model, 1);
+    const Wq = Array.from({ length: n_q_heads }, (_, i) => createMatrix(d_model, d_head, 10 + i));
+    const Wk = Array.from({ length: n_q_heads }, (_, i) => createMatrix(d_model, d_head, 100 + i));
+    const Wv = Array.from({ length: n_q_heads }, (_, i) => createMatrix(d_model, d_head, 200 + i));
+    const Wo = createMatrix(d_model, d_model, 999);
+
+    // 2. 计算 MHA, MQA, GQA
+    const mha = calculateAttention(input, Wq, Wk, Wv, Wo, dims, n_q_heads);
+    const mqa = calculateAttention(input, Wq, Wk, Wv, Wo, dims, 1);
+    const gqa = calculateAttention(input, Wq, Wk, Wv, Wo, dims, n_kv_heads);
+
+    // 3. 计算 MLA (简化模拟)
+    // 实际 MLA 复杂得多，这里我们只模拟其最终效果和概念
+    const mla = {
+        C_kv: createMatrix(seq_len, 32, 300), // 低秩潜在向量
+        C_q: createMatrix(seq_len, 32, 400),
+        K_rope: createMatrix(seq_len, 16, 500),
+        FinalOutput: createMatrix(seq_len, d_model, 600)
+    };
+
+    return { input, Wq, Wk, Wv, Wo, mha, mqa, gqa, mla };
+};
+
+// END OF FILE: src/topics/attention-variants/lib/attention.ts
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/lib/symbolMapping.ts
+================================================================================
+
+// FILE: src/topics/attention-variants/lib/symbolMapping.ts
+interface SymbolParts {
+    base: string;
+    superscript?: string;
+    subscript?: string;
+}
+
+export const getSymbolParts = (name: string): SymbolParts => {
+    const parts = name.split('.');
+    const variant = parts[0] as 'mha' | 'mqa' | 'gqa';
+
+    // Handle weight matrices like 'gqa.wq.0'
+    if (parts.length === 3 && parts[1].startsWith('w')) {
+        const type = parts[1].charAt(1).toUpperCase(); // Q, K, V
+        const index = parts[2];
+        return { base: 'W', superscript: type, subscript: index };
+    }
+
+    // Handle 'gqa.wo'
+    if (parts.length === 2 && parts[1] === 'wo') {
+        return { base: 'W', superscript: 'O' };
+    }
+
+    // Handle head-specific matrices like 'mha.heads.0.Q'
+    if (parts.length === 4 && parts[1] === 'heads') {
+        const headIndex = parts[2];
+        const type = parts[3]; // Q, K, V, Scores, Weights, Output
+
+        const baseMap: { [key: string]: string } = {
+            'Q': 'Q', 'K': 'K', 'V': 'V',
+            'Scores': 'S', 'Weights': 'A', 'Output': 'H'
+        };
+
+        return { base: baseMap[type] || '?', subscript: headIndex };
+    }
+
+    // Handle top-level matrices like 'mha.input' or 'gqa.output'
+    if (parts.length === 2) {
+        const type = parts[1];
+        if (type === 'input') return { base: 'H' };
+        if (type === 'combined') return { base: 'H', subscript: 'cat' };
+        if (type === 'output') return { base: 'Z', subscript: variant.toUpperCase() };
+    }
+
+    // Default fallback
+    return { base: 'X' };
+};
+// END OF FILE: src/topics/attention-variants/lib/symbolMapping.ts
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/utils/matrixView.ts
+================================================================================
+
+// FILE: src/topics/attention-variants/utils/matrixView.ts
+export const ELLIPSIS = '...';
+const MIN_SIZE_FOR_TRUNCATION = 12;
+
+export const getVisibleIndices = (
+  totalSize: number,
+  focusIndex: number = -1,
+  alwaysShowCount: number = 4,
+  windowSize: number = 9
+): (number | typeof ELLIPSIS)[] => {
+
+  if (totalSize < MIN_SIZE_FOR_TRUNCATION) {
+    return Array.from({ length: totalSize }, (_, i) => i);
+  }
+
+  const visible = new Set<number>();
+
+  for (let i = 0; i < Math.min(alwaysShowCount, totalSize); i++) {
+    visible.add(i);
+  }
+  for (let i = 0; i < Math.min(alwaysShowCount, totalSize); i++) {
+    visible.add(totalSize - 1 - i);
+  }
+
+  if (focusIndex !== -1) {
+    const windowStart = Math.max(0, focusIndex - Math.floor(windowSize / 2));
+    const windowEnd = Math.min(totalSize - 1, focusIndex + Math.floor(windowSize / 2));
+    for (let i = windowStart; i <= windowEnd; i++) {
+      visible.add(i);
+    }
+  }
+
+  const sorted = Array.from(visible).sort((a, b) => a - b);
+  const result: (number | typeof ELLIPSIS)[] = [];
+
+  if (sorted.length > 0) {
+    result.push(sorted[0]);
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i] > sorted[i - 1] + 1) {
+        result.push(ELLIPSIS);
+      }
+      result.push(sorted[i]);
+    }
+  }
+
+  return result;
+};
+// END OF FILE: src/topics/attention-variants/utils/matrixView.ts
 
 
 ================================================================================
@@ -1849,7 +3309,7 @@ export const TransformerExplorerTopic: React.FC = () => {
   };
 
     return (
-        <div className="main-layout" style={{padding: '0', gap: '0'}}>
+        <div className="main-layout" style={{padding: '0', gap: '0', height: '100%'}}>
             {tooltip && <CalculationTooltip tooltip={tooltip} onClose={closeTooltip} />}
             <Controls dims={dims} setDims={setDims} inputText={inputText} setInputText={setInputText}/>
             <div className="column left-column" style={{borderRadius: '0', boxShadow: 'none'}}>
@@ -1879,6 +3339,8 @@ export const TransformerExplorerTopic: React.FC = () => {
         </div>
     );
 }
+
+// END OF FILE: src/topics/transformer-explorer/TransformerExplorerTopic.tsx
 
 
 ================================================================================
@@ -3200,7 +4662,7 @@ export const EncoderLayer: React.FC<EncoderLayerProps> = ({ layerIndex, data, hi
 ### 文件路径: src/topics/transformer-explorer/components/Explanation.tsx
 ================================================================================
 
-// FILE: src/components/Explanation.tsx
+// FILE: src/topics/transformer-explorer/components/Explanation.tsx
 import React from 'react';
 import 'katex/dist/katex.min.css';
 import { BlockMath, InlineMath } from 'react-katex';
@@ -3257,38 +4719,42 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
         <div>
             <div className="math-block">
                 <h3>Transformer 架构概览</h3>
-                <p>Transformer 模型由两个核心部分组成:<b>编码器 (Encoder)</b> 和 <b>解码器 (Decoder)</b>. 编码器的任务是“理解”输入的整个句子(例如,"I am a student"),并将其转化为一组富含上下文信息的数字表示. 解码器的任务是利用这些数字表示,并结合已经生成的内容,一次一个词地生成目标句子(例如,“我 是 一个 学生”). </p>
-                <p>在2017年的原始论文《Attention Is All You Need》中,编码器和解码器都由 N 个相同的层堆叠而成. 此可视化工具将带您深入探索其内部的数据流动和数学原理. </p>
+                <p>Transformer 模型由两个核心部分组成:<b>编码器 (Encoder)</b> 和 <b>解码器 (Decoder)</b>. 它的出现革命性地解决了传统循环神经网络(RNN)在处理长序列时难以并行计算和捕捉长期依赖的问题。</p>
+                <p><b>编码器的任务</b>是“理解”输入的整个句子(例如,"I am a student"),并将其转化为一组富含上下文信息的数字表示(向量). 这好比一位翻译官在动笔前，完整地阅读并消化了整个原文的含义。</p>
+                <p><b>解码器的任务</b>是利用这些数字表示,并结合已经生成的内容,一次一个词地生成目标句子(例如,“我 是 一个 学生”). 这就像翻译官在理解了原文后，开始逐字逐句地写出译文。</p>
+                <p>在2017年的原始论文《Attention Is All You Need》中,编码器和解码器都由 N 个相同的层堆叠而成. 这种堆叠结构允许模型在不同层次上学习从简单到复杂的抽象特征。此可视化工具将带您深入探索其内部的数据流动和数学原理。</p>
             </div>
 
             {/* --- ENCODER EXPLANATIONS --- */}
             <h2 style={{textAlign: 'center', margin: '30px 0'}}>编码器 (Encoder)</h2>
              <MathBlock id="token_embed" title="编码器第0步:分词与词嵌入" highlight={highlight}>
                 <h5>做什么？</h5>
-                <p>此步骤将您在上方控件中输入的自然语言文本,转换为模型可以处理的数值矩阵. 这是所有后续计算的起点. </p>
+                <p>此步骤将您在上方控件中输入的自然语言文本,转换为模型可以处理的数值矩阵. 这是所有后续计算的起点,是连接人类语言与机器世界的桥梁。</p>
                 <h5>计算流程</h5>
                 <ol>
-                    <li><b>分词 (Tokenization):</b> 使用简单的空格分词器,将输入句子分解为一个个独立的词元(Token). </li>
-                    <li><b>ID映射 (ID Mapping):</b> 使用一个预先构建好的词汇表(Vocabulary),将每个词元映射到一个唯一的整数ID. 任何未知的词汇都会被映射为 <code>[UNK]</code> (Unknown). </li>
-                    <li><b>词嵌入 (Embedding Lookup):</b> 使用一个巨大的、可学习的“查询表”(Embedding Matrix),根据每个词元的ID,从中“提取”出对应的向量. 这个向量就是该词元的初始数值表示. </li>
+                    <li><b>分词 (Tokenization):</b> 使用简单的空格分词器,将输入句子分解为一个个独立的词元(Token). 真实世界的模型（如BERT, GPT）会使用更复杂的分词算法（如WordPiece, BPE）来处理未知词和构词法。</li>
+                    <li><b>ID映射 (ID Mapping):</b> 使用一个预先构建好的词汇表(Vocabulary),将每个词元映射到一个唯一的整数ID. 任何未知的词汇都会被映射为 <code>[UNK]</code> (Unknown). 这个词汇表是在模型训练前通过扫描海量文本语料库构建的。</li>
+                    <li><b>词嵌入 (Embedding Lookup):</b> 使用一个巨大的、可学习的“查询表”(Embedding Matrix),根据每个词元的ID,从中“提取”出对应的向量. 这个向量就是该词元的初始数值表示。</li>
                 </ol>
                 <h5>深入理解:从文本到向量的“魔法”</h5>
                 <p>您可能会问:“一个词(比如'student')是如何变成一长串数字(向量)的？” 关键在于那块巨大的 <b>词嵌入矩阵 (Embedding Matrix)</b>. </p>
                 <p>您可以把这个矩阵想象成一本**模型在训练中自己学会编写的“超级词典”**:</p>
                 <ul>
                     <li><b>词条编号 (Token ID):</b> 词汇表中的每个词都有一个独一无二的ID,比如 `student` 的ID是 `6`. 这就像是词典里的页码或词条号. </li>
-                    <li><b>词条释义 (Embedding Vector):</b> 矩阵中**第 `6` 行**的那一整行向量,就是 `student` 这个词的“释义”. 这个释义不是用人类语言写的,而是用一串数字(例如一个长度为 {dims.d_model} 的向量)来定义的. 这个向量捕捉了 `student` 这个词的丰富语义信息——它和 `school`、`learn` 在语义空间中比较接近,但和 `apple`、`sky` 比较疏远. </li>
+                    <li><b>词条释义 (Embedding Vector):</b> 矩阵中**第 `6` 行**的那一整行向量,就是 `student` 这个词的“释义”. 这个释义不是用人类语言写的,而是用一串数字(例如一个长度为 {dims.d_model} 的向量)来定义的。这个向量捕捉了 `student` 这个词的丰富语义信息——它和 `school`、`learn` 在语义空间中比较接近,但和 `apple`、`sky` 比较疏远。这种将离散的词语映射到连续向量空间的过程，使得模型能够理解和利用词语之间的语义关系。</li>
                 </ul>
                 <p>所以,整个过程并不是“计算”出一个向量,而是一个高效的**“查词典”**的过程. 模型通过海量数据的训练,学会了如何为每个词编写最精准的、富含信息的“数字释义”,我们在这里只是根据ID去查询而已. </p>
             </MathBlock>
             <MathBlock id="input_embed" title="编码器第1步:输入预处理" highlight={highlight}>
                 <h5>做什么？</h5>
                 <p>此步骤将输入的文本序列(一串文字)转换为模型可以处理的、包含“词义”和“位置”信息的数值向量矩阵. 当前输入序列长度为 {dims.encoder_seq_len},模型维度 <InlineMath math={`d_{model}=${dims.d_model}`}/>. </p>
+                <h5>为什么需要位置编码?</h5>
+                <p>Transformer的核心机制——自注意力(Self-Attention)，在处理输入时是“无视顺序”的。也就是说，打乱输入句子中词的顺序，自注意力的计算结果不会改变。但这显然不符合自然语言的规律（“学生是我”和“我是学生”含义完全不同）。因此，我们需要一种方法告诉模型每个词在句子中的位置。<b>位置编码 (Positional Encoding)</b> 就是为了解决这个问题而生的。</p>
                 <h5>计算流程</h5>
                 <ol>
                     <li><b>词嵌入 (Token Embedding):</b> 从上一步获得的矩阵,代表了每个词的“词义”. </li>
-                    <li><b>位置编码 (Positional Encoding):</b> 为模型注入关于序列顺序的绝对位置信息. 这是一个固定的、根据三角函数生成的矩阵. </li>
-                    <li><b>逐元素相加:</b> 得到编码器最终的输入表示 <InlineMath math="Z"/>. </li>
+                    <li><b>位置编码 (Positional Encoding):</b> 为模型注入关于序列顺序的绝对位置信息. 这是一个固定的、根据三角函数(sine 和 cosine)生成的矩阵。这种设计允许模型轻易地学习到相对位置关系，并且理论上可以扩展到比训练时更长的序列。</li>
+                    <li><b>逐元素相加:</b> 将词义信息和位置信息相加，得到编码器最终的输入表示 <InlineMath math="Z"/>. </li>
                 </ol>
                 <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.inputEmbeddings} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
@@ -3300,27 +4766,32 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
             </MathBlock>
             <MathBlock id="mha" title="编码器子层1:多头自注意力" highlight={highlight}>
                 <h5>做什么？</h5>
-                <p>此机制的核心目的是计算句子中每个词与其他所有词的“关注度”或“相关性”,并根据这个关注度重新计算每个词的向量表示,从而让每个词的向量都融入其上下文信息. </p>
+                <p>此机制的核心目的是计算句子中每个词与其他所有词的“关注度”或“相关性”,并根据这个关注度重新计算每个词的向量表示,从而让每个词的向量都融入其上下文信息。例如，在句子 "The animal didn't cross the street because it was too tired" 中，自注意力能帮助模型理解 "it" 指的是 "animal" 而不是 "street"。</p>
                 <h5>输入矩阵 (Input Matrix)</h5>
                 <div className="formula-display">
                     <InlineMath math="\text{Input} = " />
                     <InteractiveSymbolicMatrix name={LNe.encoder_input} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} truncate={false} />
                 </div>
                 <h5>计算流程 (以单个注意力头为例)</h5>
-                 <p>输入矩阵 <InlineMath math="Z"/> 被并行地送入 {dims.h} 个独立的注意力头. 每个头都拥有三块自己专属、可学习的权重矩阵. 通过矩阵乘法,将输入 <InlineMath math="Z"/> 投影到三个新的矩阵:查询 (Query, <InlineMath math="Q"/>), 键 (Key, <InlineMath math="K"/>), 和 值 (Value, <InlineMath math="V"/>). </p>
+                 <p>输入矩阵 <InlineMath math="Z"/> 被并行地送入 {dims.h} 个独立的注意力头. 每个头都拥有三块自己专属、可学习的权重矩阵. 通过矩阵乘法,将输入 <InlineMath math="Z"/> 投影到三个新的矩阵:查询 (Query, <InlineMath math="Q"/>), 键 (Key, <InlineMath math="K"/>), 和 值 (Value, <InlineMath math="V"/>)。这可以类比于一个信息检索系统：</p>
+                 <ul>
+                    <li><b>Query (Q):</b> 代表当前词为了更好地理解自己，向其他词发出的“查询请求”。例如，"it" 这个词的Query向量可能在问：“句子中谁可能是疲惫的？”</li>
+                    <li><b>Key (K):</b> 代表句子中每个词用于被检索的“标签”或“索引”。例如，"animal" 这个词的Key向量会表明：“我是一个名词，一个生物。”</li>
+                    <li><b>Value (V):</b> 代表每个词实际携带的“内容”或“信息”。</li>
+                 </ul>
                 <div className="formula-display vertical">
                     <div className="viz-formula-row"><InlineMath math="Z" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.Wq} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.Q} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <div className="viz-formula-row"><InlineMath math="Z" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.Wk} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.K} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <div className="viz-formula-row"><InlineMath math="Z" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.Wv} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
-                <p>然后计算注意力分数, 进行缩放和Softmax得到权重, 最后加权求和. </p>
+                <p>然后计算注意力分数, 进行缩放和Softmax得到权重, 最后加权求和。 <InlineMath math="Q"/> 和 <InlineMath math="K"/> 的点积计算了每个词的“查询”与所有词的“标签”之间的相似度。除以 <InlineMath math="\sqrt{d_k}"/> 是为了在训练中保持梯度稳定。Softmax则将这些原始的相似度分数转换成一个和为1的概率分布，即“注意力权重”。最后，将这些权重与 <InlineMath math="V"/> 相乘，相当于对所有词的信息进行加权求和，得到一个融合了全句上下文信息的新向量。</p>
                 <BlockMath math={`A = \\text{Softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)`} />
                 <BlockMath math={`H = A V`} />
                  <div className="formula-display vertical">
                     <div className="viz-formula-row"><InteractiveSymbolicMatrix name={HNe.AttentionWeights} rows={dims.encoder_seq_len} cols={dims.encoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.HeadOutput} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
                 <h5>拼接与最终投影</h5>
-                <p>将所有 {dims.h} 个头的输出矩阵 <InlineMath math="H_i"/> 拼接 (Concatenate) 起来, 然后通过一个最终的投影权重矩阵 <InlineMath math="W^O"/> 得到该子层的最终输出 <InlineMath math="M"/>. </p>
+                <p>“多头”的“多”体现在这里。{dims.h} 个头并行地执行上述计算，每个头都可能关注到输入关系的不同方面（比如有的头关注语法关系，有的头关注语义关系）。最后，将所有 {dims.h} 个头的输出矩阵 <InlineMath math="H_i"/> 拼接 (Concatenate) 起来, 然后通过一个最终的投影权重矩阵 <InlineMath math="W^O"/> 将其维度变回 <InlineMath math="d_{model}"/>，得到该子层的最终输出 <InlineMath math="M"/>。</p>
                  <div className={`formula-display ${shouldBreakMhaProj ? 'vertical' : ''}`}>
                     <InlineMath math="\text{Concat}(H_0, ..., H_{h-1})" />
                     <BlockMath math="\times" />
@@ -3330,7 +4801,11 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 </div>
             </MathBlock>
             <MathBlock id="add_norm_1" title="组件:残差连接与层归一化 (1)" highlight={highlight}>
-                <p>在每个子层之后,都会跟随一个“Add & Norm”模块. 它包含两个关键步骤:<b>残差连接</b>将子层的输入与输出直接相加,缓解梯度消失;<b>层归一化</b>则稳定训练过程. </p>
+                <p>在每个子层之后,都会跟随一个“Add & Norm”模块. 它包含两个关键步骤:<b>残差连接 (Residual Connection)</b> 和 <b>层归一化 (Layer Normalization)</b>。这是训练深度神经网络的关键技巧。</p>
+                <ul>
+                    <li><b>残差连接:</b> 将子层的输入与输出直接相加。这创建了一条信息的“高速公路”，允许梯度在反向传播时直接流过，极大地缓解了深度网络中的梯度消失问题，使得训练更深的模型成为可能。它也保证了即使子层（如注意力）的输出为零，原始信息也能得以保留。</li>
+                    <li><b>层归一化:</b> 对残差连接后的结果进行归一化，使其均值为0，方差为1。这有助于稳定每一层的输入分布，减少所谓的“内部协变量偏移”(Internal Covariate Shift)，从而加速训练过程并提高模型的泛化能力。</li>
+                </ul>
                 <BlockMath math={`Z' = \\text{LayerNorm}(Z + \\text{MultiHeadAttention}(Z))`} />
                  <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.encoder_input} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
@@ -3341,7 +4816,8 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 </div>
             </MathBlock>
             <MathBlock id="ffn" title="编码器子层2:位置前馈网络" highlight={highlight}>
-                <p>前馈网络 (FFN) 对每个位置的向量独立地进行一次复杂的非线性变换,极大地增加了模型的表达能力. </p>
+                <p>前馈网络 (FFN) 对每个位置的向量独立地进行一次复杂的非线性变换,极大地增加了模型的表达能力。如果说自注意力层是负责在不同词之间“交流和汇总信息”，那么FFN层就是每个词在接收了上下文信息后，进行独立的“深入思考和加工”。</p>
+                <p>它由两个线性层和一个ReLU激活函数组成。第一个线性层将维度从 <InlineMath math="d_{model}"/> 扩展到 <InlineMath math="d_{ff}"/> (通常是 <InlineMath math="4 \times d_{model}"/>), ReLU引入非线性，然后第二个线性层再将其投影回 <InlineMath math="d_{model}"/> 维度。这种“扩展-激活-压缩”的结构被证明在增强模型表示能力方面非常有效。</p>
                 <BlockMath math={`F = \\text{ReLU}(Z' W_1 + b_1) W_2 + b_2`} />
                 <h5>第一次线性变换 & ReLU</h5>
                 <div className={`formula-display ${shouldBreakFFN1 ? 'vertical' : ''}`}>
@@ -3369,7 +4845,7 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 </div>
             </MathBlock>
             <MathBlock id="add_norm_2" title="组件:残差连接与层归一化 (2)" highlight={highlight}>
-                <p>与第一个 "Add & Norm" 层完全相同,此步骤将 FFN 子层的输出与输入结合,产生该编码器层的最终输出. </p>
+                <p>与第一个 "Add & Norm" 层完全相同,此步骤将 FFN 子层的输出与输入结合,产生该编码器层的最终输出。经过这一步，一个完整的编码器层就完成了它的使命：接收一组向量表示，并通过自注意力和前馈网络对其进行信息提炼和加工，最终输出一组包含了更丰富上下文信息的新向量表示。这个输出将作为下一个编码器层的输入，或者在最后一层，成为整个编码器的最终输出。</p>
                  <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.add_norm_1_output} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <BlockMath math="+" />
@@ -3383,7 +4859,7 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
             <h2 style={{textAlign: 'center', margin: '30px 0'}}>解码器 (Decoder)</h2>
             <MathBlock id="output_embed" title="解码器第1步:输出预处理" highlight={highlight}>
                  <h5>做什么？</h5>
-                <p>此步骤与编码器输入预处理类似,但作用于目标语言序列(即解码器要生成的内容). 它将目标序列(通常是已经生成的词加上一个起始符)转换为模型可以处理的数值向量矩阵. </p>
+                <p>此步骤与编码器输入预处理类似,但作用于目标语言序列(即解码器要生成的内容). 它将目标序列(通常是已经生成的词加上一个起始符 <code>&lt;SOS&gt;</code>)转换为模型可以处理的数值向量矩阵。在推理（生成）阶段，解码器的输入是它上一步自己生成的词。</p>
                  <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.outputEmbeddings} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <BlockMath math="+" />
@@ -3396,7 +4872,7 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 <h5>做什么？</h5>
                 <p>这是解码器的第一个关键子层. 它与编码器的自注意力机制几乎完全相同,但有一个至关重要的区别:<b>前瞻遮罩 (Look-Ahead Mask)</b>. </p>
                 <h5>设计思路</h5>
-                <p>在生成任务中,模型在预测第 <code>i</code> 个词时,只能看到第 <code>i</code> 个词之前(包括第 <code>i</code> 个词)的内容,绝不能“偷看”未来的词. 为了在并行的矩阵运算中实现这一点,我们在计算注意力分数后,会应用一个遮罩. 这个遮罩将分数矩阵 <InlineMath math="S"/> 的上三角部分(代表未来位置)设置为一个非常大的负数(-∞). 这样,在经过 Softmax 运算后,这些位置的注意力权重将变为0,从而确保了模型无法关注未来的信息. </p>
+                <p>在生成任务中,模型在预测第 <code>i</code> 个词时,只能看到第 <code>i</code> 个词之前(包括第 <code>i</code> 个词)的内容,绝不能“偷看”未来的词。这模拟了人类说话或写作时，无法预知下一个要说什么词的自然过程。为了在并行的矩阵运算中实现这一点,我们在计算注意力分数后,会应用一个遮罩. 这个遮罩将分数矩阵 <InlineMath math="S"/> 的上三角部分(代表未来位置)设置为一个非常大的负数(-∞). 这样,在经过 Softmax 运算后,这些位置的注意力权重将变为0,从而确保了模型无法关注未来的信息. 这就是所谓的“自回归”(Auto-regressive)特性。</p>
                  <div className="formula-display">
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_masked.Scores} rows={dims.decoder_seq_len} cols={dims.decoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math={`\\xrightarrow{\\text{Mask}}`} />
@@ -3414,7 +4890,7 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 </div>
             </MathBlock>
             <MathBlock id="add_norm_1_dec" title="解码器组件:残差连接与层归一化 (1)" highlight={highlight}>
-                <p>此模块接收解码器输入 <InlineMath math="Y"/> 和带掩码自注意力子层的输出 <InlineMath math="M_{mmha}"/>,将它们相加后进行层归一化. </p>
+                <p>此模块接收解码器输入 <InlineMath math="Y"/> 和带掩码自注意力子层的输出 <InlineMath math="M_{mmha}"/>,将它们相加后进行层归一化。其原理和作用与编码器中的 Add & Norm 模块完全一致，旨在稳定训练并保留信息。</p>
                 <BlockMath math={`Y' = \\text{LayerNorm}(Y + \\text{Masked-MHA}(Y))`} />
                  <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.decoder_input} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
@@ -3426,7 +4902,7 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
             </MathBlock>
              <MathBlock id="enc_dec_mha" title="解码器子层2:编码器-解码器注意力" highlight={highlight}>
                 <h5>做什么？</h5>
-                <p>这是连接编码器和解码器的桥梁,也是 Transformer 架构的精髓所在. 在这一层,解码器会“审视”编码器的全部输出,并判断输入序列中的哪些部分对于生成当前目标词最重要. </p>
+                <p>这是连接编码器和解码器的桥梁,也是 Transformer 架构的精髓所在. 在这一层,解码器会“审视”编码器的全部输出,并判断输入序列中的哪些部分对于生成当前目标词最重要。这也被称为“交叉注意力”(Cross-Attention)。</p>
                  <h5>输入矩阵</h5>
                  <div className="formula-display vertical">
                     <div>
@@ -3440,16 +4916,15 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                  </div>
                  <h5>计算流程 (以单个注意力头为例)</h5>
                 <ol>
-                    <li><b>Query (<InlineMath math="Q"/>)</b>: 来自解码器前一层的输出 (<InlineMath math="Y'"/>). 它代表了“我当前需要什么信息来生成下一个词？”</li>
-                    <li><b>Key (<InlineMath math="K"/>) 和 Value (<InlineMath math="V"/>)</b>: <b>均来自编码器的最终输出 (<InlineMath math="Z_{final}"/>)</b>. 它们代表了整个输入序列的上下文信息. </li>
+                    <li><b>Query (<InlineMath math="Q"/>)</b>: 来自解码器前一层的输出 (<InlineMath math="Y'"/>). 它代表了“我当前需要什么信息来生成下一个词？”。这个查询是基于解码器已经生成的内容。</li>
+                    <li><b>Key (<InlineMath math="K"/>) 和 Value (<InlineMath math="V"/>)</b>: <b>均来自编码器的最终输出 (<InlineMath math="Z_{final}"/>)</b>. 它们代表了整个输入序列的、经过深度处理的上下文信息。</li>
                 </ol>
                  <div className="formula-display vertical">
                     <div className="viz-formula-row"><InlineMath math="Y'" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_encdec.Wq} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_encdec.Q} rows={dims.decoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <div className="viz-formula-row"><InlineMath math="Z_{final}" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_encdec.Wk} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_encdec.K} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <div className="viz-formula-row"><InlineMath math="Z_{final}" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_encdec.Wv} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_encdec.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
-                <p>通过计算 <InlineMath math="Q_{dec} \cdot K_{enc}^T"/>,解码器能够评估其当前的生成需求与输入序列中每个词的相关性,然后利用这个相关性(注意力权重)从 <InlineMath math="V_{enc}"/> 中加权提取最需要的信息来辅助生成. </p>
-                {/* [FIXED] Added missing formulas for enc-dec attention */}
+                <p>通过计算 <InlineMath math="Q_{dec} \cdot K_{enc}^T"/>,解码器能够评估其当前的生成需求与输入序列中每个词的相关性,然后利用这个相关性(注意力权重)从 <InlineMath math="V_{enc}"/> 中加权提取最需要的信息来辅助生成。例如，在将 "I am a student" 翻译成中文时，当解码器准备生成“学生”时，它的 Query 会与编码器输出中 "student" 对应的 Key 产生很高的相似度，从而更多地关注 "student" 的 Value 信息。</p>
                 <h5>注意力计算与输出</h5>
                 <div className={`formula-display ${shouldBreakEncDecScores ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_encdec.Q} rows={dims.decoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
@@ -3474,7 +4949,7 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 </div>
             </MathBlock>
             <MathBlock id="add_norm_2_dec" title="解码器组件:残差连接与层归一化 (2)" highlight={highlight}>
-                <p>此步骤结合了编码器-解码器注意力子层的输入 (<InlineMath math="Y'"/>) 与其输出 (<InlineMath math="M_{ed}"/>),并进行层归一化,以稳定训练过程并融合来自编码器的信息. </p>
+                <p>此步骤结合了编码器-解码器注意力子层的输入 (<InlineMath math="Y'"/>) 与其输出 (<InlineMath math="M_{ed}"/>),并进行层归一化,以稳定训练过程并融合来自编码器的信息。这是解码器层中信息融合的关键一步。</p>
                  <BlockMath math={`Y'' = \\text{LayerNorm}(Y' + \\text{Enc-Dec-MHA}(Y', Z_{final}))`} />
                   <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.add_norm_1_output} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
@@ -3485,7 +4960,7 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 </div>
             </MathBlock>
             <MathBlock id="ffn_dec" title="解码器子层3:前馈网络" highlight={highlight}>
-                <p>与编码器中的 FFN 类似,解码器中的前馈网络 (FFN) 也对每个位置的向量 (<InlineMath math="Y''"/>) 独立地进行一次复杂的非线性变换,进一步增强模型的表达能力,为最终的输出预测做准备. </p>
+                <p>与编码器中的 FFN 类似,解码器中的前馈网络 (FFN) 也对每个位置的向量 (<InlineMath math="Y''"/>) 独立地进行一次复杂的非线性变换,进一步增强模型的表达能力,为最终的输出预测做准备。在这一步，模型对融合了自身历史信息和编码器上下文信息的新向量进行深入的、非线性的“思考”。</p>
                 <BlockMath math={`F = \\text{ReLU}(Y'' W_1 + b_1) W_2 + b_2`} />
                  <div className="formula-display vertical">
                      <div className="viz-formula-row"><InteractiveSymbolicMatrix name={LNd.add_norm_2_output} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
@@ -3498,7 +4973,7 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 </div>
             </MathBlock>
             <MathBlock id="add_norm_3_dec" title="解码器组件:残差连接与层归一化 (3)" highlight={highlight}>
-                 <p>这是解码器层中的最后一个 Add & Norm 步骤,它将 FFN 的输入 (<InlineMath math="Y''"/>) 与其输出 (<InlineMath math="F"/>) 相结合,产生该解码器层的最终输出 <InlineMath math="Y_{final}"/>. </p>
+                 <p>这是解码器层中的最后一个 Add & Norm 步骤,它将 FFN 的输入 (<InlineMath math="Y''"/>) 与其输出 (<InlineMath math="F"/>) 相结合,产生该解码器层的最终输出 <InlineMath math="Y_{final}"/>. 这个输出将作为下一个解码器层的输入，或者在最后一层，将进入最终的预测阶段。</p>
                  <BlockMath math={`Y_{final} = \\text{LayerNorm}(Y'' + \\text{FFN}(Y''))`} />
                  <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNd.add_norm_2_output} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
@@ -3510,11 +4985,11 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
             </MathBlock>
              <MathBlock id="final_output" title="最终输出层:线性层与Softmax" highlight={highlight}>
                 <h5>做什么？</h5>
-                <p>在经过所有解码器层的处理后,我们得到一个最终的输出矩阵. 此步骤将其转换为每个位置上词汇表中所有单词的概率分布. </p>
+                <p>在经过所有解码器层的处理后,我们得到一个最终的输出矩阵。此步骤将其转换为每个位置上词汇表中所有单词的概率分布，将模型内部的抽象表示映射回人类可理解的词汇空间。</p>
                  <h5>计算流程</h5>
                 <ol>
-                    <li><b>线性层 (Linear Layer):</b> 将解码器输出矩阵通过一个大的线性投影层,将其维度从 <InlineMath math="d_{model}"/> 扩展到词汇表大小 (<InlineMath math="V_{size}"/>). 这会为每个位置生成一个分数向量,称为 Logits. </li>
-                    <li><b>Softmax:</b> 对 Logits 矩阵的每一行应用 Softmax 函数,将其转换为概率分布. </li>
+                    <li><b>线性层 (Linear Layer):</b> 将解码器输出矩阵通过一个大的线性投影层,将其维度从 <InlineMath math="d_{model}"/> 扩展到词汇表大小 (<InlineMath math="V_{size}"/>). 这会为每个位置生成一个分数向量,称为 Logits。这个Logits向量的每个元素对应词汇表中的一个词，其数值代表模型认为该词是下一个正确词的“置信度分数”，分数越高，可能性越大。</li>
+                    <li><b>Softmax:</b> 对 Logits 矩阵的每一行应用 Softmax 函数,将其转换为规范的概率分布。转换后，每一行的所有元素和为1，每个元素代表对应单词的出现概率。</li>
                 </ol>
                  <div className={`formula-display ${shouldBreakFinalOutput ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={FinalLNd.add_norm_3_output} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
@@ -3541,12 +5016,13 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 <p>这里是“魔法”发生逆转的地方. 我们手上有一个 <b>概率矩阵</b> <code>P</code>,它告诉我们在每个输出位置上,词汇表里每个单词的可能性. </p>
                 <p>以第一个输出位置为例,我们关注矩阵 <code>P</code> 的<b>第一行</b> (下标为0的那一行). 这一行是一个概率向量,其长度等于整个词汇表的大小. 向量中第 <code>j</code> 个位置的数值,就代表词汇表中 ID 为 <code>j</code> 的单词是正确答案的概率. </p>
                 <p><b>Argmax</b> 函数的作用非常简单:它会扫描这一整行,找到那个最大的概率值,然后返回它的<b>位置索引</b>. 这个索引就是模型预测出的 <b>Token ID！</b></p>
+                <p>虽然贪心解码简单高效，但它只关注当前步的最优选择，可能会错失全局最优解。更高级的解码策略，如<b>集束搜索 (Beam Search)</b>，会同时保留多个最可能的候选序列，在生成结束时选择整体概率最高的序列，通常能产生更流畅、更合理的文本。</p>
                 <p>最后一步,我们拿着这个ID,去反查我们的“超级词典”(词汇表),就能找到ID对应的单词. 于是,模型就成功地将一串概率数字“翻译”回了人类能懂的单词. 对每一行都重复这个过程,就能生成整个句子. </p>
             </MathBlock>
         </div>
     );
 };
-// END OF FILE: src/components/Explanation.tsx
+// END OF FILE: src/topics/transformer-explorer/components/Explanation.tsx
 
 
 ================================================================================

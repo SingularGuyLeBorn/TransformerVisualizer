@@ -1,8 +1,9 @@
 // FILE: src/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { HomePage } from './pages/HomePage';
-import { TopicPage } from './pages/TopicPage';
+// [FIXED] Corrected import paths based on our new flat 'pages' directory structure
+import { HomePage } from './pages/HomePage/HomePage';
+import { TopicPage } from './pages/TopicPage/TopicPage';
 import './App.css'; // Global styles remain
 
 function App() {
@@ -37,8 +38,12 @@ const globalStyles = `
   }
   .app-main-content {
     flex-grow: 1;
-    overflow-y: auto; /* Allow main content to scroll */
-    height: calc(100vh - 78px); /* Full height minus header */
+    overflow: hidden; /* It should NOT scroll itself */
+    min-height: 0; /* Crucial for nested flex scrolling */
+  }
+  .topic-page-container {
+      height: 100%;
+      overflow-y: auto; /* This container will scroll for standard articles */
   }
 `;
 
@@ -46,5 +51,6 @@ const styleSheet = document.createElement("style");
 styleSheet.innerText = globalStyles;
 document.head.appendChild(styleSheet);
 
-
 export default App;
+
+// END OF FILE: src/App.tsx

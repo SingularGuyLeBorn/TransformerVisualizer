@@ -16,9 +16,9 @@ export const topics: Topic[] = [
     {
         id: 'attention-variants',
         title: '多头注意力变体: 从MHA, MQA, GQA到MLA',
-        description: '深入探讨注意力机制从Multi-Head到Multi-head Latent的演进过程，分析其设计理念、数学原理，以及对KV Cache效率和性能的影响。',
+        description: '通过交互式图表，深入探讨注意力机制从Multi-Head到Multi-head Latent的演进过程，直观理解其设计理念以及对KV Cache效率和性能的影响。',
         date: '2025年9月7日',
-        tags: ['Attention', 'LLM', 'GQA', 'MLA', '深度剖析'],
+        tags: ['Attention', 'LLM', 'GQA', 'MLA', 'Visualization'],
         component: AttentionVariantsTopic,
     },
     {
@@ -35,3 +35,5 @@ export const topics: Topic[] = [
 // [最终修复] 即使已有其他 export 语句，在 .tsx 文件中再添加一个空的 export
 // 是最明确、最可靠地将其标记为模块的方式，可以彻底解决 TS1208 错误。
 export {};
+
+// END OF FILE: src/topics/index.tsx

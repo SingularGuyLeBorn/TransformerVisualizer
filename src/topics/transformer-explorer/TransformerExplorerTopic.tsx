@@ -331,7 +331,7 @@ export const TransformerExplorerTopic: React.FC = () => {
   };
 
     return (
-        <div className="main-layout" style={{padding: '0', gap: '0'}}>
+        <div className="main-layout" style={{padding: '0', gap: '0', height: '100%'}}>
             {tooltip && <CalculationTooltip tooltip={tooltip} onClose={closeTooltip} />}
             <Controls dims={dims} setDims={setDims} inputText={inputText} setInputText={setInputText}/>
             <div className="column left-column" style={{borderRadius: '0', boxShadow: 'none'}}>
@@ -361,3 +361,5 @@ export const TransformerExplorerTopic: React.FC = () => {
         </div>
     );
 }
+
+// END OF FILE: src/topics/transformer-explorer/TransformerExplorerTopic.tsx
