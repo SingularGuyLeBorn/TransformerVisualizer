@@ -34,24 +34,21 @@ export interface CalculationComponent {
 }
 
 export interface CalculationStep {
-    description?: string; // [MODIFIED] Optional description for the step
-    a?: Vector; // [MODIFIED] Made optional
-    b?: Vector; // [MODIFIED] Made optional
+    a: Vector;
+    b: Vector;
     op: string; // e.g., '·', '+', '...'
-    result: number | Vector; // [MODIFIED] Result can be a number or a vector
-    aSymbol?: string; // [MODIFIED] Made optional
-    bSymbol?: string; // [MODIFIED] Made optional
-    components?: CalculationComponent[];
+    result: number;
+    aSymbol: string;
+    bSymbol: string;
+    components?: CalculationComponent[]; // [NEW] For detailed breakdown of calculations
 }
-
-export type OpType = 'matmul' | 'add' | 'layernorm' | 'scale' | 'relu' | 'softmax' | 'info' | 'matmul_bias';
 
 export interface TooltipState {
     target: ElementIdentifier;
-    opType: OpType;
+    opType: 'matmul' | 'add' | 'info';
     steps: CalculationStep[];
     title: string;
-    initialPosition: { x: number, y: number };
+    initialPosition: { x: number, y: number }; // [NEW] For positioning the tooltip
 }
 
 export interface AttentionHeadData {

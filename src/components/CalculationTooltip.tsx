@@ -1,33 +1,29 @@
 // FILE: src/components/CalculationTooltip.tsx
-import React, { useRef, useEffect, useState } from 'react';
-import { TooltipState, CalculationComponent, Vector, OpType } from '../types';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { TooltipState, CalculationComponent } from '../types';
 
 interface CalculationTooltipProps {
   tooltip: TooltipState;
   onClose: () => void;
 }
 
-const renderValue = (value: number | Vector) => {
-    if (typeof value === 'number') {
-        return <span className="tooltip-result">{value.toFixed(2)}</span>;
-    }
-    // Render a truncated vector
-    const MAX_ITEMS = 5;
-    const items = value.map((val, i) => <span key={i} className="tooltip-element">{val.toFixed(2)}</span>);
-    if (value.length > MAX_ITEMS) {
-        return <div className="tooltip-vector"> {items.slice(0, MAX_ITEMS)} <span className="ellipsis">...</span> </div>;
-    }
-    return <div className="tooltip-vector">{items}</div>;
+const renderVector = (vec: number[], type: 'source' | 'target' | 'none') => {
+    return (
+        <div className="tooltip-vector">
+            {vec.map((val, i) => (
+                <span key={i} className={`tooltip-element ${type}`}>{val.toFixed(4)}</span>
+            ))}
+        </div>
+    );
 };
 
-
-const renderCalculationDetail = (opType: OpType, components: CalculationComponent[] | undefined, result: number) => {
+const renderCalculationDetail = (opType: 'matmul' | 'add' | 'info', components: CalculationComponent[], result: number) => {
     if (!components || components.length === 0) return null;
 
     let equation: React.ReactNode;
     let title: string;
 
-    if (opType === 'matmul' || opType === 'matmul_bias') {
+    if (opType === 'matmul') {
         title = "点积计算分解 (Dot Product Breakdown):";
         const MAX_TERMS = 4;
         const terms = components.map((comp, i) => (
@@ -65,7 +61,6 @@ const renderCalculationDetail = (opType: OpType, components: CalculationComponen
             </>
         );
     } else {
-        // For other opTypes like 'layernorm', 'scale', etc., we don't show this specific detail view.
         return null;
     }
 
@@ -80,13 +75,11 @@ const renderCalculationDetail = (opType: OpType, components: CalculationComponen
 
 export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip, onClose }) => {
     const tooltipRef = useRef<HTMLDivElement>(null);
-    const [isCollapsed, setIsCollapsed] = useState(false); // Default to expanded
+    const [isCollapsed, setIsCollapsed] = useState(false);
 
     useEffect(() => {
-        // When a new tooltip is generated, always start expanded.
-        setIsCollapsed(false);
-    }, [tooltip.target]);
-
+        setIsCollapsed(false); // Expand tooltip whenever it changes
+    }, [tooltip]);
 
     return (
         <div className={`calculation-tooltip ${isCollapsed ? 'collapsed' : ''}`} ref={tooltipRef}>
@@ -102,18 +95,27 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
             <div className="tooltip-content-wrapper">
                 <div className="tooltip-body">
                     {tooltip.steps.map((step, index) => (
-                        <div key={index} className="tooltip-step-container">
-                            {step.description && <div className="tooltip-step-description">{step.description}</div>}
+                        <div key={index}>
                             <div className="tooltip-step">
-                                {step.a && renderValue(step.a)}
+                                {renderVector(step.a, 'source')}
                                 <span className="tooltip-op">{step.op}</span>
-                                {step.b && renderValue(step.b)}
+                                {renderVector(step.b, 'source')}
                                 <span className="tooltip-op">=</span>
-                                {renderValue(step.result)}
+                                <span className="tooltip-result">{step.result.toFixed(2)}</span>
                             </div>
-                            {step.components && renderCalculationDetail(tooltip.opType, step.components, typeof step.result === 'number' ? step.result : 0)}
+                            {renderCalculationDetail(tooltip.opType, step.components || [], step.result)}
                         </div>
                     ))}
+                    {tooltip.opType === 'matmul' &&
+                        <p className="tooltip-explanation">
+                            Showing dot product of row {tooltip.target.row} from the first matrix and column {tooltip.target.col} from the second.
+                        </p>
+                    }
+                    {tooltip.opType === 'add' &&
+                        <p className="tooltip-explanation">
+                            Showing element-wise addition for position ({tooltip.target.row}, {tooltip.target.col}).
+                        </p>
+                    }
                 </div>
             </div>
         </div>

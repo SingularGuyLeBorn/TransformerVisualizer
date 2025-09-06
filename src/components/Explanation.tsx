@@ -8,7 +8,7 @@ import { HighlightState, ElementIdentifier } from '../types';
 import { MATRIX_NAMES } from '../config/matrixNames';
 
 interface ExplanationProps {
-    dims: { d_model: number; h: number, n_layers: number, d_ff: number, encoder_seq_len: number, decoder_seq_len: number };
+    dims: { d_model: number; h: number, n_layers: number, d_ff: number, encoder_seq_len: number, decoder_seq_len: number, vocab_size: number };
     highlight: HighlightState;
     onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
 }
@@ -40,7 +40,12 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
     const HNd_encdec = MATRIX_NAMES.encDecMhaHead(0, 0);
     const d_k = dims.d_model / dims.h;
 
-    const shouldBreakAddNorm = dims.d_model > 15 || dims.d_model * 2 > 15;
+    const shouldBreakAddNorm = dims.d_model > 8;
+    const shouldBreakMhaProj = dims.d_model > 8;
+    const shouldBreakFFN1 = dims.d_model + dims.d_ff > 8;
+    const shouldBreakFFN2 = dims.d_ff + dims.d_model > 8;
+    const shouldBreakFinalOutput = dims.d_model + dims.vocab_size > 8;
+
 
     return (
         <div>
@@ -95,18 +100,32 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                     <InlineMath math="\text{Input} = " />
                     <InteractiveSymbolicMatrix name={LNe.encoder_input} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} truncate={false} />
                 </div>
-                <h5>计算 Q, K, V (Query, Key, Value)</h5>
-                <p>输入矩阵 <InlineMath math="Z"/> 被并行地送入 {dims.h} 个独立的注意力头. 每个头都拥有三块自己专属、可学习的权重矩阵. 通过矩阵乘法,将输入 <InlineMath math="Z"/> 投影到三个新的矩阵:查询 (Query, <InlineMath math="Q"/>), 键 (Key, <InlineMath math="K"/>), 和 值 (Value, <InlineMath math="V"/>). </p>
+                <h5>计算流程 (以单个注意力头为例)</h5>
+                 <p>输入矩阵 <InlineMath math="Z"/> 被并行地送入 {dims.h} 个独立的注意力头. 每个头都拥有三块自己专属、可学习的权重矩阵. 通过矩阵乘法,将输入 <InlineMath math="Z"/> 投影到三个新的矩阵:查询 (Query, <InlineMath math="Q"/>), 键 (Key, <InlineMath math="K"/>), 和 值 (Value, <InlineMath math="V"/>). </p>
                 <div className="formula-display vertical">
                     <div className="viz-formula-row"><InlineMath math="Z" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.Wq} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.Q} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <div className="viz-formula-row"><InlineMath math="Z" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.Wk} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.K} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <div className="viz-formula-row"><InlineMath math="Z" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.Wv} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
-                <p>然后计算注意力分数 <InlineMath math="S = QK^T"/>,进行缩放和Softmax得到权重 <InlineMath math="A"/>,最后加权求和 <InlineMath math="H = A \cdot V"/>. </p>
+                <p>然后计算注意力分数, 进行缩放和Softmax得到权重, 最后加权求和. </p>
+                <BlockMath math={`A = \\text{Softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)`} />
+                <BlockMath math={`H = A V`} />
+                 <div className="formula-display vertical">
+                    <div className="viz-formula-row"><InteractiveSymbolicMatrix name={HNe.AttentionWeights} rows={dims.encoder_seq_len} cols={dims.encoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.HeadOutput} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                </div>
+                <h5>拼接与最终投影</h5>
+                <p>将所有 {dims.h} 个头的输出矩阵 <InlineMath math="H_i"/> 拼接 (Concatenate) 起来, 然后通过一个最终的投影权重矩阵 <InlineMath math="W^O"/> 得到该子层的最终输出 <InlineMath math="M"/>. </p>
+                 <div className={`formula-display ${shouldBreakMhaProj ? 'vertical' : ''}`}>
+                    <InlineMath math="\text{Concat}(H_0, ..., H_{h-1})" />
+                    <BlockMath math="\times" />
+                    <InteractiveSymbolicMatrix name={LNe.Wo} rows={dims.d_model} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                    <BlockMath math="=" />
+                    <InteractiveSymbolicMatrix name={LNe.mha_output} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                </div>
             </MathBlock>
             <MathBlock id="add_norm_1" title="组件:残差连接与层归一化 (1)" highlight={highlight}>
                 <p>在每个子层之后,都会跟随一个“Add & Norm”模块. 它包含两个关键步骤:<b>残差连接</b>将子层的输入与输出直接相加,缓解梯度消失;<b>层归一化</b>则稳定训练过程. </p>
-                <BlockMath math={`Z' = \\text{LayerNorm}(Z + \\text{Sublayer}(Z))`} />
+                <BlockMath math={`Z' = \\text{LayerNorm}(Z + \\text{MultiHeadAttention}(Z))`} />
                  <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.encoder_input} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <BlockMath math="+" />
@@ -118,32 +137,29 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
             <MathBlock id="ffn" title="编码器子层2:位置前馈网络" highlight={highlight}>
                 <p>前馈网络 (FFN) 对每个位置的向量独立地进行一次复杂的非线性变换,极大地增加了模型的表达能力. </p>
                 <BlockMath math={`F = \\text{ReLU}(Z' W_1 + b_1) W_2 + b_2`} />
-                <div className="formula-display vertical">
-                    <div className="viz-formula-row">
-                        <p>(</p>
-                        <InteractiveSymbolicMatrix name={LNe.add_norm_1_output} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/>
-                        <BlockMath math="\times"/>
-                        <InteractiveSymbolicMatrix name={LNe.W1} rows={dims.d_model} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/>
-                        <BlockMath math="+"/>
-                        <InteractiveSymbolicVector name={LNe.b1} data={Array(dims.d_ff).fill(0)} highlight={highlight} onSymbolClick={onSymbolClick}/>
-                        <p>)</p>
-                    </div>
-                    <BlockMath math="\xrightarrow{ReLU}"/>
-                    <div className="viz-formula-row">
-                        <InteractiveSymbolicMatrix name={LNe.Activated} rows={dims.encoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/>
-                    </div>
+                <h5>第一次线性变换 & ReLU</h5>
+                <div className={`formula-display ${shouldBreakFFN1 ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.add_norm_1_output} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math="\times"/>
-                    <div className="viz-formula-row">
-                        <InteractiveSymbolicMatrix name={LNe.W2} rows={dims.d_ff} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/>
-                    </div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.W1} rows={dims.d_model} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math="+"/>
-                     <div className="viz-formula-row">
-                        <InteractiveSymbolicVector name={LNe.b2} data={Array(dims.d_model).fill(0)} highlight={highlight} onSymbolClick={onSymbolClick}/>
-                    </div>
-                     <BlockMath math="="/>
-                      <div className="viz-formula-row">
-                        <InteractiveSymbolicMatrix name={LNe.ffn_output} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/>
-                    </div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicVector name={LNe.b1} data={Array(dims.d_ff).fill(0)} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                </div>
+                 <div className="formula-display vertical">
+                    <BlockMath math="=" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.Intermediate} rows={dims.encoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <BlockMath math="\xrightarrow{ReLU}"/>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.Activated} rows={dims.encoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                </div>
+                <h5>第二次线性变换</h5>
+                <div className={`formula-display ${shouldBreakFFN2 ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.Activated} rows={dims.encoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <BlockMath math="\times"/>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.W2} rows={dims.d_ff} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <BlockMath math="+"/>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicVector name={LNe.b2} data={Array(dims.d_model).fill(0)} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <BlockMath math="="/>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.ffn_output} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                 </div>
             </MathBlock>
             <MathBlock id="add_norm_2" title="组件:残差连接与层归一化 (2)" highlight={highlight}>
@@ -179,6 +195,16 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_masked.Scores} rows={dims.decoder_seq_len} cols={dims.decoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math={`\\xrightarrow{\\text{Mask}}`} />
                     <p>上三角区域被设为-∞</p>
+                </div>
+                 <h5>计算流程</h5>
+                <p>除了应用掩码外,后续计算与编码器自注意力完全相同.</p>
+                <BlockMath math={`H = \\text{Softmax}\\left(\\text{Mask}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)\\right) V`} />
+                 <div className={`formula-display ${shouldBreakMhaProj ? 'vertical' : ''}`}>
+                    <InlineMath math="\text{Concat}(H_0, ..., H_{h-1})" />
+                    <BlockMath math="\times" />
+                    <InteractiveSymbolicMatrix name={LNd.Wo_masked} rows={dims.d_model} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                    <BlockMath math="=" />
+                    <InteractiveSymbolicMatrix name={LNd.masked_mha_output} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
                 </div>
             </MathBlock>
             <MathBlock id="add_norm_1_dec" title="解码器组件:残差连接与层归一化 (1)" highlight={highlight}>
@@ -232,7 +258,7 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
             <MathBlock id="ffn_dec" title="解码器子层3:前馈网络" highlight={highlight}>
                 <p>与编码器中的 FFN 类似,解码器中的前馈网络 (FFN) 也对每个位置的向量 (<InlineMath math="Y''"/>) 独立地进行一次复杂的非线性变换,进一步增强模型的表达能力,为最终的输出预测做准备. </p>
                 <BlockMath math={`F = \\text{ReLU}(Y'' W_1 + b_1) W_2 + b_2`} />
-                <div className="formula-display vertical">
+                 <div className="formula-display vertical">
                      <div className="viz-formula-row"><InteractiveSymbolicMatrix name={LNd.add_norm_2_output} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math="\times"/>
                     <div className="viz-formula-row"><InteractiveSymbolicMatrix name={LNd.W1} rows={dims.d_model} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
@@ -261,12 +287,16 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                     <li><b>线性层 (Linear Layer):</b> 将解码器输出矩阵通过一个大的线性投影层,将其维度从 <InlineMath math="d_{model}"/> 扩展到词汇表大小 (<InlineMath math="V_{size}"/>). 这会为每个位置生成一个分数向量,称为 Logits. </li>
                     <li><b>Softmax:</b> 对 Logits 矩阵的每一行应用 Softmax 函数,将其转换为概率分布. </li>
                 </ol>
-                 <div className="formula-display">
+                 <div className={`formula-display ${shouldBreakFinalOutput ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={FinalLNd.add_norm_3_output} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.finalLinear} rows={dims.d_model} cols={16} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.finalLinear} rows={dims.d_model} cols={dims.vocab_size} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                 </div>
+                 <div className="formula-display">
+                    <BlockMath math="=" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.logits} rows={dims.decoder_seq_len} cols={dims.vocab_size} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math="\xrightarrow{\text{Softmax}}" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.outputProbabilities} rows={dims.decoder_seq_len} cols={16} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.outputProbabilities} rows={dims.decoder_seq_len} cols={dims.vocab_size} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                 </div>
                  <p>现在,矩阵 <InlineMath math="P"/> 中的每一行都是一个概率分布,代表了在那个位置上生成词汇表中任何一个单词的可能性. </p>
             </MathBlock>

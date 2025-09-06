@@ -19,20 +19,7 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
     const headIndex = 0; // Assume we visualize head 0
     const headData = data.heads[headIndex];
     const isActive = highlight.activeComponent === 'masked_mha';
-    const numHeads = data.heads.length;
-
-    const renderConcatHeads = () => {
-        const headsToShow = [];
-        headsToShow.push(<Matrix key={0} name={MATRIX_NAMES.maskedMhaHead(layerIndex, 0).HeadOutput} data={data.heads[0].HeadOutput} highlight={highlight} onElementClick={onElementClick} />);
-        if (numHeads > 2) {
-            headsToShow.push(<div key="ellipsis-start" className="op-symbol">...</div>);
-            headsToShow.push(<Matrix key={numHeads-1} name={MATRIX_NAMES.maskedMhaHead(layerIndex, numHeads-1).HeadOutput} data={data.heads[numHeads-1].HeadOutput} highlight={highlight} onElementClick={onElementClick} />);
-        } else if (numHeads === 2) {
-            headsToShow.push(<Matrix key={1} name={MATRIX_NAMES.maskedMhaHead(layerIndex, 1).HeadOutput} data={data.heads[1].HeadOutput} highlight={highlight} onElementClick={onElementClick} />);
-        }
-        return headsToShow;
-    };
-
+    const HNd_masked = MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex);
 
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}>
@@ -43,21 +30,21 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
                     <div className="viz-step-title">1. Generate Q, K, V (Head 1)</div>
                      <div className="viz-formula-row">
                        <span>(Input) ×</span>
-                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
+                       <Matrix name={HNd_masked.Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
                        <span>=</span>
-                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                       <Matrix name={HNd_masked.Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                      <div className="viz-formula-row">
                        <span>(Input) ×</span>
-                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Wk} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
+                       <Matrix name={HNd_masked.Wk} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
                         <span>=</span>
-                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).K} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
+                       <Matrix name={HNd_masked.K} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                      <div className="viz-formula-row">
                        <span>(Input) ×</span>
-                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Wv} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
+                       <Matrix name={HNd_masked.Wv} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
                         <span>=</span>
-                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                       <Matrix name={HNd_masked.V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                 </div>
 
@@ -67,24 +54,27 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
                 <div className="viz-formula-group">
                     <div className="viz-step-title">2. Scaled Dot-Product Attention (Head 1)</div>
                     <div className="viz-formula-row">
-                        <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                        <Matrix name={HNd_masked.Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                         <InlineMath math="\times" />
-                        <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).K} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
+                        <Matrix name={HNd_masked.K} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
                     </div>
                     <div className="arrow-down">= (Scores)</div>
                     <div className="arrow-down" style={{fontSize: '1em', color: '#e63946', fontWeight: 'bold'}}>Apply Look-Ahead Mask</div>
                     <div className="viz-formula-row">
-                         <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Scores} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
+                         <Matrix name={HNd_masked.Scores} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
 
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Scale by } / \sqrt{d_k}}" /></div>
+                    <div className="viz-formula-row">
+                         <Matrix name={HNd_masked.ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
+                    </div>
 
                     <ElementwiseOperation
                         opType="softmax"
                         inputMatrix={headData.ScaledScores}
-                        inputMatrixName={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).ScaledScores}
+                        inputMatrixName={HNd_masked.ScaledScores} // [FIXED] Pass the input matrix name
                         outputMatrix={headData.AttentionWeights}
-                        outputMatrixName={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).AttentionWeights}
+                        outputMatrixName={HNd_masked.AttentionWeights}
                         highlight={highlight}
                         onElementClick={onElementClick}
                         layerIndex={layerIndex}
@@ -92,13 +82,17 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
                     />
 
                     <div className="viz-formula-row">
-                        <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
+                         <Matrix name={HNd_masked.AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
+                    </div>
+
+                    <div className="viz-formula-row">
+                        <Matrix name={HNd_masked.AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
                         <InlineMath math="\times" />
-                        <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                        <Matrix name={HNd_masked.V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                      <div className="arrow-down">=</div>
                     <div className="viz-formula-row">
-                         <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).HeadOutput} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick}/>
+                         <Matrix name={HNd_masked.HeadOutput} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
                 </div>
 
@@ -108,7 +102,7 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
                 <div className="viz-formula-group">
                     <div className="viz-step-title">3. Concat & Final Projection</div>
                     <div className="viz-formula-row">
-                       {renderConcatHeads()}
+                       <InlineMath math="\text{Concat}(H_0, \dots, H_{N})" />
                      </div>
                      <div className="viz-formula-row">
                        <span>(Concatenated) ×</span>

@@ -12,8 +12,8 @@ export const MATRIX_NAMES = {
     // Input
     inputEmbeddings: 'inputEmbeddings',
     posEncodings: 'posEncodings',
-    encoderInput: 'encoderInput',
-    finalEncoderOutput: 'finalEncoderOutput', // [ADDED]
+    encoderInput: 'encoderInput', // Deprecated, use layer(0).encoder_input
+    finalEncoderOutput: 'finalEncoderOutput',
 
     // Encoder Layer
     layer: (layerIndex: number) => ({
@@ -35,7 +35,7 @@ export const MATRIX_NAMES = {
     // Decoder Input
     outputEmbeddings: 'outputEmbeddings',
     decoderPosEncodings: 'decoderPosEncodings',
-    decoderInput: 'decoderInput',
+    decoderInput: 'decoderInput', // Deprecated, use decoderLayer(0).decoder_input
 
     // Decoder Layer
     decoderLayer: (layerIndex: number) => ({

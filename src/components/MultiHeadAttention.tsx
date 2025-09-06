@@ -22,6 +22,7 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
     const layerIndex = parseInt(baseName.split('.')[1], 10);
     const headIndex = 0; // Visualizing head 0
     const LN = MATRIX_NAMES.layer(layerIndex);
+    const HNe = MATRIX_NAMES.head(layerIndex, headIndex);
     const numHeads = data.heads.length;
 
     const renderConcatHeads = () => {
@@ -43,23 +44,27 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
 
 
     // --- Layout Breaking Logic ---
+    const inputCols = data.heads[0].Wq.length;
     const wqCols = headData.Wq[0]?.length || 0;
-    const qCols = headData.Q[0]?.length || 0;
-    const breakQ = wqCols > 15 || qCols > 15 || (wqCols + qCols > 15);
+    const breakQ = inputCols > 8 || wqCols > 8 || (inputCols + wqCols > 15);
 
     const wkCols = headData.Wk[0]?.length || 0;
-    const kCols = headData.K[0]?.length || 0;
-    const breakK = wkCols > 15 || kCols > 15 || (wkCols + kCols > 15);
+    const breakK = inputCols > 8 || wkCols > 8 || (inputCols + wkCols > 15);
 
     const wvCols = headData.Wv[0]?.length || 0;
-    const vCols = headData.V[0]?.length || 0;
-    const breakV = wvCols > 15 || vCols > 15 || (wvCols + vCols > 15);
+    const breakV = inputCols > 8 || wvCols > 8 || (inputCols + wvCols > 15);
 
+    const qCols = headData.Q[0]?.length || 0;
     const kTransposedCols = headData.K.length;
-    const breakScores = qCols > 15 || kTransposedCols > 15 || (qCols + kTransposedCols > 15);
+    const breakScores = qCols > 8 || kTransposedCols > 8 || (qCols + kTransposedCols > 15);
 
     const attnWeightsCols = headData.AttentionWeights[0]?.length || 0;
-    const breakHeadOutput = attnWeightsCols > 15 || vCols > 15 || (attnWeightsCols + vCols > 15);
+    const vCols = headData.V[0]?.length || 0;
+    const breakHeadOutput = attnWeightsCols > 8 || vCols > 8 || (attnWeightsCols + vCols > 15);
+
+    const headOutputCols = headData.HeadOutput[0]?.length || 0;
+    const woCols = data.Wo[0]?.length || 0;
+    const breakFinalProj = (headOutputCols * numHeads) > 8 || woCols > 8 || ((headOutputCols * numHeads) + woCols > 15);
 
 
     return (
@@ -69,99 +74,51 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
 
                 <div className="viz-formula-group">
                     <div className="viz-step-title">1. Generate Q, K, V (Head 1)</div>
-                    {breakQ ? (
-                        <>
-                            <div className="viz-formula-row">
-                               <span>(Input) ×</span>
-                               <Matrix name={`${headBaseName}.Wq`} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                            <div className="arrow-down">=</div>
-                            <div className="viz-formula-row">
-                               <Matrix name={`${headBaseName}.Q`} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                        </>
-                    ) : (
-                        <div className="viz-formula-row">
-                           <span>(Input) ×</span>
-                           <Matrix name={`${headBaseName}.Wq`} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
-                           <span>=</span>
-                           <Matrix name={`${headBaseName}.Q`} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
-                        </div>
-                    )}
-                     {breakK ? (
-                        <>
-                             <div className="viz-formula-row">
-                               <span>(Input) ×</span>
-                               <Matrix name={`${headBaseName}.Wk`} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                            <div className="arrow-down">=</div>
-                            <div className="viz-formula-row">
-                               <Matrix name={`${headBaseName}.K`} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                        </>
-                    ) : (
-                        <div className="viz-formula-row">
-                           <span>(Input) ×</span>
-                           <Matrix name={`${headBaseName}.Wk`} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
-                            <span>=</span>
-                           <Matrix name={`${headBaseName}.K`} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
-                        </div>
-                    )}
-                     {breakV ? (
-                        <>
-                            <div className="viz-formula-row">
-                               <span>(Input) ×</span>
-                               <Matrix name={`${headBaseName}.Wv`} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                            <div className="arrow-down">=</div>
-                            <div className="viz-formula-row">
-                               <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                        </>
-                    ) : (
-                        <div className="viz-formula-row">
-                           <span>(Input) ×</span>
-                           <Matrix name={`${headBaseName}.Wv`} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
-                            <span>=</span>
-                           <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
-                        </div>
-                    )}
+                    <div className={`viz-formula-row ${breakQ ? 'vertical' : ''}`}>
+                       <span>(Input) ×</span>
+                       <Matrix name={HNe.Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
+                       <span>=</span>
+                       <Matrix name={HNe.Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                     <div className={`viz-formula-row ${breakK ? 'vertical' : ''}`}>
+                       <span>(Input) ×</span>
+                       <Matrix name={HNe.Wk} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
+                        <span>=</span>
+                       <Matrix name={HNe.K} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                     <div className={`viz-formula-row ${breakV ? 'vertical' : ''}`}>
+                       <span>(Input) ×</span>
+                       <Matrix name={HNe.Wv} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
+                        <span>=</span>
+                       <Matrix name={HNe.V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
                 </div>
 
                 <div className="arrow-down">↓</div>
 
                 <div className="viz-formula-group">
                     <div className="viz-step-title">2. Scaled Dot-Product Attention (Head 1)</div>
-                    {breakScores ? (
-                        <>
-                             <div className="viz-formula-row">
-                                <Matrix name={`${headBaseName}.Q`} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                            <div className="op-symbol">×</div>
-                            <div className="viz-formula-row">
-                                <Matrix name={`${headBaseName}.K`} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
-                            </div>
-                        </>
-                    ) : (
-                         <div className="viz-formula-row">
-                            <Matrix name={`${headBaseName}.Q`} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
-                            <InlineMath math="\times" />
-                            <Matrix name={`${headBaseName}.K`} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
-                        </div>
-                    )}
+                    <div className={`viz-formula-row ${breakScores ? 'vertical' : ''}`}>
+                        <Matrix name={HNe.Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="\times" />
+                        <Matrix name={HNe.K} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
+                    </div>
                     <div className="arrow-down">=</div>
                     <div className="viz-formula-row">
-                        <Matrix name={`${headBaseName}.Scores`} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
+                        <Matrix name={HNe.Scores} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
 
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Scale by } / \sqrt{d_k}}" /></div>
+                    <div className="viz-formula-row">
+                        <Matrix name={HNe.ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
+                    </div>
 
                     <ElementwiseOperation
                         opType="softmax"
                         inputMatrix={headData.ScaledScores}
-                        inputMatrixName={`${headBaseName}.ScaledScores`}
+                        inputMatrixName={HNe.ScaledScores} // [FIXED] Pass the input matrix name
                         outputMatrix={headData.AttentionWeights}
-                        outputMatrixName={`${headBaseName}.AttentionWeights`}
+                        outputMatrixName={HNe.AttentionWeights}
                         highlight={highlight}
                         onElementClick={onElementClick}
                         layerIndex={layerIndex}
@@ -169,13 +126,17 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                     />
 
                     <div className="viz-formula-row">
-                        <Matrix name={`${headBaseName}.AttentionWeights`} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
-                        <InlineMath math="\times" />
-                        <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                        <Matrix name={HNe.AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
-                     <div className="arrow-down">=</div>
+
+                    <div className={`viz-formula-row ${breakHeadOutput ? 'vertical' : ''}`}>
+                        <Matrix name={HNe.AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
+                        <InlineMath math="\times" />
+                        <Matrix name={HNe.V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                    <div className="arrow-down">=</div>
                     <div className="viz-formula-row">
-                        <Matrix name={`${headBaseName}.HeadOutput`} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick}/>
+                        <Matrix name={HNe.HeadOutput} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
                 </div>
 
@@ -184,12 +145,14 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                 <div className="viz-formula-group">
                     <div className="viz-step-title">3. Concat & Final Projection</div>
                     <div className="viz-formula-row">
-                       {renderConcatHeads()}
+                       <InlineMath math="\text{Concat}(" />
+                        {renderConcatHeads()}
+                       <InlineMath math=")" />
                      </div>
 
-                     <div className="viz-formula-row">
+                     <div className={`viz-formula-row ${breakFinalProj ? 'vertical' : ''}`}>
                        <span>(Concatenated) ×</span>
-                       <Matrix name={`${baseName}.Wo`} data={data.Wo} highlight={highlight} onElementClick={onElementClick} />
+                       <Matrix name={LN.Wo} data={data.Wo} highlight={highlight} onElementClick={onElementClick} />
                      </div>
                      <div className="arrow-down">=</div>
                      <div className="viz-formula-row">

@@ -15,6 +15,23 @@ interface MatrixProps {
 }
 
 export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick, isTransposed = false }) => {
+
+  // [FIXED] Hook is now at the top level, before any returns.
+  const maxProbCols = React.useMemo(() => {
+    const maxCols: { [key: number]: number } = {};
+    if (!data) return maxCols; // Handle invalid data gracefully
+
+    const probSources = highlight.sources.filter(s => s.name === name && s.highlightProbCol);
+    for (const source of probSources) {
+        if (source.row !== -1 && data[source.row]) {
+            const rowData = data[source.row];
+            const maxVal = Math.max(...rowData);
+            maxCols[source.row] = rowData.indexOf(maxVal);
+        }
+    }
+    return maxCols;
+  }, [highlight.sources, name, data]);
+
   if (!data || data.length === 0 || data[0].length === 0) {
     return <div>Invalid matrix data for {name}</div>;
   }
@@ -45,7 +62,6 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
         focusCol = relevantDestination.col === -1 ? focusCol : relevantDestination.col;
     }
 
-
   const visibleRowIndices = getVisibleIndices(displayRows, isTransposed ? focusCol : focusRow);
   const visibleColIndices = getVisibleIndices(displayCols, isTransposed ? focusRow : focusCol);
 
@@ -57,7 +73,7 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
 
   const isTargetMatrix = highlight.target?.name === name && !highlight.target.isInternal;
 
-  const gridStyle: React.CSSProperties = {
+   const gridContainerStyle: React.CSSProperties = {
       gridTemplateColumns: isTargetMatrix
           ? `auto repeat(${visibleColIndices.length}, auto)`
           : `repeat(${visibleColIndices.length}, auto)`,
@@ -66,7 +82,7 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
   return (
     <div className="matrix-wrapper" data-name={name}>
       <div className="matrix-container">
-        <div className="matrix-grid" data-name={name} style={gridStyle}>
+        <div className="matrix-grid" data-name={name} style={gridContainerStyle}>
             {/* Top-left corner & Column Headers */}
             {isTargetMatrix && <div key="corner" />}
             {isTargetMatrix && visibleColIndices.map((c, cIdx) => (
@@ -96,6 +112,7 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
                             value={value}
                             highlight={highlight}
                             onElementClick={onElementClick}
+                            isProbMax={maxProbCols[originalRow] === originalCol}
                         />
                     );
                 });
