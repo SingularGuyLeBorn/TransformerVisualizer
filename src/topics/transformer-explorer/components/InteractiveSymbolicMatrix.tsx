@@ -4,7 +4,7 @@ import { HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
 import { getSymbolParts } from '../config/symbolMapping';
 import { InteractiveSymbolicElement } from './InteractiveSymbolicElement';
-import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
+import { getVisibleIndices, ELLIPSIS } from '../../../utils/matrixView';
 
 interface InteractiveSymbolicMatrixProps {
   name: string;

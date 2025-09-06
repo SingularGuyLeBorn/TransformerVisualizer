@@ -225,6 +225,14 @@ h1 {
   border: 1.5px solid var(--highlight-target-border);
 }
 
+/* [NEW] Style for highlighting the max probability in a row */
+.matrix-element.prob-max {
+    box-shadow: 0 0 8px 2px var(--highlight-target-border);
+    font-weight: bold;
+    transform: scale(1.15);
+    z-index: 6;
+}
+
 .matrix-element.destination {
   background-color: var(--highlight-formula-bg);
   border: 1px solid var(--highlight-formula-border);
@@ -351,6 +359,7 @@ h1 {
     padding: 15px 10px;
     background-color: rgba(0,0,0,0.02);
     border-radius: 8px;
+    flex-wrap: wrap; /* [MODIFIED] Allow wrapping by default */
 }
 .formula-display > * {
     flex-shrink: 0; /* CRITICAL FIX: Prevent items from shrinking */
@@ -557,7 +566,12 @@ h1 {
     justify-content: center;
     width: max-content; /* Let the row size to its content */
     padding: 0 5px; /* Remove vertical padding */
-    flex-wrap: wrap; /* Allow wrapping for very wide rows */
+    flex-wrap: nowrap; /* [MODIFIED] Default to no-wrap */
+}
+.viz-formula-row.vertical {
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
 }
 .viz-formula-row > * {
     flex-shrink: 0;
@@ -1017,15 +1031,508 @@ h1 {
 ================================================================================
 
 // FILE: src/App.tsx
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { HomePage } from './pages/HomePage';
+import { TopicPage } from './pages/TopicPage';
+import './App.css'; // Global styles remain
+
+function App() {
+  return (
+    <Router>
+      <div className="app-container">
+        <header className="app-header">
+            <h1><Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>AI 深度探索专题</Link></h1>
+        </header>
+        <main className="app-main-content">
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/topic/:topicId" element={<TopicPage />} />
+          </Routes>
+        </main>
+      </div>
+    </Router>
+  );
+}
+
+// Add new global styles for the new layout
+const globalStyles = `
+  .app-header {
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--component-bg);
+    z-index: 1001; /* Ensure header is on top */
+  }
+  .app-header h1 {
+    padding: 15px 0;
+    font-size: 1.8em;
+  }
+  .app-main-content {
+    flex-grow: 1;
+    overflow-y: auto; /* Allow main content to scroll */
+    height: calc(100vh - 78px); /* Full height minus header */
+  }
+`;
+
+const styleSheet = document.createElement("style");
+styleSheet.innerText = globalStyles;
+document.head.appendChild(styleSheet);
+
+
+export default App;
+
+
+
+================================================================================
+### 文件路径: src/index.tsx
+================================================================================
+
+// FILE: src/index.tsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './App.css';
+
+const root = ReactDOM.createRoot(
+  document.getElementById('root') as HTMLElement
+);
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+// Add this empty export statement to treat this file as a module.
+export {};
+// END OF FILE: src/index.tsx
+
+
+================================================================================
+### 文件路径: src/components/MarkdownRenderer.tsx
+================================================================================
+
+// FILE: src/components/MarkdownRenderer.tsx
+import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import { InlineMath, BlockMath } from 'react-katex';
+import 'katex/dist/katex.min.css';
+
+interface MarkdownRendererProps {
+    markdown: string;
+}
+
+export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ markdown }) => {
+    // 定义我们所有的渲染组件，包括标准的和自定义的
+    const components = {
+        // [修复] 为 remark-math 插件生成的自定义节点提供渲染器
+        // 'math' 对应 $$...$$
+        // 'inlineMath' 对应 $...$
+        math: ({ value }: { value: string }) => <BlockMath math={value} />,
+        inlineMath: ({ value }: { value: string }) => <InlineMath math={value} />,
+        
+        // 我们也可以在这里覆盖标准HTML标签的样式
+        // 使用 'any' 类型来避免对 props 的繁琐类型定义
+        img: ({node, ...props}: any) => (
+            <img 
+                style={{maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'}} 
+                {...props} 
+                alt="" 
+            />
+        )
+    };
+
+    return (
+        <ReactMarkdown
+            remarkPlugins={[remarkGfm, remarkMath]}
+            // [最终解决方案] 将 components 对象断言为 'any' 类型。
+            // 这会告诉 TypeScript 编译器：“忽略类型检查，接受我提供的所有自定义渲染器”，
+            // 从而彻底解决 TS2322 错误。
+            components={components as any}
+        >
+            {markdown}
+        </ReactMarkdown>
+    );
+};
+
+
+================================================================================
+### 文件路径: src/pages/HomePage.css
+================================================================================
+
+/* FILE: src/pages/HomePage.css */
+.homepage-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+.homepage-intro {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.homepage-intro h2 {
+    font-size: 2.5em;
+    color: #303133;
+}
+
+.homepage-intro p {
+    font-size: 1.2em;
+    color: #606266;
+}
+
+.topic-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 25px;
+}
+
+.topic-card-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+.topic-card {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    padding: 25px;
+    border: 1px solid #dcdfe6;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.topic-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+}
+
+.topic-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 1px solid #e4e7ed;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.topic-card-title {
+    font-size: 1.5em;
+    margin: 0;
+    color: #000;
+}
+
+.topic-card-date {
+    font-size: 0.85em;
+    color: #909399;
+    flex-shrink: 0;
+    margin-left: 10px;
+}
+
+.topic-card-description {
+    font-size: 1em;
+    line-height: 1.6;
+    flex-grow: 1;
+    margin-bottom: 20px;
+}
+
+.topic-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.topic-card-tag {
+    background-color: #f0f2f5;
+    color: #606266;
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 0.8em;
+}
+
+
+================================================================================
+### 文件路径: src/pages/HomePage.tsx
+================================================================================
+
+// FILE: src/pages/HomePage.tsx
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { topics, Topic } from '../topics';
+import './HomePage.css';
+
+const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {
+    return (
+        <Link to={`/topic/${topic.id}`} className="topic-card-link">
+            <div className="topic-card">
+                <div className="topic-card-header">
+                    <h2 className="topic-card-title">{topic.title}</h2>
+                    <span className="topic-card-date">{topic.date}</span>
+                </div>
+                <p className="topic-card-description">{topic.description}</p>
+                 <div className="topic-card-tags">
+                    {topic.tags.map(tag => <span key={tag} className="topic-card-tag">{tag}</span>)}
+                </div>
+            </div>
+        </Link>
+    );
+};
+
+
+export const HomePage: React.FC = () => {
+    return (
+        <div className="homepage-container">
+            <div className="homepage-intro">
+                <h2>欢迎来到 AI 深度探索</h2>
+                <p>一个旨在通过交互式可视化和深度文章，剖析前沿AI技术的知识平台。</p>
+            </div>
+            <div className="topic-grid">
+                {topics.map(topic => (
+                    <TopicCard key={topic.id} topic={topic} />
+                ))}
+            </div>
+        </div>
+    );
+};
+
+
+================================================================================
+### 文件路径: src/pages/TopicPage.tsx
+================================================================================
+
+// FILE: src/pages/TopicPage.tsx
+import React from 'react';
+import { useParams } from 'react-router-dom';
+import { topics } from '../topics';
+
+export const TopicPage: React.FC = () => {
+    const { topicId } = useParams<{ topicId: string }>();
+    const topic = topics.find(t => t.id === topicId);
+
+    if (!topic) {
+        return <div style={{textAlign: 'center', padding: '40px'}}>专题 '{topicId}' 未找到！</div>;
+    }
+
+    const TopicComponent = topic.component;
+
+    // For the transformer explorer, we render it directly to control its unique layout
+    if (topic.id === 'transformer-explorer') {
+        return <TopicComponent />;
+    }
+
+    // For other topics (like markdown articles), wrap them in a standard container
+    return (
+        <div className="topic-page-container">
+            <TopicComponent />
+        </div>
+    );
+};
+
+export {}
+
+
+================================================================================
+### 文件路径: src/topics/index.tsx
+================================================================================
+
+// FILE: src/topics/index.tsx
+import React from 'react'; // 必须导入 React 才能使用 React.FC
+import { TransformerExplorerTopic } from './transformer-explorer/TransformerExplorerTopic';
+import { AttentionVariantsTopic } from './attention-variants/AttentionVariantsTopic';
+
+export interface Topic {
+    id: string;
+    title: string;
+    description: string;
+    date: string;
+    tags: string[];
+    component: React.FC;
+}
+
+export const topics: Topic[] = [
+    {
+        id: 'attention-variants',
+        title: '多头注意力变体: 从MHA, MQA, GQA到MLA',
+        description: '深入探讨注意力机制从Multi-Head到Multi-head Latent的演进过程，分析其设计理念、数学原理，以及对KV Cache效率和性能的影响。',
+        date: '2025年9月7日',
+        tags: ['Attention', 'LLM', 'GQA', 'MLA', '深度剖析'],
+        component: AttentionVariantsTopic,
+    },
+    {
+        id: 'transformer-explorer',
+        title: 'Transformer 深度探索器',
+        description: '一个完全交互式的可视化工具，带您深入探索Transformer模型内部的数据流动、矩阵变换和数学原理。点击任何数字，追溯它的计算来源。',
+        date: '2025年9月6日',
+        tags: ['Transformer', 'Visualization', 'Interactive', 'PyTorch'],
+        component: TransformerExplorerTopic,
+    },
+    // 未来可以在这里添加更多专题...
+];
+
+// [最终修复] 即使已有其他 export 语句，在 .tsx 文件中再添加一个空的 export
+// 是最明确、最可靠地将其标记为模块的方式，可以彻底解决 TS1208 错误。
+export {};
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/AttentionVariantsTopic.css
+================================================================================
+
+/* FILE: src/topics/attention-variants/AttentionVariantsTopic.css */
+.attention-variants-container {
+    background-color: #fff;
+    padding: 30px 40px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    max-width: 900px;
+    margin: 20px auto; /* Add margin for spacing from header */
+    font-size: 16px;
+    line-height: 1.8;
+}
+
+.attention-variants-container h1,
+.attention-variants-container h2,
+.attention-variants-container h3,
+.attention-variants-container h4,
+.attention-variants-container h5 {
+    color: #000;
+    border-bottom: 1px solid #e4e7ed;
+    padding-bottom: 10px;
+    margin-top: 2em;
+    margin-bottom: 1.2em;
+}
+
+.attention-variants-container h1 {
+    font-size: 2.2em;
+    text-align: center;
+    border-bottom: 2px solid #dcdfe6;
+}
+
+.attention-variants-container h2 {
+    font-size: 1.8em;
+}
+
+.attention-variants-container p {
+    margin-bottom: 1.2em;
+}
+
+.attention-variants-container ul,
+.attention-variants-container ol {
+    padding-left: 25px;
+    margin-bottom: 1.2em;
+}
+
+.attention-variants-container li {
+    margin-bottom: 0.5em;
+}
+
+.attention-variants-container code {
+    background-color: #e9ecef;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+.attention-variants-container blockquote {
+    border-left: 4px solid #dcdfe6;
+    padding-left: 15px;
+    margin: 1.5em 0;
+    color: #606266;
+    background-color: #f8f9fa;
+}
+
+.attention-variants-container table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2em 0;
+}
+
+.attention-variants-container th,
+.attention-variants-container td {
+    border: 1px solid #dcdfe6;
+    padding: 12px 15px;
+    text-align: left;
+}
+
+.attention-variants-container th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+}
+
+.attention-variants-container tr:nth-child(even) {
+    background-color: #fcfcfc;
+}
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/AttentionVariantsTopic.tsx
+================================================================================
+
+// FILE: src/topics/attention-variants/AttentionVariantsTopic.tsx
+import React from 'react';
+import './AttentionVariantsTopic.css';
+
+export const AttentionVariantsTopic: React.FC = () => {
+    return (
+        <div className="attention-variants-container">
+            <h2>多头注意力变体: 从MHA, MQA, GQA到MLA</h2>
+            <p style={{ textAlign: 'center', fontSize: '1.2em', color: '#606266' }}>
+                此专题内容正在准备中，敬请期待...
+            </p>
+            {/*
+                当您准备好 markdown 文件后，
+                可以用下面这段代码替换上面的 <p> 标签和 <h2> 标签，
+                并确保 MarkdownRenderer 组件存在。
+
+                const [content, setContent] = useState('');
+
+                useEffect(() => {
+                    fetch(rawMarkdown)
+                        .then(response => response.text())
+                        .then(text => setContent(text.replace('# FILE: src/topics/attention-variants/content.md', '')));
+                }, []);
+
+                if (!content) {
+                    return <div>Loading content...</div>;
+                }
+
+                return (
+                    <div className="attention-variants-container">
+                        <MarkdownRenderer markdown={content} />
+                    </div>
+                );
+            */}
+        </div>
+    );
+};
+
+
+================================================================================
+### 文件路径: src/topics/transformer-explorer/TransformerExplorerTopic.tsx
+================================================================================
+
+// FILE: src/topics/transformer-explorer/TransformerExplorerTopic.tsx
 import React, { useState, useCallback, useEffect } from 'react';
+
+// [FIXED] 路径已更新，指向当前专题内的文件
 import { Controls } from './components/Controls';
 import { Viz } from './components/Viz';
 import { Explanation } from './components/Explanation';
+import { CalculationTooltip } from './components/CalculationTooltip';
 import { useTransformer } from './hooks/useTransformer';
-import { ElementIdentifier, HighlightSource, HighlightState, TransformerData, TooltipState, Vector, Matrix, CalculationComponent } from './types';
+import { ElementIdentifier, HighlightSource, HighlightState, TransformerData, TooltipState, Matrix, CalculationComponent } from './types';
 import { MATRIX_NAMES } from './config/matrixNames';
 import { getSymbolParts } from './config/symbolMapping';
-import { CalculationTooltip } from "./components/CalculationTooltip";
+
+
+// ============================================================================
+// [COPIED] 从旧 App.tsx 复制过来的辅助函数
+// ============================================================================
 
 const getLayerAndHeadIndices = (name: string): [number, number] => {
     const layerIdxMatch = name.match(/\.(encoder|decoder)\.(\d+)/);
@@ -1036,37 +1543,35 @@ const getLayerAndHeadIndices = (name: string): [number, number] => {
 };
 
 const getMatrixByName = (name: string, data: TransformerData, l: number, h: number): Matrix | undefined => {
-    // This function is a helper to get matrix data by its string name.
-    // FUTURE REFACTOR: Instead of a large switch, consider storing all matrices in a Map<string, Matrix>
-    // in TransformerData for direct lookup, e.g., `data.matrices.get(name)`.
-
-    // Encoder Layer and Head Names
     const LNe = MATRIX_NAMES.layer(l);
     const HNe = MATRIX_NAMES.head(l, h);
-
-    // Decoder Layer and Head Names
     const LNd = MATRIX_NAMES.decoderLayer(l);
     const HNd_masked = MATRIX_NAMES.maskedMhaHead(l, h);
     const HNd_encdec = MATRIX_NAMES.encDecMhaHead(l, h);
 
-    // --- Global & Input Matrices ---
     if (name === MATRIX_NAMES.inputEmbeddings) return data.inputEmbeddings;
     if (name === MATRIX_NAMES.posEncodings) return data.posEncodings;
     if (name === MATRIX_NAMES.outputEmbeddings) return data.outputEmbeddings;
     if (name === MATRIX_NAMES.decoderPosEncodings) return data.decoderPosEncodings;
     if (name === MATRIX_NAMES.finalEncoderOutput) return data.finalEncoderOutput;
+    if (name === MATRIX_NAMES.logits) return data.logits;
+    if (name === MATRIX_NAMES.outputProbabilities) return data.outputProbabilities;
+    if (name === MATRIX_NAMES.finalLinear) return data.finalLinear;
 
-    // --- Encoder Matrices ---
     const encLayer = data.encoderLayers[l];
     if (encLayer) {
         if (name === LNe.encoder_input) return encLayer.encoder_input;
         if (name === LNe.mha_output) return encLayer.mha_output;
+        if (name === LNe.Wo) return encLayer.mha.Wo;
         if (name === LNe.add_norm_1_output) return encLayer.add_norm_1_output;
         if (name === LNe.ffn_output) return encLayer.ffn_output;
         if (name === LNe.add_norm_2_output) return encLayer.add_norm_2_output;
         if (name === LNe.Intermediate) return encLayer.ffn.Intermediate;
         if (name === LNe.Activated) return encLayer.ffn.Activated;
-
+        if (name === LNe.W1) return encLayer.ffn.W1;
+        if (name === LNe.b1) return [encLayer.ffn.b1];
+        if (name === LNe.W2) return encLayer.ffn.W2;
+        if (name === LNe.b2) return [encLayer.ffn.b2];
         const encHead = encLayer.mha.heads[h];
         if (encHead) {
             if (name === HNe.Wq) return encHead.Wq;
@@ -1082,27 +1587,36 @@ const getMatrixByName = (name: string, data: TransformerData, l: number, h: numb
         }
     }
 
-    // --- Decoder Matrices ---
     const decLayer = data.decoderLayers[l];
     if (decLayer) {
         if (name === LNd.decoder_input) return decLayer.decoder_input;
         if (name === LNd.masked_mha_output) return decLayer.masked_mha_output;
+        if (name === LNd.Wo_masked) return decLayer.masked_mha.Wo;
         if (name === LNd.add_norm_1_output) return decLayer.add_norm_1_output;
-        if (name === LNd.enc_dec_mha_output) return decLayer.enc_dec_mha_output;
+        if (name === LNd.enc_dec_mha_output) return decLayer.enc_dec_mha.output;
+        if (name === LNd.Wo_enc_dec) return decLayer.enc_dec_mha.Wo;
         if (name === LNd.add_norm_2_output) return decLayer.add_norm_2_output;
         if (name === LNd.ffn_output) return decLayer.ffn_output;
         if (name === LNd.add_norm_3_output) return decLayer.add_norm_3_output;
         if (name === LNd.Intermediate) return decLayer.ffn.Intermediate;
         if (name === LNd.Activated) return decLayer.ffn.Activated;
-
+        if (name === LNd.W1) return decLayer.ffn.W1;
+        if (name === LNd.b1) return [decLayer.ffn.b1];
+        if (name === LNd.W2) return decLayer.ffn.W2;
+        if (name === LNd.b2) return [decLayer.ffn.b2];
         const maskedMhaHead = decLayer.masked_mha.heads[h];
         if (maskedMhaHead) {
+            if (name === HNd_masked.Wq) return maskedMhaHead.Wq;
+            if (name === HNd_masked.Wk) return maskedMhaHead.Wk;
+            if (name === HNd_masked.Wv) return maskedMhaHead.Wv;
             if (name === HNd_masked.Q) return maskedMhaHead.Q;
             if (name === HNd_masked.K) return maskedMhaHead.K;
             if (name === HNd_masked.V) return maskedMhaHead.V;
-            // ... add other masked mha matrices if needed
+            if (name === HNd_masked.Scores) return maskedMhaHead.Scores;
+            if (name === HNd_masked.ScaledScores) return maskedMhaHead.ScaledScores;
+            if (name === HNd_masked.AttentionWeights) return maskedMhaHead.AttentionWeights;
+            if (name === HNd_masked.HeadOutput) return maskedMhaHead.HeadOutput;
         }
-
         const encDecMhaHead = decLayer.enc_dec_mha.heads[h];
         if (encDecMhaHead) {
             if (name === HNd_encdec.Wq) return encDecMhaHead.Wq;
@@ -1111,109 +1625,51 @@ const getMatrixByName = (name: string, data: TransformerData, l: number, h: numb
             if (name === HNd_encdec.Q) return encDecMhaHead.Q;
             if (name === HNd_encdec.K) return encDecMhaHead.K;
             if (name === HNd_encdec.V) return encDecMhaHead.V;
-            // ... add other enc-dec mha matrices if needed
+            if (name === HNd_encdec.Scores) return encDecMhaHead.Scores;
+            if (name === HNd_encdec.ScaledScores) return encDecMhaHead.ScaledScores;
+            if (name === HNd_encdec.AttentionWeights) return encDecMhaHead.AttentionWeights;
+            if (name === HNd_encdec.HeadOutput) return encDecMhaHead.HeadOutput;
         }
     }
-
     return undefined;
 }
 
-
-const generateTooltipData = (element: ElementIdentifier, transformerData: TransformerData, sources: HighlightSource[], dims: any, clickPosition: {x: number, y: number}): TooltipState | null => {
-    console.log('[generateTooltipData] Generating for element:', element);
-    console.log('[generateTooltipData] Sources:', sources);
-
+const generateTooltipData = (element: ElementIdentifier, transformerData: TransformerData, sources: HighlightSource[]): TooltipState | null => {
     const { name, row, col } = element;
-    const { d_model, h } = dims;
-
     const [layerIdx, headIdx] = getLayerAndHeadIndices(name);
-
     let opType: TooltipState['opType'] = 'info';
     let steps: TooltipState['steps'] = [];
-
-    // [FIXED] Correctly get the target value using the helper function instead of direct property access.
     const targetMatrix = getMatrixByName(name, transformerData, layerIdx, headIdx);
     const targetValue = targetMatrix?.[row]?.[col] ?? 0;
 
-    console.log('[generateTooltipData] Target value from data:', targetValue);
-
-
-    // --- Matrix Multiplication ---
     if (sources.length === 2 && sources[0].highlightRow && sources[1].highlightCol) {
         opType = 'matmul';
         const source1 = sources[0];
         const source2 = sources[1];
-
         const matrixA = getMatrixByName(source1.name, transformerData, layerIdx, headIdx);
         const matrixB = getMatrixByName(source2.name, transformerData, layerIdx, headIdx);
-
-        console.log('[generateTooltipData] Matmul sources:', { matrixA, matrixB });
-
         if (matrixA && matrixB && matrixA[source1.row] && matrixB.length > 0 && matrixB[0].length > source2.col) {
             const vecA = matrixA[source1.row];
             const vecB = matrixB.map(r => r[source2.col]);
-            console.log('[generateTooltipData] Matmul vectors:', { vecA, vecB });
-
-            // [NEW] Generate detailed calculation components
             const components: CalculationComponent[] = vecA.map((val, i) => ({ a: val, b: vecB[i] }));
-
-            steps.push({
-                a: vecA,
-                b: vecB,
-                op: '·',
-                result: targetValue,
-                aSymbol: getSymbolParts(source1.name).base,
-                bSymbol: getSymbolParts(source2.name).base,
-                components: components,
-            });
+            steps.push({ a: vecA, b: vecB, op: '·', result: targetValue, aSymbol: getSymbolParts(source1.name).base, bSymbol: getSymbolParts(source2.name).base, components });
         }
-    }
-    // --- Element-wise Addition ---
-    else if (sources.length === 2 && !sources[0].highlightRow && !sources[1].highlightRow) {
+    } else if (sources.length === 2 && !sources[0].highlightRow && !sources[1].highlightRow) {
         opType = 'add';
         const source1 = sources[0];
         const source2 = sources[1];
-
         const matrixA = getMatrixByName(source1.name, transformerData, layerIdx, headIdx);
         const matrixB = getMatrixByName(source2.name, transformerData, layerIdx, headIdx);
-        console.log('[generateTooltipData] Add sources:', { matrixA, matrixB });
-
-
         if (matrixA && matrixB && matrixA[source1.row]?.[source1.col] !== undefined && matrixB[source2.row]?.[source2.col] !== undefined) {
             const valA = matrixA[source1.row][source1.col];
             const valB = matrixB[source2.row][source2.col];
-            console.log('[generateTooltipData] Add values:', { valA, valB });
             const components: CalculationComponent[] = [{ a: valA, b: valB }];
-
-            steps.push({
-                a: [valA],
-                b: [valB],
-                op: '+',
-                result: targetValue,
-                aSymbol: getSymbolParts(source1.name).base,
-                bSymbol: getSymbolParts(source2.name).base,
-                components: components,
-            });
+            steps.push({ a: [valA], b: [valB], op: '+', result: targetValue, aSymbol: getSymbolParts(source1.name).base, bSymbol: getSymbolParts(source2.name).base, components });
         }
     }
-    // ... other cases can be added here (softmax, layernorm, etc.)
-
-    if (steps.length === 0) {
-        console.log('[generateTooltipData] No calculation steps generated.');
-        return null; // No calculation to show
-    }
-
-    console.log('[generateTooltipData] Final tooltip state:', { steps, opType });
-
-    return {
-        target: element,
-        opType,
-        steps,
-        title: `Calculation for ${getSymbolParts(name).base}[${row},${col}]`,
-        initialPosition: clickPosition,
-    };
+    if (steps.length === 0) return null;
+    return { target: element, opType, steps, title: `Calculation for ${getSymbolParts(name).base}[${row},${col}]`, initialPosition: { x: 0, y: 0 } };
 };
-
 
 const createBackwardHighlight = (element: ElementIdentifier, transformerData: TransformerData, dims: any): { highlight: HighlightState } => {
     const { name, row, col, isInternal } = element;
@@ -1227,10 +1683,9 @@ const createBackwardHighlight = (element: ElementIdentifier, transformerData: Tr
         activeResidual = resId;
         const layerIdx = parseInt(resId.match(/l(\d+)/)?.[1] || '0', 10);
         const part = parseInt(resId.match(/(\d+)$/)?.[1] || '1', 10);
-
         if (resId.includes('-d')) {
             const LN = MATRIX_NAMES.decoderLayer(layerIdx);
-            if(part === 1) { activeComponent = 'add_norm_1_dec'; newSources.push({ name: LN.decoder_input, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.masked_mha_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
+            if (part === 1) { activeComponent = 'add_norm_1_dec'; newSources.push({ name: LN.decoder_input, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.masked_mha_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
             else if (part === 2) { activeComponent = 'add_norm_2_dec'; newSources.push({ name: LN.add_norm_1_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.enc_dec_mha_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
             else if (part === 3) { activeComponent = 'add_norm_3_dec'; newSources.push({ name: LN.add_norm_2_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.ffn_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
         } else {
@@ -1247,20 +1702,20 @@ const createBackwardHighlight = (element: ElementIdentifier, transformerData: Tr
     const LNd = MATRIX_NAMES.decoderLayer(layerIdx);
     const HNd_masked = MATRIX_NAMES.maskedMhaHead(layerIdx, headIdx);
     const HNd_encdec = MATRIX_NAMES.encDecMhaHead(layerIdx, headIdx);
-
     const baseName = isInternal ? name.replace('.internal', '') : name;
+
     if (name.startsWith('encoder')) {
-        if(Object.values(HNe).includes(baseName) || [LNe.mha_output, LNe.Wo, LNe.encoder_input].includes(baseName)) activeComponent = 'mha';
-        else if([LNe.add_norm_1_output].includes(baseName)) activeComponent = 'add_norm_1';
-        else if([LNe.add_norm_2_output].includes(baseName)) activeComponent = 'add_norm_2';
-        else if(baseName.includes('.ffn.')) activeComponent = 'ffn';
+        if (Object.values(HNe).includes(baseName) || [LNe.mha_output, LNe.Wo, LNe.encoder_input].includes(baseName)) activeComponent = 'mha';
+        else if ([LNe.add_norm_1_output].includes(baseName)) activeComponent = 'add_norm_1';
+        else if ([LNe.add_norm_2_output].includes(baseName)) activeComponent = 'add_norm_2';
+        else if (baseName.includes('.ffn.')) activeComponent = 'ffn';
     } else if (name.startsWith('decoder')) {
-        if(Object.values(HNd_masked).includes(baseName) || [LNd.masked_mha_output, LNd.Wo_masked, LNd.decoder_input].includes(baseName)) activeComponent = 'masked_mha';
-        else if(Object.values(HNd_encdec).includes(baseName) || [LNd.enc_dec_mha_output, LNd.Wo_enc_dec, LNd.add_norm_1_output, MATRIX_NAMES.finalEncoderOutput].includes(baseName)) activeComponent = 'enc_dec_mha';
-        else if(baseName === LNd.add_norm_1_output) activeComponent = 'add_norm_1_dec';
-        else if(baseName === LNd.add_norm_2_output) activeComponent = 'add_norm_2_dec';
-        else if(baseName === LNd.add_norm_3_output) activeComponent = 'add_norm_3_dec';
-        else if(baseName.includes('.ffn.')) activeComponent = 'ffn_dec';
+        if (Object.values(HNd_masked).includes(baseName) || [LNd.masked_mha_output, LNd.Wo_masked, LNd.decoder_input].includes(baseName)) activeComponent = 'masked_mha';
+        else if (Object.values(HNd_encdec).includes(baseName) || [LNd.enc_dec_mha_output, LNd.Wo_enc_dec, LNd.add_norm_1_output, MATRIX_NAMES.finalEncoderOutput].includes(baseName)) activeComponent = 'enc_dec_mha';
+        else if (baseName === LNd.add_norm_1_output) activeComponent = 'add_norm_1_dec';
+        else if (baseName === LNd.add_norm_2_output) activeComponent = 'add_norm_2_dec';
+        else if (baseName === LNd.add_norm_3_output) activeComponent = 'add_norm_3_dec';
+        else if (baseName.includes('.ffn.')) activeComponent = 'ffn_dec';
     } else if (name === 'inputToken' || name === 'embeddingMatrix' || name === 'inputEmbeddings') {
         activeComponent = 'token_embed';
     } else if ([MATRIX_NAMES.posEncodings, MATRIX_NAMES.encoderInput].includes(baseName) || baseName === LNe.encoder_input) {
@@ -1269,7 +1724,7 @@ const createBackwardHighlight = (element: ElementIdentifier, transformerData: Tr
         activeComponent = 'output_embed';
     } else if ([MATRIX_NAMES.finalLinear, MATRIX_NAMES.logits].includes(baseName)) {
         activeComponent = 'final_output';
-    } else if (name === 'outputProbabilities' || name === 'outputToken') {
+    } else if (name === MATRIX_NAMES.outputProbabilities || name === 'outputToken') {
         activeComponent = 'decoding';
     }
 
@@ -1278,16 +1733,13 @@ const createBackwardHighlight = (element: ElementIdentifier, transformerData: Tr
         if (baseName.includes('AttentionWeights')) {
             const scaledScoresName = baseName.includes('masked_mha') ? HNd_masked.ScaledScores : baseName.includes('enc_dec_mha') ? HNd_encdec.ScaledScores : HNe.ScaledScores;
             newSources.push({ name: scaledScoresName, row, col: -1, highlightRow: true });
-            newSources.push({ name, row, col: -1, isInternal: true });
         } else if (baseName.includes('Activated')) {
             const intermediateName = baseName.includes('decoder') ? LNd.Intermediate : LNe.Intermediate;
             newSources.push({ name: intermediateName, row, col });
         }
     }
-    // --- Input ---
     else if (name === 'inputToken') { newSources.push({ name: MATRIX_NAMES.inputEmbeddings, row, col: -1, highlightRow: true }) }
     else if (name === MATRIX_NAMES.inputEmbeddings) { newSources.push({ name: 'inputToken', row, col: -1 }); newSources.push({ name: 'embeddingMatrix', row: transformerData.tokenizedInput[row], col: -1, highlightRow: true }) }
-    // --- Encoder ---
     else if (name === LNe.encoder_input) {
         if (layerIdx === 0) {
             newSources.push({ name: MATRIX_NAMES.inputEmbeddings, row, col });
@@ -1296,17 +1748,17 @@ const createBackwardHighlight = (element: ElementIdentifier, transformerData: Tr
             newSources.push({ name: MATRIX_NAMES.layer(layerIdx - 1).add_norm_2_output, row, col });
         }
     }
-    else if (name === HNe.Q || name === HNe.K || name === HNe.V) { const type = name.split('.').pop()!; newSources.push({ name: LNe.encoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: HNe[`W${type.toLowerCase()}` as 'Wq'|'Wk'|'Wv'], row: -1, col, highlightCol: true }); }
+    else if (name === HNe.Q || name === HNe.K || name === HNe.V) { const type = name.split('.').pop()!; newSources.push({ name: LNe.encoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: HNe[`W${type.toLowerCase()}` as 'Wq' | 'Wk' | 'Wv'], row: -1, col, highlightCol: true }); }
     else if (name === HNe.Scores) { newSources.push({ name: HNe.Q, row, col: -1, highlightRow: true }); newSources.push({ name: HNe.K, row: col, col: -1, highlightRow: true }); }
     else if (name === HNe.ScaledScores) { newSources.push({ name: HNe.Scores, row, col }); }
     else if (name === HNe.AttentionWeights) { newSources.push({ name: HNe.ScaledScores, row, col: -1, highlightRow: true }); newSources.push({ name: `${HNe.AttentionWeights}.internal`, row, col, isInternal: true }); }
     else if (name === HNe.HeadOutput) { newSources.push({ name: HNe.AttentionWeights, row, col: -1, highlightRow: true }); newSources.push({ name: HNe.V, row: -1, col, highlightCol: true }); }
     else if (name === LNe.mha_output) { for (let h = 0; h < dims.h; h++) newSources.push({ name: MATRIX_NAMES.head(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.Wo, row: -1, col, highlightCol: true }); }
     else if (name === LNe.add_norm_1_output) { newSources.push({ name: LNe.encoder_input, row, col }); newSources.push({ name: LNe.mha_output, row, col }); }
-    else if (name === LNe.Intermediate || name === LNe.Activated) { newSources.push({ name: LNe.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.W1, row: -1, col, highlightCol: true }); newSources.push({ name: LNe.b1, row: 0, col }); if (name === LNe.Activated) newSources.push({ name: `${LNe.Activated}.internal`, row, col, isInternal: true }); }
+    else if (name === LNe.Intermediate) { newSources.push({ name: LNe.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.W1, row: -1, col, highlightCol: true }); newSources.push({ name: LNe.b1, row: 0, col }); }
+    else if (name === LNe.Activated) { newSources.push({ name: LNe.Intermediate, row, col }); newSources.push({ name: `${LNe.Activated}.internal`, row, col, isInternal: true }); }
     else if (name === LNe.ffn_output) { newSources.push({ name: LNe.Activated, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.W2, row: -1, col, highlightCol: true }); newSources.push({ name: LNe.b2, row: 0, col }); }
     else if (name === LNe.add_norm_2_output) { newSources.push({ name: LNe.add_norm_1_output, row, col }); newSources.push({ name: LNe.ffn_output, row, col }); }
-    // --- Decoder ---
     else if (name === LNd.decoder_input) {
         if (layerIdx === 0) {
             newSources.push({ name: MATRIX_NAMES.outputEmbeddings, row, col });
@@ -1315,171 +1767,122 @@ const createBackwardHighlight = (element: ElementIdentifier, transformerData: Tr
             newSources.push({ name: MATRIX_NAMES.decoderLayer(layerIdx - 1).add_norm_3_output, row, col });
         }
     }
-    // Masked MHA
-    else if (name === HNd_masked.Q || name === HNd_masked.K || name === HNd_masked.V) { const type = name.split('.').pop()!; newSources.push({ name: LNd.decoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked[`W${type.toLowerCase()}` as 'Wq'|'Wk'|'Wv'], row: -1, col, highlightCol: true }); }
+    else if (name === HNd_masked.Q || name === HNd_masked.K || name === HNd_masked.V) { const type = name.split('.').pop()!; newSources.push({ name: LNd.decoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked[`W${type.toLowerCase()}` as 'Wq' | 'Wk' | 'Wv'], row: -1, col, highlightCol: true }); }
     else if (name === HNd_masked.Scores) { newSources.push({ name: HNd_masked.Q, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked.K, row: col, col: -1, highlightRow: true }); }
     else if (name === HNd_masked.ScaledScores) { newSources.push({ name: HNd_masked.Scores, row, col }); }
     else if (name === HNd_masked.AttentionWeights) { newSources.push({ name: HNd_masked.ScaledScores, row, col: -1, highlightRow: true }); newSources.push({ name: `${HNd_masked.AttentionWeights}.internal`, row, col, isInternal: true }); }
     else if (name === HNd_masked.HeadOutput) { newSources.push({ name: HNd_masked.AttentionWeights, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked.V, row: -1, col, highlightCol: true }); }
     else if (name === LNd.masked_mha_output) { for (let h = 0; h < dims.h; h++) newSources.push({ name: MATRIX_NAMES.maskedMhaHead(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.Wo_masked, row: -1, col, highlightCol: true }); }
     else if (name === LNd.add_norm_1_output) { newSources.push({ name: LNd.decoder_input, row, col }); newSources.push({ name: LNd.masked_mha_output, row, col }); }
-    // Encoder-Decoder MHA
     else if (name === HNd_encdec.Q) { newSources.push({ name: LNd.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_encdec.Wq, row: -1, col, highlightCol: true }); }
-    else if (name === HNd_encdec.K) { newSources.push({ name: MATRIX_NAMES.finalEncoderOutput, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_encdec.Wk, row: -1, col, highlightCol: true }); }
-    else if (name === HNd_encdec.V) { newSources.push({ name: MATRIX_NAMES.finalEncoderOutput, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_encdec.Wv, row: -1, col, highlightCol: true }); }
+    else if (name === HNd_encdec.K) { newSources.push({ name: MATRIX_NAMES.finalEncoderOutput, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: HNd_encdec.Wk, row: -1, col, highlightCol: true }); }
+    else if (name === HNd_encdec.V) { newSources.push({ name: MATRIX_NAMES.finalEncoderOutput, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: HNd_encdec.Wv, row: -1, col, highlightCol: true }); }
     else if (name === HNd_encdec.Scores) { newSources.push({ name: HNd_encdec.Q, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_encdec.K, row: col, col: -1, highlightRow: true }); }
     else if (name === HNd_encdec.ScaledScores) { newSources.push({ name: HNd_encdec.Scores, row, col }); }
     else if (name === HNd_encdec.AttentionWeights) { newSources.push({ name: HNd_encdec.ScaledScores, row, col: -1, highlightRow: true }); newSources.push({ name: `${HNd_encdec.AttentionWeights}.internal`, row, col, isInternal: true }); }
     else if (name === HNd_encdec.HeadOutput) { newSources.push({ name: HNd_encdec.AttentionWeights, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_encdec.V, row: -1, col, highlightCol: true }); }
     else if (name === LNd.enc_dec_mha_output) { for (let h = 0; h < dims.h; h++) newSources.push({ name: MATRIX_NAMES.encDecMhaHead(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.Wo_enc_dec, row: -1, col, highlightCol: true }); }
     else if (name === LNd.add_norm_2_output) { newSources.push({ name: LNd.add_norm_1_output, row, col }); newSources.push({ name: LNd.enc_dec_mha_output, row, col }); }
-    // Decoder FFN
-    else if (name === LNd.Intermediate || name === LNd.Activated) { newSources.push({ name: LNd.add_norm_2_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.W1, row: -1, col, highlightCol: true }); newSources.push({ name: LNd.b1, row: 0, col }); if (name === LNd.Activated) newSources.push({ name: `${LNd.Activated}.internal`, row, col, isInternal: true }); }
+    else if (name === LNd.Intermediate) { newSources.push({ name: LNd.add_norm_2_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.W1, row: -1, col, highlightCol: true }); newSources.push({ name: LNd.b1, row: 0, col }); }
+    else if (name === LNd.Activated) { newSources.push({ name: LNd.Intermediate, row, col }); newSources.push({ name: `${LNd.Activated}.internal`, row, col, isInternal: true }); }
     else if (name === LNd.ffn_output) { newSources.push({ name: LNd.Activated, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.W2, row: -1, col, highlightCol: true }); newSources.push({ name: LNd.b2, row: 0, col }); }
     else if (name === LNd.add_norm_3_output) { newSources.push({ name: LNd.add_norm_2_output, row, col }); newSources.push({ name: LNd.ffn_output, row, col }); }
-    // --- Final Output ---
-    else if (name === MATRIX_NAMES.logits) { newSources.push({ name: MATRIX_NAMES.decoderLayer(dims.n_layers - 1).add_norm_3_output, row, col: -1, highlightRow: true}); newSources.push({name: MATRIX_NAMES.finalLinear, row: -1, col, highlightCol: true})}
-    else if (name === MATRIX_NAMES.outputProbabilities) { newSources.push({name: MATRIX_NAMES.logits, row, col: -1, highlightRow: true})}
-    else if (name === 'outputToken') { newSources.push({ name: 'outputProbabilities', row, col: -1, highlightRow: true }) }
+    else if (name === MATRIX_NAMES.logits) { newSources.push({ name: MATRIX_NAMES.decoderLayer(dims.n_layers - 1).add_norm_3_output, row, col: -1, highlightRow: true }); newSources.push({ name: MATRIX_NAMES.finalLinear, row: -1, col, highlightCol: true }) }
+    else if (name === MATRIX_NAMES.outputProbabilities) { newSources.push({ name: MATRIX_NAMES.logits, row, col: -1, highlightRow: true }) }
+    else if (name === 'outputToken') { newSources.push({ name: MATRIX_NAMES.outputProbabilities, row, col: -1, highlightRow: true, highlightProbCol: true }) }
 
     const highlight = { target: newTarget, sources: newSources, activeComponent, activeResidual, destinations: [] };
     return { highlight };
 };
 
-function App() {
-  const [dims, setDims] = useState({ d_model: 8, h: 2, seq_len: 2, n_layers: 1, d_ff: 32 });
-  const [inputText, setInputText] = useState("I am a student");
-  const [highlight, setHighlight] = useState<HighlightState>({ target: null, sources: [], destinations: [], activeComponent: null, activeResidual: null });
-  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
-  const transformerData: TransformerData | null = useTransformer(inputText, dims);
+export const TransformerExplorerTopic: React.FC = () => {
+    const [dims, setDims] = useState({ d_model: 8, h: 2, seq_len: 2, n_layers: 1, d_ff: 32 });
+    const [inputText, setInputText] = useState("I am a student");
+    const [highlight, setHighlight] = useState<HighlightState>({ target: null, sources: [], destinations: [], activeComponent: null, activeResidual: null });
+    const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
-  useEffect(() => {
-    if (highlight.activeComponent) {
-      const explanationEl = document.getElementById(`math_${highlight.activeComponent}`);
-      if (explanationEl) {
-          setTimeout(() => {
-              explanationEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }, 100);
-      }
-    }
-  }, [highlight.activeComponent]);
+    const transformerData: TransformerData | null = useTransformer(inputText, dims);
 
-  const handleInteraction = useCallback((element: ElementIdentifier, event: React.MouseEvent) => {
-    if (!transformerData) return;
-    const { highlight: newHighlight } = createBackwardHighlight(element, transformerData, dims);
+    useEffect(() => {
+        if (highlight.activeComponent) {
+          const explanationEl = document.getElementById(`math_${highlight.activeComponent}`);
+          if (explanationEl) {
+              setTimeout(() => {
+                  explanationEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }, 100);
+          }
+        }
+      }, [highlight.activeComponent]);
 
-    // Only generate tooltip if the clicked element is a target
-    let newTooltip: TooltipState | null = null;
-    if (newHighlight.target && newHighlight.sources.length > 0) {
-        // [MODIFIED] Use a fixed initial position for stability, per user request.
-        const clickPosition = { x: 250, y: 150 };
-        newTooltip = generateTooltipData(element, transformerData, newHighlight.sources, dims, clickPosition);
-    }
+    const handleInteraction = useCallback((element: ElementIdentifier, event: React.MouseEvent) => {
+        if (!transformerData) return;
+        const { highlight: newHighlight } = createBackwardHighlight(element, transformerData, dims);
 
-    setHighlight(newHighlight);
-    // If a tooltip is generated, show it. Otherwise, if there was an old tooltip, close it.
-    setTooltip(newTooltip);
-  }, [transformerData, dims]);
+        let newTooltip: TooltipState | null = null;
+        if (newHighlight.target && newHighlight.sources.length > 0 && !newHighlight.target.isInternal) {
+            newTooltip = generateTooltipData(element, transformerData, newHighlight.sources);
+        }
 
-  const handleComponentClick = useCallback((componentId: string) => {
-      // Set the active component for scrolling, but clear specific target/source highlights
+        setHighlight(newHighlight);
+        setTooltip(newTooltip);
+    }, [transformerData, dims]);
+
+    const handleComponentClick = useCallback((componentId: string) => {
       setHighlight(prev => ({
-          target: null,
-          sources: [],
-          destinations: [],
-          activeComponent: componentId,
-          activeResidual: null
+          target: null, sources: [], destinations: [], activeComponent: componentId, activeResidual: null
       }));
       setTooltip(null);
-  }, []);
+    }, []);
 
-  const closeTooltip = useCallback(() => setTooltip(null), []);
+    const closeTooltip = useCallback(() => setTooltip(null), []);
 
-  if (!transformerData) {
-      return <div>正在加载或维度设置无效... (d_model 必须能被 h 整除)</div>
-  }
+    if (!transformerData) {
+        return <div style={{padding: "20px", textAlign: "center"}}>正在加载或维度设置无效... (d_model 必须能被 h 整除)</div>
+    }
 
-  const explanationDims = {
+    const explanationDims = {
       ...dims,
-      // Pass the actual sequence length from the data to the explanation component
       encoder_seq_len: transformerData.encoderInput.length,
       decoder_seq_len: transformerData.decoderInput.length,
+      vocab_size: Object.keys(transformerData.vocab).length
   };
 
-  return (
-    <div className="app-container">
-      <h1>Transformer 深度探索器 (V8.5-debug)</h1>
-      <div className="main-layout">
-        {tooltip && <CalculationTooltip tooltip={tooltip} onClose={closeTooltip} />}
-        <Controls dims={dims} setDims={setDims} inputText={inputText} setInputText={setInputText}/>
-        <div className="column left-column">
-          <div className="column-content">
-              <h2>模型结构与数据流</h2>
-               <p style={{textAlign: 'center', margin: '-10px 0 15px 0', fontSize: '0.9em', color: '#555'}}>
-                提示: 点击任何计算结果 (红色高亮) 的单元格,即可查看其详细计算过程. 
-               </p>
-              <Viz
-                data={transformerData}
-                highlight={highlight}
-                onElementClick={handleInteraction}
-                onComponentClick={handleComponentClick}
-              />
-          </div>
+    return (
+        <div className="main-layout" style={{padding: '0', gap: '0'}}>
+            {tooltip && <CalculationTooltip tooltip={tooltip} onClose={closeTooltip} />}
+            <Controls dims={dims} setDims={setDims} inputText={inputText} setInputText={setInputText}/>
+            <div className="column left-column" style={{borderRadius: '0', boxShadow: 'none'}}>
+                <div className="column-content">
+                    <h2>模型结构与数据流</h2>
+                    <p style={{textAlign: 'center', margin: '-10px 0 15px 0', fontSize: '0.9em', color: '#555'}}>
+                        提示: 点击任何计算结果 (红色高亮) 的单元格,即可查看其详细计算过程.
+                    </p>
+                    <Viz
+                        data={transformerData}
+                        highlight={highlight}
+                        onElementClick={handleInteraction}
+                        onComponentClick={handleComponentClick}
+                    />
+                </div>
+            </div>
+            <div className="column right-column" style={{borderRadius: '0', boxShadow: 'none'}}>
+                <div className="column-content">
+                    <h2>数学原理详解</h2>
+                    <Explanation
+                        dims={explanationDims}
+                        highlight={highlight}
+                        onSymbolClick={handleInteraction}
+                    />
+                </div>
+            </div>
         </div>
-        <div className="column right-column">
-           <div className="column-content">
-              <h2>数学原理详解</h2>
-              <Explanation
-                dims={explanationDims}
-                highlight={highlight}
-                onSymbolClick={handleInteraction}
-              />
-           </div>
-        </div>
-      </div>
-    </div>
-  );
+    );
 }
 
-export default App;
-// END OF FILE: src/App.tsx
-
 
 ================================================================================
-### 文件路径: src/index.tsx
-================================================================================
-
-/* START OF FILE: src/index.tsx */
-// FILE: src/index.tsx
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import App from './App';
-import './App.css';
-
-const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
-);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
-// END OF FILE: src/index.tsx
-/* END OF FILE: src/index.tsx */
-
-
-================================================================================
-### 文件路径: src/styles.css
-================================================================================
-
-/* START OF FILE: src/styles.css */
-
-/* END OF FILE: src/styles.css */
-
-
-================================================================================
-### 文件路径: src/types.ts
+### 文件路径: src/topics/transformer-explorer/types.ts
 ================================================================================
 
 // FILE: src/types.ts
@@ -1624,7 +2027,7 @@ export interface TransformerData {
 
 
 ================================================================================
-### 文件路径: src/components/AddNorm.tsx
+### 文件路径: src/topics/transformer-explorer/components/AddNorm.tsx
 ================================================================================
 
 // FILE: src/components/AddNorm.tsx
@@ -1697,7 +2100,7 @@ export const AddNorm: React.FC<AddNormProps> = ({
 
 
 ================================================================================
-### 文件路径: src/components/CalculationTooltip.tsx
+### 文件路径: src/topics/transformer-explorer/components/CalculationTooltip.tsx
 ================================================================================
 
 // FILE: src/components/CalculationTooltip.tsx
@@ -1777,28 +2180,14 @@ const renderCalculationDetail = (opType: 'matmul' | 'add' | 'info', components: 
 
 export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip, onClose }) => {
     const tooltipRef = useRef<HTMLDivElement>(null);
-    const [isCollapsed, setIsCollapsed] = useState(true); // [MODIFIED] Default to collapsed
+    const [isCollapsed, setIsCollapsed] = useState(false);
 
     useEffect(() => {
-        console.log('[CalculationTooltip] Received tooltip props:', tooltip);
-        if (tooltip.opType === 'add') {
-            const step = tooltip.steps[0];
-            const sum = step.a[0] + step.b[0];
-            console.log(`[CalculationTooltip] Manual check: ${step.a[0]} + ${step.b[0]} = ${sum}. Received result: ${step.result}`);
-        }
+        setIsCollapsed(false); // Expand tooltip whenever it changes
     }, [tooltip]);
 
-    // [REMOVED] Dragging logic is no longer needed
-    // const dragData = useRef(...);
-    // const handleMouseDown = useCallback(...);
-    // const handleMouseMove = useCallback(...);
-    // const handleMouseUp = useCallback(...);
-    // useEffect for mouse events...
-
     return (
-        // [MODIFIED] Removed inline style for positioning
         <div className={`calculation-tooltip ${isCollapsed ? 'collapsed' : ''}`} ref={tooltipRef}>
-            {/* [MODIFIED] Removed onMouseDown handler */}
             <div className="tooltip-header">
                 <span className="tooltip-title">{tooltip.title}</span>
                 <div className="tooltip-controls">
@@ -1841,7 +2230,7 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
 
 
 ================================================================================
-### 文件路径: src/components/Controls.tsx
+### 文件路径: src/topics/transformer-explorer/components/Controls.tsx
 ================================================================================
 
 // FILE: src/components/Controls.tsx
@@ -1947,7 +2336,7 @@ export const Controls: React.FC<ControlsProps> = ({ dims, setDims, inputText, se
 
 
 ================================================================================
-### 文件路径: src/components/DecoderLayer.tsx
+### 文件路径: src/topics/transformer-explorer/components/DecoderLayer.tsx
 ================================================================================
 
 // FILE: src/components/DecoderLayer.tsx
@@ -2083,7 +2472,7 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
 
 
 ================================================================================
-### 文件路径: src/components/Decoding.tsx
+### 文件路径: src/topics/transformer-explorer/components/Decoding.tsx
 ================================================================================
 
 // FILE: src/components/Decoding.tsx
@@ -2153,7 +2542,7 @@ export const Decoding: React.FC<DecodingProps> = ({ data, highlight, onElementCl
 
 
 ================================================================================
-### 文件路径: src/components/Element.tsx
+### 文件路径: src/topics/transformer-explorer/components/Element.tsx
 ================================================================================
 
 // FILE: src/components/Element.tsx
@@ -2167,9 +2556,10 @@ interface ElementProps {
   value: number;
   highlight: HighlightState;
   onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+  isProbMax?: boolean; // [NEW] To specifically highlight the argmax result
 }
 
-export const Element: React.FC<ElementProps> = React.memo(({ name, row, col, value, highlight, onElementClick }) => {
+export const Element: React.FC<ElementProps> = React.memo(({ name, row, col, value, highlight, onElementClick, isProbMax = false }) => {
 
   const isTarget = highlight.target?.name === name && highlight.target?.row === row && highlight.target?.col === col && !highlight.target.isInternal;
 
@@ -2187,7 +2577,11 @@ export const Element: React.FC<ElementProps> = React.memo(({ name, row, col, val
     return d.row === row && d.col === col;
   });
 
-  const className = `matrix-element ${isTarget ? 'target' : ''} ${isSource ? 'source' : ''} ${isDestination ? 'destination' : ''}`;
+  const classNames = ['matrix-element'];
+  if (isTarget) classNames.push('target');
+  if (isSource) classNames.push('source');
+  if (isDestination) classNames.push('destination');
+  if (isProbMax) classNames.push('prob-max');
 
   const handleClick = (event: React.MouseEvent) => {
     onElementClick({ name, row, col }, event);
@@ -2200,7 +2594,7 @@ export const Element: React.FC<ElementProps> = React.memo(({ name, row, col, val
   }
 
   return (
-    <div className={className} onClick={handleClick}>
+    <div className={classNames.join(' ')} onClick={handleClick}>
       {displayValue()}
     </div>
   );
@@ -2209,14 +2603,14 @@ export const Element: React.FC<ElementProps> = React.memo(({ name, row, col, val
 
 
 ================================================================================
-### 文件路径: src/components/ElementwiseCalculation.tsx
+### 文件路径: src/topics/transformer-explorer/components/ElementwiseCalculation.tsx
 ================================================================================
 
 // FILE: src/components/ElementwiseCalculation.tsx
 import React from 'react';
 import { InlineMath } from 'react-katex';
 import { ElementIdentifier, HighlightState } from '../types';
-import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
+import { getVisibleIndices, ELLIPSIS } from '../../../utils/matrixView';
 
 interface ElementwiseCalculationProps {
   opType: 'softmax' | 'relu';
@@ -2328,41 +2722,31 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
 
 
 ================================================================================
-### 文件路径: src/components/ElementwiseOperation.tsx
+### 文件路径: src/topics/transformer-explorer/components/ElementwiseOperation.tsx
 ================================================================================
 
 // FILE: src/components/ElementwiseOperation.tsx
 import React from 'react';
 import { Matrix, HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
-import { MATRIX_NAMES } from '../config/matrixNames';
 import { ElementwiseCalculation } from './ElementwiseCalculation';
 
 interface ElementwiseOperationProps {
     opType: 'softmax' | 'relu';
     inputMatrix: Matrix;
+    inputMatrixName: string; // [FIXED] Added required prop
     outputMatrix: Matrix;
     outputMatrixName: string;
     highlight: HighlightState;
     onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
-    layerIndex: number; // [NEW] Explicitly pass layerIndex
-    headIndex?: number; // [NEW] Optional headIndex for MHA
+    layerIndex: number;
+    headIndex?: number;
 }
-
-const getInputMatrixName = (opType: 'softmax' | 'relu', layerIndex: number, headIndex?: number) => {
-    if (opType === 'softmax') {
-        // This is a simplification; in a multi-head scenario, we'd need to select the correct head's ScaledScores
-        const headNames = headIndex !== undefined
-            ? MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex) // Assuming decoder for now, this logic can be expanded
-            : MATRIX_NAMES.head(layerIndex, 0);
-        return headNames.ScaledScores;
-    }
-    return MATRIX_NAMES.layer(layerIndex).Intermediate;
-};
 
 export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
     opType,
     inputMatrix,
+    inputMatrixName, // [FIXED] Destructure prop
     outputMatrix,
     outputMatrixName,
     highlight,
@@ -2370,11 +2754,11 @@ export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
     layerIndex,
     headIndex,
 }) => {
-    const relevantInputName = getInputMatrixName(opType, layerIndex, headIndex);
     let targetRowIndex = 0;
 
+    // [FIXED] Use the passed inputMatrixName for correct highlight detection
     if (highlight.target) {
-        if (highlight.target.name === relevantInputName || highlight.target.name === outputMatrixName) {
+        if (highlight.target.name === inputMatrixName || highlight.target.name === outputMatrixName) {
             targetRowIndex = highlight.target.row;
         } else if (highlight.target.isInternal && highlight.target.name.startsWith(outputMatrixName)) {
             targetRowIndex = highlight.target.row;
@@ -2409,7 +2793,7 @@ export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
 
 
 ================================================================================
-### 文件路径: src/components/EmbeddingLookup.tsx
+### 文件路径: src/topics/transformer-explorer/components/EmbeddingLookup.tsx
 ================================================================================
 
 // FILE: src/components/EmbeddingLookup.tsx
@@ -2567,7 +2951,7 @@ export const EmbeddingLookup: React.FC<EmbeddingLookupProps> = ({
 
 
 ================================================================================
-### 文件路径: src/components/EncoderDecoderAttention.tsx
+### 文件路径: src/topics/transformer-explorer/components/EncoderDecoderAttention.tsx
 ================================================================================
 
 // FILE: src/components/EncoderDecoderAttention.tsx
@@ -2592,6 +2976,19 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
     const headIndex = 0; // Assume we visualize head 0
     const headData = data.heads[headIndex];
     const isActive = highlight.activeComponent === 'enc_dec_mha';
+    const numHeads = data.heads.length;
+
+    const renderConcatHeads = () => {
+        const headsToShow = [];
+        headsToShow.push(<Matrix key={0} name={MATRIX_NAMES.encDecMhaHead(layerIndex, 0).HeadOutput} data={data.heads[0].HeadOutput} highlight={highlight} onElementClick={onElementClick} />);
+        if (numHeads > 2) {
+            headsToShow.push(<div key="ellipsis-start" className="op-symbol">...</div>);
+            headsToShow.push(<Matrix key={numHeads-1} name={MATRIX_NAMES.encDecMhaHead(layerIndex, numHeads-1).HeadOutput} data={data.heads[numHeads-1].HeadOutput} highlight={highlight} onElementClick={onElementClick} />);
+        } else if (numHeads === 2) {
+            headsToShow.push(<Matrix key={1} name={MATRIX_NAMES.encDecMhaHead(layerIndex, 1).HeadOutput} data={data.heads[1].HeadOutput} highlight={highlight} onElementClick={onElementClick} />);
+        }
+        return headsToShow;
+    };
 
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}>
@@ -2649,13 +3046,11 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
                          <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Scores} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Scale by } / \sqrt{d_k}}" /></div>
-                    <div className="viz-formula-row">
-                         <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
-                    </div>
 
                     <ElementwiseOperation
                         opType="softmax"
                         inputMatrix={headData.ScaledScores}
+                        inputMatrixName={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).ScaledScores}
                         outputMatrix={headData.AttentionWeights}
                         outputMatrixName={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).AttentionWeights}
                         highlight={highlight}
@@ -2663,10 +3058,6 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
                         layerIndex={layerIndex}
                         headIndex={headIndex}
                     />
-
-                    <div className="viz-formula-row">
-                         <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
-                    </div>
 
                     <div className="viz-formula-row">
                         <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
@@ -2684,6 +3075,9 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
                 <div className="viz-formula-group">
                     <div className="viz-step-title">4. Concat & Final Projection</div>
                      <div className="viz-formula-row">
+                        {renderConcatHeads()}
+                     </div>
+                     <div className="viz-formula-row">
                        <span>(Concatenated) ×</span>
                        <Matrix name={MATRIX_NAMES.decoderLayer(layerIndex).Wo_enc_dec} data={data.Wo} highlight={highlight} onElementClick={onElementClick} />
                      </div>
@@ -2700,7 +3094,7 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
 
 
 ================================================================================
-### 文件路径: src/components/EncoderLayer.tsx
+### 文件路径: src/topics/transformer-explorer/components/EncoderLayer.tsx
 ================================================================================
 
 // FILE: src/components/EncoderLayer.tsx
@@ -2803,7 +3197,7 @@ export const EncoderLayer: React.FC<EncoderLayerProps> = ({ layerIndex, data, hi
 
 
 ================================================================================
-### 文件路径: src/components/Explanation.tsx
+### 文件路径: src/topics/transformer-explorer/components/Explanation.tsx
 ================================================================================
 
 // FILE: src/components/Explanation.tsx
@@ -2816,7 +3210,7 @@ import { HighlightState, ElementIdentifier } from '../types';
 import { MATRIX_NAMES } from '../config/matrixNames';
 
 interface ExplanationProps {
-    dims: { d_model: number; h: number, n_layers: number, d_ff: number, encoder_seq_len: number, decoder_seq_len: number };
+    dims: { d_model: number; h: number, n_layers: number, d_ff: number, encoder_seq_len: number, decoder_seq_len: number, vocab_size: number };
     highlight: HighlightState;
     onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
 }
@@ -2848,7 +3242,16 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
     const HNd_encdec = MATRIX_NAMES.encDecMhaHead(0, 0);
     const d_k = dims.d_model / dims.h;
 
-    const shouldBreakAddNorm = dims.d_model > 15 || dims.d_model * 2 > 15;
+    const shouldBreakAddNorm = dims.d_model > 8;
+    const shouldBreakMhaProj = dims.d_model > 8;
+    const shouldBreakFFN1 = dims.d_model + dims.d_ff > 8;
+    const shouldBreakFFN2 = dims.d_ff + dims.d_model > 8;
+    const shouldBreakFinalOutput = dims.d_model + dims.vocab_size > 8;
+
+    // [FIXED] Specific breaking logic for Enc-Dec Attention
+    const shouldBreakEncDecScores = d_k + dims.encoder_seq_len > 8;
+    const shouldBreakEncDecHeadOutput = dims.encoder_seq_len + d_k > 8;
+
 
     return (
         <div>
@@ -2903,18 +3306,32 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                     <InlineMath math="\text{Input} = " />
                     <InteractiveSymbolicMatrix name={LNe.encoder_input} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} truncate={false} />
                 </div>
-                <h5>计算 Q, K, V (Query, Key, Value)</h5>
-                <p>输入矩阵 <InlineMath math="Z"/> 被并行地送入 {dims.h} 个独立的注意力头. 每个头都拥有三块自己专属、可学习的权重矩阵. 通过矩阵乘法,将输入 <InlineMath math="Z"/> 投影到三个新的矩阵:查询 (Query, <InlineMath math="Q"/>), 键 (Key, <InlineMath math="K"/>), 和 值 (Value, <InlineMath math="V"/>). </p>
+                <h5>计算流程 (以单个注意力头为例)</h5>
+                 <p>输入矩阵 <InlineMath math="Z"/> 被并行地送入 {dims.h} 个独立的注意力头. 每个头都拥有三块自己专属、可学习的权重矩阵. 通过矩阵乘法,将输入 <InlineMath math="Z"/> 投影到三个新的矩阵:查询 (Query, <InlineMath math="Q"/>), 键 (Key, <InlineMath math="K"/>), 和 值 (Value, <InlineMath math="V"/>). </p>
                 <div className="formula-display vertical">
                     <div className="viz-formula-row"><InlineMath math="Z" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.Wq} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.Q} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <div className="viz-formula-row"><InlineMath math="Z" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.Wk} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.K} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <div className="viz-formula-row"><InlineMath math="Z" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.Wv} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
-                <p>然后计算注意力分数 <InlineMath math="S = QK^T"/>,进行缩放和Softmax得到权重 <InlineMath math="A"/>,最后加权求和 <InlineMath math="H = A \cdot V"/>. </p>
+                <p>然后计算注意力分数, 进行缩放和Softmax得到权重, 最后加权求和. </p>
+                <BlockMath math={`A = \\text{Softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)`} />
+                <BlockMath math={`H = A V`} />
+                 <div className="formula-display vertical">
+                    <div className="viz-formula-row"><InteractiveSymbolicMatrix name={HNe.AttentionWeights} rows={dims.encoder_seq_len} cols={dims.encoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.HeadOutput} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                </div>
+                <h5>拼接与最终投影</h5>
+                <p>将所有 {dims.h} 个头的输出矩阵 <InlineMath math="H_i"/> 拼接 (Concatenate) 起来, 然后通过一个最终的投影权重矩阵 <InlineMath math="W^O"/> 得到该子层的最终输出 <InlineMath math="M"/>. </p>
+                 <div className={`formula-display ${shouldBreakMhaProj ? 'vertical' : ''}`}>
+                    <InlineMath math="\text{Concat}(H_0, ..., H_{h-1})" />
+                    <BlockMath math="\times" />
+                    <InteractiveSymbolicMatrix name={LNe.Wo} rows={dims.d_model} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                    <BlockMath math="=" />
+                    <InteractiveSymbolicMatrix name={LNe.mha_output} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                </div>
             </MathBlock>
             <MathBlock id="add_norm_1" title="组件:残差连接与层归一化 (1)" highlight={highlight}>
                 <p>在每个子层之后,都会跟随一个“Add & Norm”模块. 它包含两个关键步骤:<b>残差连接</b>将子层的输入与输出直接相加,缓解梯度消失;<b>层归一化</b>则稳定训练过程. </p>
-                <BlockMath math={`Z' = \\text{LayerNorm}(Z + \\text{Sublayer}(Z))`} />
+                <BlockMath math={`Z' = \\text{LayerNorm}(Z + \\text{MultiHeadAttention}(Z))`} />
                  <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.encoder_input} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <BlockMath math="+" />
@@ -2926,14 +3343,29 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
             <MathBlock id="ffn" title="编码器子层2:位置前馈网络" highlight={highlight}>
                 <p>前馈网络 (FFN) 对每个位置的向量独立地进行一次复杂的非线性变换,极大地增加了模型的表达能力. </p>
                 <BlockMath math={`F = \\text{ReLU}(Z' W_1 + b_1) W_2 + b_2`} />
-                <div className="formula-display vertical">
-                    <div className="viz-formula-row"><InteractiveSymbolicMatrix name={LNe.add_norm_1_output} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                <h5>第一次线性变换 & ReLU</h5>
+                <div className={`formula-display ${shouldBreakFFN1 ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.add_norm_1_output} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math="\times"/>
-                    <div className="viz-formula-row"><InteractiveSymbolicMatrix name={LNe.W1} rows={dims.d_model} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.W1} rows={dims.d_model} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math="+"/>
-                    <div className="viz-formula-row"><InteractiveSymbolicVector name={LNe.b1} data={Array(dims.d_ff).fill(0)} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicVector name={LNe.b1} data={Array(dims.d_ff).fill(0)} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                </div>
+                 <div className="formula-display vertical">
+                    <BlockMath math="=" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.Intermediate} rows={dims.encoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math="\xrightarrow{ReLU}"/>
-                    <div className="viz-formula-row"><InteractiveSymbolicMatrix name={LNe.Activated} rows={dims.encoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.Activated} rows={dims.encoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                </div>
+                <h5>第二次线性变换</h5>
+                <div className={`formula-display ${shouldBreakFFN2 ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.Activated} rows={dims.encoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <BlockMath math="\times"/>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.W2} rows={dims.d_ff} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <BlockMath math="+"/>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicVector name={LNe.b2} data={Array(dims.d_model).fill(0)} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <BlockMath math="="/>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.ffn_output} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                 </div>
             </MathBlock>
             <MathBlock id="add_norm_2" title="组件:残差连接与层归一化 (2)" highlight={highlight}>
@@ -2970,6 +3402,16 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                     <BlockMath math={`\\xrightarrow{\\text{Mask}}`} />
                     <p>上三角区域被设为-∞</p>
                 </div>
+                 <h5>计算流程</h5>
+                <p>除了应用掩码外,后续计算与编码器自注意力完全相同.</p>
+                <BlockMath math={`H = \\text{Softmax}\\left(\\text{Mask}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)\\right) V`} />
+                 <div className={`formula-display ${shouldBreakMhaProj ? 'vertical' : ''}`}>
+                    <InlineMath math="\text{Concat}(H_0, ..., H_{h-1})" />
+                    <BlockMath math="\times" />
+                    <InteractiveSymbolicMatrix name={LNd.Wo_masked} rows={dims.d_model} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                    <BlockMath math="=" />
+                    <InteractiveSymbolicMatrix name={LNd.masked_mha_output} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                </div>
             </MathBlock>
             <MathBlock id="add_norm_1_dec" title="解码器组件:残差连接与层归一化 (1)" highlight={highlight}>
                 <p>此模块接收解码器输入 <InlineMath math="Y"/> 和带掩码自注意力子层的输出 <InlineMath math="M_{mmha}"/>,将它们相加后进行层归一化. </p>
@@ -2996,7 +3438,7 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                         <InteractiveSymbolicMatrix name={FinalLNe.add_norm_2_output} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} truncate={false}/>
                     </div>
                  </div>
-                 <h5>计算流程</h5>
+                 <h5>计算流程 (以单个注意力头为例)</h5>
                 <ol>
                     <li><b>Query (<InlineMath math="Q"/>)</b>: 来自解码器前一层的输出 (<InlineMath math="Y'"/>). 它代表了“我当前需要什么信息来生成下一个词？”</li>
                     <li><b>Key (<InlineMath math="K"/>) 和 Value (<InlineMath math="V"/>)</b>: <b>均来自编码器的最终输出 (<InlineMath math="Z_{final}"/>)</b>. 它们代表了整个输入序列的上下文信息. </li>
@@ -3007,6 +3449,29 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                     <div className="viz-formula-row"><InlineMath math="Z_{final}" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_encdec.Wv} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_encdec.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
                 <p>通过计算 <InlineMath math="Q_{dec} \cdot K_{enc}^T"/>,解码器能够评估其当前的生成需求与输入序列中每个词的相关性,然后利用这个相关性(注意力权重)从 <InlineMath math="V_{enc}"/> 中加权提取最需要的信息来辅助生成. </p>
+                {/* [FIXED] Added missing formulas for enc-dec attention */}
+                <h5>注意力计算与输出</h5>
+                <div className={`formula-display ${shouldBreakEncDecScores ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_encdec.Q} rows={dims.decoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <BlockMath math="\times" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_encdec.K} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} transpose={true}/></div>
+                    <BlockMath math="\xrightarrow{\text{Scale + Softmax}}" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_encdec.AttentionWeights} rows={dims.decoder_seq_len} cols={dims.encoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                </div>
+                 <div className={`formula-display ${shouldBreakEncDecHeadOutput ? 'vertical' : ''}`}>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_encdec.AttentionWeights} rows={dims.decoder_seq_len} cols={dims.encoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <BlockMath math="\times" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_encdec.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <BlockMath math="=" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_encdec.HeadOutput} rows={dims.decoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                </div>
+                 <div className={`formula-display ${shouldBreakMhaProj ? 'vertical' : ''}`}>
+                    <InlineMath math="\text{Concat}(H_0, ..., H_{h-1})" />
+                    <BlockMath math="\times" />
+                    <InteractiveSymbolicMatrix name={LNd.Wo_enc_dec} rows={dims.d_model} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                    <BlockMath math="=" />
+                    <InteractiveSymbolicMatrix name={LNd.enc_dec_mha_output} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                </div>
             </MathBlock>
             <MathBlock id="add_norm_2_dec" title="解码器组件:残差连接与层归一化 (2)" highlight={highlight}>
                 <p>此步骤结合了编码器-解码器注意力子层的输入 (<InlineMath math="Y'"/>) 与其输出 (<InlineMath math="M_{ed}"/>),并进行层归一化,以稳定训练过程并融合来自编码器的信息. </p>
@@ -3051,12 +3516,16 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                     <li><b>线性层 (Linear Layer):</b> 将解码器输出矩阵通过一个大的线性投影层,将其维度从 <InlineMath math="d_{model}"/> 扩展到词汇表大小 (<InlineMath math="V_{size}"/>). 这会为每个位置生成一个分数向量,称为 Logits. </li>
                     <li><b>Softmax:</b> 对 Logits 矩阵的每一行应用 Softmax 函数,将其转换为概率分布. </li>
                 </ol>
-                 <div className="formula-display">
+                 <div className={`formula-display ${shouldBreakFinalOutput ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={FinalLNd.add_norm_3_output} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.finalLinear} rows={dims.d_model} cols={16} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.finalLinear} rows={dims.d_model} cols={dims.vocab_size} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                 </div>
+                 <div className="formula-display">
+                    <BlockMath math="=" />
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.logits} rows={dims.decoder_seq_len} cols={dims.vocab_size} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math="\xrightarrow{\text{Softmax}}" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.outputProbabilities} rows={dims.decoder_seq_len} cols={16} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.outputProbabilities} rows={dims.decoder_seq_len} cols={dims.vocab_size} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                 </div>
                  <p>现在,矩阵 <InlineMath math="P"/> 中的每一行都是一个概率分布,代表了在那个位置上生成词汇表中任何一个单词的可能性. </p>
             </MathBlock>
@@ -3081,7 +3550,7 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
 
 
 ================================================================================
-### 文件路径: src/components/FeedForward.tsx
+### 文件路径: src/topics/transformer-explorer/components/FeedForward.tsx
 ================================================================================
 
 // FILE: src/components/FeedForward.tsx
@@ -3111,11 +3580,11 @@ export const FeedForward: React.FC<FFNProps> = ({ baseName, input, inputName, da
     // --- Layout Breaking Logic ---
     const inputCols1 = input[0]?.length || 0;
     const w1Cols = data.W1[0]?.length || 0;
-    const breakStep1 = inputCols1 > 15 || w1Cols > 15 || (inputCols1 + w1Cols > 15);
+    const breakStep1 = inputCols1 > 8 || w1Cols > 8 || (inputCols1 + w1Cols > 15);
 
     const activatedCols = data.Activated[0]?.length || 0;
     const w2Cols = data.W2[0]?.length || 0;
-    const breakStep2 = activatedCols > 15 || w2Cols > 15 || (activatedCols + w2Cols > 15);
+    const breakStep2 = activatedCols > 8 || w2Cols > 8 || (activatedCols + w2Cols > 15);
 
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}>
@@ -3123,31 +3592,24 @@ export const FeedForward: React.FC<FFNProps> = ({ baseName, input, inputName, da
             <div className="component-body">
                 <div className="viz-formula-group">
                     <div className="viz-step-title">1. First Linear Layer & ReLU</div>
-                    {breakStep1 ? (
-                        <>
-                            <div className="viz-formula-row">
-                                 <Matrix name={inputName} data={input} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                            <div className="op-symbol">×</div>
-                            <div className="viz-formula-row">
-                                 <Matrix name={LN.W1} data={data.W1} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                        </>
-                    ) : (
-                        <div className="viz-formula-row">
-                             <Matrix name={inputName} data={input} highlight={highlight} onElementClick={onElementClick} />
-                             <span className="op-symbol">×</span>
-                             <Matrix name={LN.W1} data={data.W1} highlight={highlight} onElementClick={onElementClick} />
-                        </div>
-                    )}
+                     <div className={`viz-formula-row ${breakStep1 ? 'vertical' : ''}`}>
+                         <Matrix name={inputName} data={input} highlight={highlight} onElementClick={onElementClick} />
+                         <span className="op-symbol">×</span>
+                         <Matrix name={LN.W1} data={data.W1} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
                     <div className="arrow-down">+</div>
                     <div className="viz-formula-row">
                          <Matrix name={LN.b1} data={[data.b1]} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                    <div className="arrow-down">=</div>
+                    <div className="viz-formula-row">
+                         <Matrix name={LN.Intermediate} data={data.Intermediate} highlight={highlight} onElementClick={onElementClick} />
                     </div>
 
                     <ElementwiseOperation
                         opType="relu"
                         inputMatrix={data.Intermediate}
+                        inputMatrixName={LN.Intermediate} // [FIXED] Pass the input matrix name
                         outputMatrix={data.Activated}
                         outputMatrixName={LN.Activated}
                         highlight={highlight}
@@ -3164,23 +3626,11 @@ export const FeedForward: React.FC<FFNProps> = ({ baseName, input, inputName, da
 
                 <div className="viz-formula-group">
                     <div className="viz-step-title">2. Second Linear Layer</div>
-                    {breakStep2 ? (
-                        <>
-                            <div className="viz-formula-row">
-                                 <Matrix name={LN.Activated} data={data.Activated} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                            <div className="op-symbol">×</div>
-                            <div className="viz-formula-row">
-                                 <Matrix name={LN.W2} data={data.W2} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                        </>
-                    ) : (
-                        <div className="viz-formula-row">
-                            <Matrix name={LN.Activated} data={data.Activated} highlight={highlight} onElementClick={onElementClick} />
-                            <span className="op-symbol">×</span>
-                            <Matrix name={LN.W2} data={data.W2} highlight={highlight} onElementClick={onElementClick} />
-                        </div>
-                    )}
+                    <div className={`viz-formula-row ${breakStep2 ? 'vertical' : ''}`}>
+                        <Matrix name={LN.Activated} data={data.Activated} highlight={highlight} onElementClick={onElementClick} />
+                        <span className="op-symbol">×</span>
+                        <Matrix name={LN.W2} data={data.W2} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
                     <div className="arrow-down">+</div>
                     <div className="viz-formula-row">
                          <Matrix name={LN.b2} data={[data.b2]} highlight={highlight} onElementClick={onElementClick} />
@@ -3198,25 +3648,31 @@ export const FeedForward: React.FC<FFNProps> = ({ baseName, input, inputName, da
 
 
 ================================================================================
-### 文件路径: src/components/InteractiveSymbolicElement.tsx
+### 文件路径: src/topics/transformer-explorer/components/InteractiveSymbolicElement.tsx
 ================================================================================
 
 // FILE: src/components/InteractiveSymbolicElement.tsx
 import React from 'react';
 import { InlineMath } from 'react-katex';
+import { HighlightState } from '../types';
+import { useHighlighting } from '../hooks/useHighlighting';
 
 interface InteractiveSymbolicElementProps {
+  name: string; // [ADDED] Pass the full matrix name for the hook
   base: string;
   subscript?: string;
   row?: number;
   col?: number;
-  isTarget?: boolean;
-  isSource?: boolean;
-  isDestination?: boolean;
+  highlight: HighlightState; // [ADDED] Pass the full highlight state
   onClick: (event: React.MouseEvent) => void;
 }
 
-export const InteractiveSymbolicElement: React.FC<InteractiveSymbolicElementProps> = React.memo(({ base, subscript, row, col, isTarget, isSource, isDestination, onClick }) => {
+export const InteractiveSymbolicElement: React.FC<InteractiveSymbolicElementProps> = React.memo(({ name, base, subscript, row, col, highlight, onClick }) => {
+  // [MODIFIED] Centralized highlighting logic by using the new hook.
+  // We handle undefined row/col for vectors.
+  // [FIXED] Removed the 5th argument 'true' which caused the compilation error.
+  const { isTarget, isSource, isDestination } = useHighlighting(name, row ?? 0, col ?? 0, highlight);
+
   const elementBase = base.toLowerCase().replace(/'/g, '').replace(/_{.*}/, '');
   const subscriptContent = [subscript, row, col].filter(s => s !== undefined && s !== null).join(',');
   const mathString = `${elementBase}_{${subscriptContent}}`;
@@ -3233,7 +3689,7 @@ export const InteractiveSymbolicElement: React.FC<InteractiveSymbolicElementProp
 
 
 ================================================================================
-### 文件路径: src/components/InteractiveSymbolicMatrix.tsx
+### 文件路径: src/topics/transformer-explorer/components/InteractiveSymbolicMatrix.tsx
 ================================================================================
 
 // FILE: src/components/InteractiveSymbolicMatrix.tsx
@@ -3242,7 +3698,7 @@ import { HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
 import { getSymbolParts } from '../config/symbolMapping';
 import { InteractiveSymbolicElement } from './InteractiveSymbolicElement';
-import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
+import { getVisibleIndices, ELLIPSIS } from '../../../utils/matrixView';
 
 interface InteractiveSymbolicMatrixProps {
   name: string;
@@ -3268,8 +3724,6 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
   }
 
   const highlightedTarget = (highlight.target?.name === name) ? highlight.target : null;
-  const highlightedSources = highlight.sources.filter(s => s.name === name);
-  const highlightedDestinations = highlight.destinations?.filter(d => d.name === name) || [];
 
   const visibleRowIndices = truncate ? getVisibleIndices(displayRows, transpose ? focusCol : focusRow) : Array.from({ length: displayRows }, (_, i) => i);
   const visibleColIndices = truncate ? getVisibleIndices(displayCols, transpose ? focusRow : focusCol) : Array.from({ length: displayCols }, (_, i) => i);
@@ -3317,28 +3771,15 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
                 const originalRow = transpose ? c : r;
                 const originalCol = transpose ? r : c;
 
-                const isTarget = !!highlightedTarget && highlightedTarget.row === originalRow && highlightedTarget.col === originalCol;
-                const isSource = highlightedSources.some(s => {
-                    if (s.highlightRow) return s.row === originalRow;
-                    if (s.highlightCol) return s.col === originalCol;
-                    return s.row === originalRow && s.col === originalCol;
-                });
-                const isDestination = highlightedDestinations.some(d => {
-                    if (d.highlightRow) return d.row === originalRow;
-                    if (d.highlightCol) return d.col === originalCol;
-                    return d.row === originalRow && d.col === originalCol;
-                });
-
                 return (
                     <InteractiveSymbolicElement
                         key={`elem-r${r}-c${c}`}
+                        name={name}
                         base={symbol.base}
                         subscript={symbol.subscript}
                         row={originalRow}
                         col={originalCol}
-                        isTarget={isTarget}
-                        isSource={isSource}
-                        isDestination={isDestination}
+                        highlight={highlight}
                         onClick={(event) => onSymbolClick({ name, row: originalRow, col: originalCol }, event)}
                     />
                 );
@@ -3359,7 +3800,7 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
 
 
 ================================================================================
-### 文件路径: src/components/InteractiveSymbolicVector.tsx
+### 文件路径: src/topics/transformer-explorer/components/InteractiveSymbolicVector.tsx
 ================================================================================
 
 // FILE: src/components/InteractiveSymbolicVector.tsx
@@ -3369,7 +3810,7 @@ import { InlineMath } from 'react-katex';
 import { Vector as VectorType } from '../types';
 import { getSymbolParts } from '../config/symbolMapping';
 import { InteractiveSymbolicElement } from './InteractiveSymbolicElement';
-import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
+import { getVisibleIndices, ELLIPSIS } from '../../../utils/matrixView';
 
 interface InteractiveSymbolicVectorProps {
   name: string;
@@ -3386,8 +3827,6 @@ export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps>
   if (highlight.target?.name === name) {
     focusCol = highlight.target.col;
   }
-  const highlightedSources = highlight.sources.filter(s => s.name === name);
-  const highlightedDestinations = highlight.destinations?.filter(d => d.name === name) || [];
 
   const visibleColIndices = getVisibleIndices(displayCols, focusCol);
 
@@ -3396,19 +3835,14 @@ export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps>
         return <div key={`ellipsis-c-${cIdx}`} className="symbolic-ellipsis">…</div>;
     }
 
-    const isTarget = highlight.target?.name === name && highlight.target.col === c;
-    const isSource = highlightedSources.some(s => s.col === c);
-    const isDestination = highlightedDestinations.some(d => d.col === c);
-
     return (
         <InteractiveSymbolicElement
             key={`elem-${c}`}
+            name={name}
             base={symbol.base}
             subscript={symbol.subscript}
             col={c}
-            isTarget={isTarget}
-            isSource={isSource}
-            isDestination={isDestination}
+            highlight={highlight}
             onClick={(event) => onSymbolClick({ name, row: 0, col: c }, event)}
         />
     );
@@ -3437,7 +3871,7 @@ export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps>
 
 
 ================================================================================
-### 文件路径: src/components/MaskedMultiHeadAttention.tsx
+### 文件路径: src/topics/transformer-explorer/components/MaskedMultiHeadAttention.tsx
 ================================================================================
 
 // FILE: src/components/MaskedMultiHeadAttention.tsx
@@ -3461,6 +3895,7 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
     const headIndex = 0; // Assume we visualize head 0
     const headData = data.heads[headIndex];
     const isActive = highlight.activeComponent === 'masked_mha';
+    const HNd_masked = MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex);
 
     return (
         <div className={`diagram-component ${isActive ? 'active' : ''}`}>
@@ -3471,21 +3906,21 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
                     <div className="viz-step-title">1. Generate Q, K, V (Head 1)</div>
                      <div className="viz-formula-row">
                        <span>(Input) ×</span>
-                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
+                       <Matrix name={HNd_masked.Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
                        <span>=</span>
-                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                       <Matrix name={HNd_masked.Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                      <div className="viz-formula-row">
                        <span>(Input) ×</span>
-                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Wk} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
+                       <Matrix name={HNd_masked.Wk} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
                         <span>=</span>
-                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).K} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
+                       <Matrix name={HNd_masked.K} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                      <div className="viz-formula-row">
                        <span>(Input) ×</span>
-                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Wv} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
+                       <Matrix name={HNd_masked.Wv} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
                         <span>=</span>
-                       <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                       <Matrix name={HNd_masked.V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                 </div>
 
@@ -3495,26 +3930,27 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
                 <div className="viz-formula-group">
                     <div className="viz-step-title">2. Scaled Dot-Product Attention (Head 1)</div>
                     <div className="viz-formula-row">
-                        <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                        <Matrix name={HNd_masked.Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                         <InlineMath math="\times" />
-                        <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).K} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
+                        <Matrix name={HNd_masked.K} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
                     </div>
                     <div className="arrow-down">= (Scores)</div>
                     <div className="arrow-down" style={{fontSize: '1em', color: '#e63946', fontWeight: 'bold'}}>Apply Look-Ahead Mask</div>
                     <div className="viz-formula-row">
-                         <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).Scores} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
+                         <Matrix name={HNd_masked.Scores} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
 
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Scale by } / \sqrt{d_k}}" /></div>
                     <div className="viz-formula-row">
-                         <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
+                         <Matrix name={HNd_masked.ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
 
                     <ElementwiseOperation
                         opType="softmax"
                         inputMatrix={headData.ScaledScores}
+                        inputMatrixName={HNd_masked.ScaledScores} // [FIXED] Pass the input matrix name
                         outputMatrix={headData.AttentionWeights}
-                        outputMatrixName={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).AttentionWeights}
+                        outputMatrixName={HNd_masked.AttentionWeights}
                         highlight={highlight}
                         onElementClick={onElementClick}
                         layerIndex={layerIndex}
@@ -3522,17 +3958,17 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
                     />
 
                     <div className="viz-formula-row">
-                         <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
+                         <Matrix name={HNd_masked.AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
 
                     <div className="viz-formula-row">
-                        <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
+                        <Matrix name={HNd_masked.AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
                         <InlineMath math="\times" />
-                        <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                        <Matrix name={HNd_masked.V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                      <div className="arrow-down">=</div>
                     <div className="viz-formula-row">
-                         <Matrix name={MATRIX_NAMES.maskedMhaHead(layerIndex, headIndex).HeadOutput} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick}/>
+                         <Matrix name={HNd_masked.HeadOutput} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
                 </div>
 
@@ -3562,7 +3998,7 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
 
 
 ================================================================================
-### 文件路径: src/components/Matrix.tsx
+### 文件路径: src/topics/transformer-explorer/components/Matrix.tsx
 ================================================================================
 
 // FILE: src/components/Matrix.tsx
@@ -3571,7 +4007,7 @@ import { Element } from './Element';
 import { Matrix as MatrixType, HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
 import { getSymbolParts } from '../config/symbolMapping';
-import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
+import { getVisibleIndices, ELLIPSIS } from '../../../utils/matrixView';
 
 interface MatrixProps {
   name: string;
@@ -3582,6 +4018,23 @@ interface MatrixProps {
 }
 
 export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick, isTransposed = false }) => {
+
+  // [FIXED] Hook is now at the top level, before any returns.
+  const maxProbCols = React.useMemo(() => {
+    const maxCols: { [key: number]: number } = {};
+    if (!data) return maxCols; // Handle invalid data gracefully
+
+    const probSources = highlight.sources.filter(s => s.name === name && s.highlightProbCol);
+    for (const source of probSources) {
+        if (source.row !== -1 && data[source.row]) {
+            const rowData = data[source.row];
+            const maxVal = Math.max(...rowData);
+            maxCols[source.row] = rowData.indexOf(maxVal);
+        }
+    }
+    return maxCols;
+  }, [highlight.sources, name, data]);
+
   if (!data || data.length === 0 || data[0].length === 0) {
     return <div>Invalid matrix data for {name}</div>;
   }
@@ -3612,7 +4065,6 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
         focusCol = relevantDestination.col === -1 ? focusCol : relevantDestination.col;
     }
 
-
   const visibleRowIndices = getVisibleIndices(displayRows, isTransposed ? focusCol : focusRow);
   const visibleColIndices = getVisibleIndices(displayCols, isTransposed ? focusRow : focusCol);
 
@@ -3624,7 +4076,7 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
 
   const isTargetMatrix = highlight.target?.name === name && !highlight.target.isInternal;
 
-  const gridStyle: React.CSSProperties = {
+   const gridContainerStyle: React.CSSProperties = {
       gridTemplateColumns: isTargetMatrix
           ? `auto repeat(${visibleColIndices.length}, auto)`
           : `repeat(${visibleColIndices.length}, auto)`,
@@ -3633,7 +4085,7 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
   return (
     <div className="matrix-wrapper" data-name={name}>
       <div className="matrix-container">
-        <div className="matrix-grid" data-name={name} style={gridStyle}>
+        <div className="matrix-grid" data-name={name} style={gridContainerStyle}>
             {/* Top-left corner & Column Headers */}
             {isTargetMatrix && <div key="corner" />}
             {isTargetMatrix && visibleColIndices.map((c, cIdx) => (
@@ -3663,6 +4115,7 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
                             value={value}
                             highlight={highlight}
                             onElementClick={onElementClick}
+                            isProbMax={maxProbCols[originalRow] === originalCol}
                         />
                     );
                 });
@@ -3686,7 +4139,7 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
 
 
 ================================================================================
-### 文件路径: src/components/MultiHeadAttention.tsx
+### 文件路径: src/topics/transformer-explorer/components/MultiHeadAttention.tsx
 ================================================================================
 
 // FILE: src/components/MultiHeadAttention.tsx
@@ -3713,6 +4166,7 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
     const layerIndex = parseInt(baseName.split('.')[1], 10);
     const headIndex = 0; // Visualizing head 0
     const LN = MATRIX_NAMES.layer(layerIndex);
+    const HNe = MATRIX_NAMES.head(layerIndex, headIndex);
     const numHeads = data.heads.length;
 
     const renderConcatHeads = () => {
@@ -3734,23 +4188,27 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
 
 
     // --- Layout Breaking Logic ---
+    const inputCols = data.heads[0].Wq.length;
     const wqCols = headData.Wq[0]?.length || 0;
-    const qCols = headData.Q[0]?.length || 0;
-    const breakQ = wqCols > 15 || qCols > 15 || (wqCols + qCols > 15);
+    const breakQ = inputCols > 8 || wqCols > 8 || (inputCols + wqCols > 15);
 
     const wkCols = headData.Wk[0]?.length || 0;
-    const kCols = headData.K[0]?.length || 0;
-    const breakK = wkCols > 15 || kCols > 15 || (wkCols + kCols > 15);
+    const breakK = inputCols > 8 || wkCols > 8 || (inputCols + wkCols > 15);
 
     const wvCols = headData.Wv[0]?.length || 0;
-    const vCols = headData.V[0]?.length || 0;
-    const breakV = wvCols > 15 || vCols > 15 || (wvCols + vCols > 15);
+    const breakV = inputCols > 8 || wvCols > 8 || (inputCols + wvCols > 15);
 
+    const qCols = headData.Q[0]?.length || 0;
     const kTransposedCols = headData.K.length;
-    const breakScores = qCols > 15 || kTransposedCols > 15 || (qCols + kTransposedCols > 15);
+    const breakScores = qCols > 8 || kTransposedCols > 8 || (qCols + kTransposedCols > 15);
 
     const attnWeightsCols = headData.AttentionWeights[0]?.length || 0;
-    const breakHeadOutput = attnWeightsCols > 15 || vCols > 15 || (attnWeightsCols + vCols > 15);
+    const vCols = headData.V[0]?.length || 0;
+    const breakHeadOutput = attnWeightsCols > 8 || vCols > 8 || (attnWeightsCols + vCols > 15);
+
+    const headOutputCols = headData.HeadOutput[0]?.length || 0;
+    const woCols = data.Wo[0]?.length || 0;
+    const breakFinalProj = (headOutputCols * numHeads) > 8 || woCols > 8 || ((headOutputCols * numHeads) + woCols > 15);
 
 
     return (
@@ -3760,101 +4218,51 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
 
                 <div className="viz-formula-group">
                     <div className="viz-step-title">1. Generate Q, K, V (Head 1)</div>
-                    {breakQ ? (
-                        <>
-                            <div className="viz-formula-row">
-                               <span>(Input) ×</span>
-                               <Matrix name={`${headBaseName}.Wq`} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                            <div className="arrow-down">=</div>
-                            <div className="viz-formula-row">
-                               <Matrix name={`${headBaseName}.Q`} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                        </>
-                    ) : (
-                        <div className="viz-formula-row">
-                           <span>(Input) ×</span>
-                           <Matrix name={`${headBaseName}.Wq`} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
-                           <span>=</span>
-                           <Matrix name={`${headBaseName}.Q`} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
-                        </div>
-                    )}
-                     {breakK ? (
-                        <>
-                             <div className="viz-formula-row">
-                               <span>(Input) ×</span>
-                               <Matrix name={`${headBaseName}.Wk`} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                            <div className="arrow-down">=</div>
-                            <div className="viz-formula-row">
-                               <Matrix name={`${headBaseName}.K`} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                        </>
-                    ) : (
-                        <div className="viz-formula-row">
-                           <span>(Input) ×</span>
-                           <Matrix name={`${headBaseName}.Wk`} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
-                            <span>=</span>
-                           <Matrix name={`${headBaseName}.K`} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
-                        </div>
-                    )}
-                     {breakV ? (
-                        <>
-                            <div className="viz-formula-row">
-                               <span>(Input) ×</span>
-                               <Matrix name={`${headBaseName}.Wv`} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                            <div className="arrow-down">=</div>
-                            <div className="viz-formula-row">
-                               <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                        </>
-                    ) : (
-                        <div className="viz-formula-row">
-                           <span>(Input) ×</span>
-                           <Matrix name={`${headBaseName}.Wv`} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
-                            <span>=</span>
-                           <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
-                        </div>
-                    )}
+                    <div className={`viz-formula-row ${breakQ ? 'vertical' : ''}`}>
+                       <span>(Input) ×</span>
+                       <Matrix name={HNe.Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
+                       <span>=</span>
+                       <Matrix name={HNe.Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                     <div className={`viz-formula-row ${breakK ? 'vertical' : ''}`}>
+                       <span>(Input) ×</span>
+                       <Matrix name={HNe.Wk} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
+                        <span>=</span>
+                       <Matrix name={HNe.K} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                     <div className={`viz-formula-row ${breakV ? 'vertical' : ''}`}>
+                       <span>(Input) ×</span>
+                       <Matrix name={HNe.Wv} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
+                        <span>=</span>
+                       <Matrix name={HNe.V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
                 </div>
 
                 <div className="arrow-down">↓</div>
 
                 <div className="viz-formula-group">
                     <div className="viz-step-title">2. Scaled Dot-Product Attention (Head 1)</div>
-                    {breakScores ? (
-                        <>
-                             <div className="viz-formula-row">
-                                <Matrix name={`${headBaseName}.Q`} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                            <div className="op-symbol">×</div>
-                            <div className="viz-formula-row">
-                                <Matrix name={`${headBaseName}.K`} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
-                            </div>
-                        </>
-                    ) : (
-                         <div className="viz-formula-row">
-                            <Matrix name={`${headBaseName}.Q`} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
-                            <InlineMath math="\times" />
-                            <Matrix name={`${headBaseName}.K`} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
-                        </div>
-                    )}
+                    <div className={`viz-formula-row ${breakScores ? 'vertical' : ''}`}>
+                        <Matrix name={HNe.Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math="\times" />
+                        <Matrix name={HNe.K} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
+                    </div>
                     <div className="arrow-down">=</div>
                     <div className="viz-formula-row">
-                        <Matrix name={`${headBaseName}.Scores`} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
+                        <Matrix name={HNe.Scores} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
 
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Scale by } / \sqrt{d_k}}" /></div>
                     <div className="viz-formula-row">
-                        <Matrix name={`${headBaseName}.ScaledScores`} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
+                        <Matrix name={HNe.ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
 
                     <ElementwiseOperation
                         opType="softmax"
                         inputMatrix={headData.ScaledScores}
+                        inputMatrixName={HNe.ScaledScores} // [FIXED] Pass the input matrix name
                         outputMatrix={headData.AttentionWeights}
-                        outputMatrixName={`${headBaseName}.AttentionWeights`}
+                        outputMatrixName={HNe.AttentionWeights}
                         highlight={highlight}
                         onElementClick={onElementClick}
                         layerIndex={layerIndex}
@@ -3862,29 +4270,17 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                     />
 
                     <div className="viz-formula-row">
-                        <Matrix name={`${headBaseName}.AttentionWeights`} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
+                        <Matrix name={HNe.AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
 
-                    {breakHeadOutput ? (
-                        <>
-                            <div className="viz-formula-row">
-                                <Matrix name={`${headBaseName}.AttentionWeights`} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
-                            </div>
-                            <div className="op-symbol">×</div>
-                            <div className="viz-formula-row">
-                                <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
-                            </div>
-                        </>
-                    ) : (
-                        <div className="viz-formula-row">
-                            <Matrix name={`${headBaseName}.AttentionWeights`} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
-                            <InlineMath math="\times" />
-                            <Matrix name={`${headBaseName}.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
-                        </div>
-                    )}
+                    <div className={`viz-formula-row ${breakHeadOutput ? 'vertical' : ''}`}>
+                        <Matrix name={HNe.AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
+                        <InlineMath math="\times" />
+                        <Matrix name={HNe.V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
                     <div className="arrow-down">=</div>
                     <div className="viz-formula-row">
-                        <Matrix name={`${headBaseName}.HeadOutput`} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick}/>
+                        <Matrix name={HNe.HeadOutput} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
                 </div>
 
@@ -3898,9 +4294,9 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                        <InlineMath math=")" />
                      </div>
 
-                     <div className="viz-formula-row">
+                     <div className={`viz-formula-row ${breakFinalProj ? 'vertical' : ''}`}>
                        <span>(Concatenated) ×</span>
-                       <Matrix name={`${baseName}.Wo`} data={data.Wo} highlight={highlight} onElementClick={onElementClick} />
+                       <Matrix name={LN.Wo} data={data.Wo} highlight={highlight} onElementClick={onElementClick} />
                      </div>
                      <div className="arrow-down">=</div>
                      <div className="viz-formula-row">
@@ -3915,7 +4311,7 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
 
 
 ================================================================================
-### 文件路径: src/components/ResidualBlock.tsx
+### 文件路径: src/topics/transformer-explorer/components/ResidualBlock.tsx
 ================================================================================
 
 // FILE: src/components/ResidualBlock.tsx
@@ -3965,7 +4361,7 @@ export const ResidualBlock: React.FC<ResidualBlockProps> = ({ id, type, matrixSy
 
 
 ================================================================================
-### 文件路径: src/components/Token.tsx
+### 文件路径: src/topics/transformer-explorer/components/Token.tsx
 ================================================================================
 
 // FILE: src/components/Token.tsx
@@ -4014,7 +4410,7 @@ export const Token: React.FC<TokenProps> = ({
 
 
 ================================================================================
-### 文件路径: src/components/TokenizationEmbedding.tsx
+### 文件路径: src/topics/transformer-explorer/components/TokenizationEmbedding.tsx
 ================================================================================
 
 // FILE: src/components/TokenizationEmbedding.tsx
@@ -4067,7 +4463,7 @@ export const TokenizationEmbedding: React.FC<TokenizationEmbeddingProps> = ({ da
 
 
 ================================================================================
-### 文件路径: src/components/Viz.tsx
+### 文件路径: src/topics/transformer-explorer/components/Viz.tsx
 ================================================================================
 
 // FILE: src/components/Viz.tsx
@@ -4218,7 +4614,7 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick, onCom
 
 
 ================================================================================
-### 文件路径: src/config/matrixNames.ts
+### 文件路径: src/topics/transformer-explorer/config/matrixNames.ts
 ================================================================================
 
 // FILE: src/config/matrixNames.ts
@@ -4235,8 +4631,8 @@ export const MATRIX_NAMES = {
     // Input
     inputEmbeddings: 'inputEmbeddings',
     posEncodings: 'posEncodings',
-    encoderInput: 'encoderInput',
-    finalEncoderOutput: 'finalEncoderOutput', // [ADDED]
+    encoderInput: 'encoderInput', // Deprecated, use layer(0).encoder_input
+    finalEncoderOutput: 'finalEncoderOutput',
 
     // Encoder Layer
     layer: (layerIndex: number) => ({
@@ -4258,7 +4654,7 @@ export const MATRIX_NAMES = {
     // Decoder Input
     outputEmbeddings: 'outputEmbeddings',
     decoderPosEncodings: 'decoderPosEncodings',
-    decoderInput: 'decoderInput',
+    decoderInput: 'decoderInput', // Deprecated, use decoderLayer(0).decoder_input
 
     // Decoder Layer
     decoderLayer: (layerIndex: number) => ({
@@ -4292,7 +4688,7 @@ export const MATRIX_NAMES = {
 
 
 ================================================================================
-### 文件路径: src/config/symbolMapping.ts
+### 文件路径: src/topics/transformer-explorer/config/symbolMapping.ts
 ================================================================================
 
 // FILE: src/config/symbolMapping.ts
@@ -4391,7 +4787,86 @@ export const getSymbolParts = (name: string): SymbolParts => {
 
 
 ================================================================================
-### 文件路径: src/hooks/useTransformer.ts
+### 文件路径: src/topics/transformer-explorer/hooks/useHighlighting.ts
+================================================================================
+
+// FILE: src/hooks/useHighlighting.ts
+import { useMemo } from 'react';
+import { HighlightState } from '../types';
+
+/**
+ * A centralized hook to determine the highlight status of an element.
+ * This prevents logic duplication and ensures consistent highlighting behavior
+ * across the entire application (e.g., in Viz.tsx and Explanation.tsx).
+ *
+ * @param name - The unique name of the component's matrix/vector.
+ * @param row - The row index of the element.
+ * @param col - The column index of the element.
+ * @param highlight - The global highlight state object.
+ * @returns An object { isTarget, isSource, isDestination } indicating the element's highlight status.
+ */
+export const useHighlighting = (
+  name: string,
+  row: number,
+  col: number,
+  highlight: HighlightState
+) => {
+  return useMemo(() => {
+    const { target, sources, destinations } = highlight;
+
+    // Check if this element is the primary target
+    const isTarget =
+      !!target &&
+      target.name === name &&
+      target.row === row &&
+      target.col === col &&
+      !target.isInternal;
+
+    // Check if this element is a source
+    const isSource = sources.some(s => {
+      if (s.name !== name || s.isInternal) return false;
+
+      // [FIXED] Correctly handle row, column, and single-cell highlighting.
+      if (s.highlightRow && s.highlightCol) {
+          // This case means the entire matrix is a source, e.g., for residual connections.
+          return true;
+      }
+      if (s.highlightRow) {
+          return s.row === row;
+      }
+      if (s.highlightCol) {
+          return s.col === col;
+      }
+      // Default to single-cell check if no specific highlight type is given
+      return s.row === row && s.col === col;
+    });
+
+    // Check if this element is a destination
+    const isDestination = (destinations || []).some(d => {
+       if (d.name !== name || d.isInternal) return false;
+
+       if (d.highlightRow && d.highlightCol) {
+          return true;
+       }
+       if (d.highlightRow) {
+           return d.row === row;
+       }
+       if (d.highlightCol) {
+           return d.col === col;
+       }
+       return d.row === row && d.col === col;
+    });
+
+    return { isTarget, isSource, isDestination };
+  // The dependency array is correct as we are only using props passed to the hook.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, row, col, highlight]);
+};
+// END OF FILE: src/hooks/useHighlighting.ts
+
+
+================================================================================
+### 文件路径: src/topics/transformer-explorer/hooks/useTransformer.ts
 ================================================================================
 
 // FILE: src/hooks/useTransformer.ts
@@ -4442,7 +4917,7 @@ export const useTransformer = (inputText: string, dims: Dims): TransformerData |
 
 
 ================================================================================
-### 文件路径: src/lib/fixedWeights.ts
+### 文件路径: src/topics/transformer-explorer/lib/fixedWeights.ts
 ================================================================================
 
 // FILE: lib/fixedWeights.ts
@@ -4556,7 +5031,7 @@ export const fixedWeights = (dims: Dims) => {
 
 
 ================================================================================
-### 文件路径: src/lib/tokenizer.ts
+### 文件路径: src/topics/transformer-explorer/lib/tokenizer.ts
 ================================================================================
 
 // FILE: src/lib/tokenizer.ts
@@ -4574,7 +5049,7 @@ export const whitespaceTokenizer = (text: string): string[] => {
 
 
 ================================================================================
-### 文件路径: src/lib/transformer.ts
+### 文件路径: src/topics/transformer-explorer/lib/transformer.ts
 ================================================================================
 
 // FILE: lib/transformer.ts

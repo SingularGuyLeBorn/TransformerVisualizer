@@ -1,4 +1,3 @@
-/* START OF FILE: src/index.tsx */
 // FILE: src/index.tsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
@@ -13,5 +12,7 @@ root.render(
     <App />
   </React.StrictMode>
 );
+
+// Add this empty export statement to treat this file as a module.
+export {};
 // END OF FILE: src/index.tsx
-/* END OF FILE: src/index.tsx */

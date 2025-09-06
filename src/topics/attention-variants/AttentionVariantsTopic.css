@@ -1,0 +1,85 @@
+/* FILE: src/topics/attention-variants/AttentionVariantsTopic.css */
+.attention-variants-container {
+    background-color: #fff;
+    padding: 30px 40px;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    max-width: 900px;
+    margin: 20px auto; /* Add margin for spacing from header */
+    font-size: 16px;
+    line-height: 1.8;
+}
+
+.attention-variants-container h1,
+.attention-variants-container h2,
+.attention-variants-container h3,
+.attention-variants-container h4,
+.attention-variants-container h5 {
+    color: #000;
+    border-bottom: 1px solid #e4e7ed;
+    padding-bottom: 10px;
+    margin-top: 2em;
+    margin-bottom: 1.2em;
+}
+
+.attention-variants-container h1 {
+    font-size: 2.2em;
+    text-align: center;
+    border-bottom: 2px solid #dcdfe6;
+}
+
+.attention-variants-container h2 {
+    font-size: 1.8em;
+}
+
+.attention-variants-container p {
+    margin-bottom: 1.2em;
+}
+
+.attention-variants-container ul,
+.attention-variants-container ol {
+    padding-left: 25px;
+    margin-bottom: 1.2em;
+}
+
+.attention-variants-container li {
+    margin-bottom: 0.5em;
+}
+
+.attention-variants-container code {
+    background-color: #e9ecef;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+.attention-variants-container blockquote {
+    border-left: 4px solid #dcdfe6;
+    padding-left: 15px;
+    margin: 1.5em 0;
+    color: #606266;
+    background-color: #f8f9fa;
+}
+
+.attention-variants-container table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2em 0;
+}
+
+.attention-variants-container th,
+.attention-variants-container td {
+    border: 1px solid #dcdfe6;
+    padding: 12px 15px;
+    text-align: left;
+}
+
+.attention-variants-container th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+}
+
+.attention-variants-container tr:nth-child(even) {
+    background-color: #fcfcfc;
+}

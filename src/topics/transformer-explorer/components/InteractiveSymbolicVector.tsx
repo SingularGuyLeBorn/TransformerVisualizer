@@ -5,7 +5,7 @@ import { InlineMath } from 'react-katex';
 import { Vector as VectorType } from '../types';
 import { getSymbolParts } from '../config/symbolMapping';
 import { InteractiveSymbolicElement } from './InteractiveSymbolicElement';
-import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
+import { getVisibleIndices, ELLIPSIS } from '../../../utils/matrixView';
 
 interface InteractiveSymbolicVectorProps {
   name: string;
