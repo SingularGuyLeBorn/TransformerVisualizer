@@ -192,6 +192,8 @@ h1 {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 .calculation-content-container > div { /* Target the visualizer's root div */
     flex-grow: 1;
@@ -262,10 +264,11 @@ h1 {
     padding: 0 8px; /* [MODIFIED] Reduced padding */
 }
 .tooltip-matmul-container {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 10px;
+    justify-content: center;
 }
 .tooltip-result-line {
     display: flex;
@@ -344,6 +347,28 @@ h1 {
     flex-direction: column;
     gap: 5px;
 }
+/* [NEW] Styles for braced calculation breakdown */
+.tooltip-braced-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.tooltip-curly-brace {
+    font-size: 2.5em;
+    color: #555;
+    font-family: serif;
+    align-self: center;
+}
+.tooltip-calc-terms-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 5px;
+}
+.tooltip-calc-terms-wrapper > * {
+    margin-right: 5px;
+}
+
 /* [NEW] Generic styles for matrix symbolic display in tooltips */
 .matrix-wrapper {
     display: inline-flex;
@@ -427,16 +452,23 @@ const globalStyles = `
     flex-grow: 1;
     overflow: hidden; /* It should NOT scroll itself */
     min-height: 0; /* Crucial for nested flex scrolling */
+    position: relative; /* Needed for absolute positioned children like controls */
   }
-  .topic-page-container {
+  /* This is now a generic container for standard pages that need scrolling */
+  .page-scroll-container {
       height: 100%;
-      overflow-y: auto; /* This container will scroll for standard articles */
+      overflow-y: auto;
   }
 `;
 
-const styleSheet = document.createElement("style");
-styleSheet.innerText = globalStyles;
-document.head.appendChild(styleSheet);
+// Use a more robust way to ensure the stylesheet is added only once.
+if (!document.getElementById('app-global-styles')) {
+    const styleSheet = document.createElement("style");
+    styleSheet.id = 'app-global-styles';
+    styleSheet.innerText = globalStyles;
+    document.head.appendChild(styleSheet);
+}
+
 
 export default App;
 
@@ -715,7 +747,7 @@ export const ElementWiseOpVisualizer: React.FC<ElementWiseOpVisualizerProps> = (
 ================================================================================
 
 // FILE: src/components/visualizers/InteractiveMatMulVisualizer.tsx
-import React, { useState } from 'react';
+import React from 'react';
 import { Vector, CalculationComponent, SymbolInfo } from './types';
 import 'katex/dist/katex.min.css';
 import { InlineMath } from 'react-katex';
@@ -727,6 +759,8 @@ interface InteractiveMatMulVisualizerProps {
     symbolBInfo: SymbolInfo;
     result: number;
     components: CalculationComponent[];
+    hoveredComponentIndex: number | null;
+    setHoveredComponentIndex: (index: number | null) => void;
 }
 
 const formatNumber = (num: number, precision = 4) => {
@@ -787,8 +821,9 @@ export const InteractiveMatMulVisualizer: React.FC<InteractiveMatMulVisualizerPr
     symbolBInfo,
     result,
     components,
+    hoveredComponentIndex,
+    setHoveredComponentIndex,
 }) => {
-    const [hoveredComponentIndex, setHoveredComponentIndex] = useState<number | null>(null);
 
     const renderVector = (vec: number[], symbolInfo: SymbolInfo, direction: 'row' | 'column' = 'row') => {
         let mathSymbol = symbolInfo.base;
@@ -832,22 +867,28 @@ export const InteractiveMatMulVisualizer: React.FC<InteractiveMatMulVisualizerPr
                 <div className="tooltip-calculation-detail">
                     <div className="tooltip-calc-title">点积计算分解 (Dot Product Breakdown):</div>
                     <div className="tooltip-calc-equation">
-                        {visibleTermIndices.map((idx, i) => {
-                            if (idx === ELLIPSIS) {
-                                return <span key={`ellipsis-${i}`} className="op">...</span>;
-                            }
-                            const comp = components[idx];
-                            return (
-                                <React.Fragment key={idx}>
-                                    {i > 0 && visibleTermIndices[i-1] !== ELLIPSIS && <span className="op">+</span>}
-                                    <span onMouseEnter={() => setHoveredComponentIndex(idx)} onMouseLeave={() => setHoveredComponentIndex(null)}>
-                                        <span className={`tooltip-calc-term ${hoveredComponentIndex === idx ? 'highlight' : ''}`}>
-                                            ({formatNumber(comp.a, 2)} <span className="op">×</span> {formatNumber(comp.b, 2)})
-                                        </span>
-                                    </span>
-                                </React.Fragment>
-                            );
-                        })}
+                        <div className="tooltip-braced-group">
+                            <span className="tooltip-curly-brace">{'{'}</span>
+                            <div className="tooltip-calc-terms-wrapper">
+                                {visibleTermIndices.map((idx, i) => {
+                                    if (idx === ELLIPSIS) {
+                                        return <span key={`ellipsis-${i}`} className="op">...</span>;
+                                    }
+                                    const comp = components[idx];
+                                    return (
+                                        <React.Fragment key={idx}>
+                                            {i > 0 && visibleTermIndices[i-1] !== ELLIPSIS && <span className="op">+</span>}
+                                            <span onMouseEnter={() => setHoveredComponentIndex(idx)} onMouseLeave={() => setHoveredComponentIndex(null)}>
+                                                <span className={`tooltip-calc-term ${hoveredComponentIndex === idx ? 'highlight' : ''}`}>
+                                                    ({formatNumber(comp.a, 2)} <span className="op">×</span> {formatNumber(comp.b, 2)})
+                                                </span>
+                                            </span>
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </div>
+                            <span className="tooltip-curly-brace">{'}'}</span>
+                        </div>
                         <span>=</span>
                         <span className="result">{formatNumber(result, 4)}</span>
                     </div>
@@ -1069,7 +1110,7 @@ export const MatMulVisualizer: React.FC<MatMulVisualizerProps> = ({ vectorA, vec
   // Inline Styles
   const styles: { [key: string]: React.CSSProperties } = {
     container: { position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', padding: '15px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6', overflow: 'hidden' },
-    vectorContainer: { display: 'flex', gap: '8px', alignItems: 'center', width: '100%' },
+    vectorContainer: { display: 'flex', gap: '8px', alignItems: 'center', width: 'auto', maxWidth: '100%' },
     vectorLabel: { fontSize: '1.2em', fontWeight: 'bold', fontFamily: 'monospace' },
     vectorScrollWrapper: { flexGrow: 1, minWidth: 0, overflowX: 'auto', paddingBottom: '10px' },
     vector: { display: 'flex', gap: '5px', padding: '5px', border: '1px solid #ccc', borderRadius: '4px', backgroundColor: 'white', width: 'max-content' },
@@ -1090,6 +1131,7 @@ export const MatMulVisualizer: React.FC<MatMulVisualizerProps> = ({ vectorA, vec
     button: { padding: '8px 16px', fontSize: '1em', cursor: 'pointer', border: '1px solid #6c757d', borderRadius: '4px', backgroundColor: '#fff' },
     playingButton: { backgroundColor: '#6c757d', color: '#fff' },
     opSymbol: { fontSize: '1.8em', fontWeight: 'bold', margin: '5px 0' },
+    braceStyle: { fontSize: '2.5em', color: '#6c757d', fontWeight: 'normal', alignSelf: 'center' },
   };
 
   return (
@@ -1150,6 +1192,7 @@ export const MatMulVisualizer: React.FC<MatMulVisualizerProps> = ({ vectorA, vec
         {/* [FIXED] Added scroll wrapper to fix overflow */}
         <div style={styles.vectorScrollWrapper} ref={scrollWrapperProdRef}>
             <div style={styles.productsRow}>
+            <span style={styles.braceStyle}>{'{'}</span>
             {vectorA.map((_, i) => (
                 <React.Fragment key={`prod-frag-${i}`}>
                 <div ref={el => productRefs.current[i] = el} style={{ ...styles.productTerm, ...(currentStep >= steps.findIndex(s => s.type === 'multiply' && s.index === i) ? styles.visible : {}) }}>
@@ -1158,6 +1201,7 @@ export const MatMulVisualizer: React.FC<MatMulVisualizerProps> = ({ vectorA, vec
                 {i < vectorA.length - 1 && <span style={{...styles.plusSymbol, ...(currentStep > steps.findIndex(s => s.type === 'multiply' && s.index === i) ? styles.visible : {})}}>+</span>}
                 </React.Fragment>
             ))}
+            <span style={styles.braceStyle}>{'}'}</span>
             </div>
         </div>
       </div>
@@ -1925,74 +1969,61 @@ export const useSplitPane = (initialPrimarySize: number, minPrimarySize: number 
 
 .homepage-intro {
     text-align: center;
-    margin-bottom: 40px;
+    margin-bottom: 50px;
 }
 
 .homepage-intro h2 {
-    font-size: 2.5em;
+    font-size: 2.8em;
     color: #303133;
+    font-weight: 700;
 }
 
 .homepage-intro p {
-    font-size: 1.2em;
+    font-size: 1.25em;
     color: #606266;
+    max-width: 700px;
+    margin: 10px auto 0;
 }
 
 .topic-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 25px;
+    gap: 30px;
 }
 
 .topic-card-link {
     text-decoration: none;
     color: inherit;
+    display: flex; /* Ensure link takes up full grid cell height */
 }
 
+/* --- [REWRITTEN] New Topic Card Styles --- */
 .topic-card {
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-    padding: 25px;
-    border: 1px solid #dcdfe6;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+  position: relative;
+  color: #2e2e2f;
+  background-color: #fff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: rgba(99, 99, 99, 0.1) 0px 2px 8px 0px;
+  border: 2px solid transparent;
+  transition: all 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 .topic-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+  box-shadow: rgba(99, 99, 99, 0.2) 0px 4px 12px 0px;
+  transform: translateY(-5px);
+  border-color: rgba(64, 158, 255, 0.3);
 }
 
 .topic-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    border-bottom: 1px solid #e4e7ed;
-    padding-bottom: 10px;
-    margin-bottom: 15px;
-}
-
-.topic-card-title {
-    font-size: 1.5em;
-    margin: 0;
-    color: #000;
-}
-
-.topic-card-date {
-    font-size: 0.85em;
-    color: #909399;
-    flex-shrink: 0;
-    margin-left: 10px;
-}
-
-.topic-card-description {
-    font-size: 1em;
-    line-height: 1.6;
-    flex-grow: 1;
-    margin-bottom: 20px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
 }
 
 .topic-card-tags {
@@ -2002,11 +2033,62 @@ export const useSplitPane = (initialPrimarySize: number, minPrimarySize: number 
 }
 
 .topic-card-tag {
-    background-color: #f0f2f5;
+    border-radius: 100px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+/* Define a few colors for tags */
+.topic-card-tag.color-1 { background-color: #409EFF; }
+.topic-card-tag.color-2 { background-color: #67C23A; }
+.topic-card-tag.color-3 { background-color: #E6A23C; }
+.topic-card-tag.color-4 { background-color: #F56C6C; }
+.topic-card-tag.color-5 { background-color: #909399; }
+
+.topic-card-content {
+    flex-grow: 1;
+}
+
+.topic-card-title {
+    font-size: 1.6em;
+    margin: 0 0 0.8rem 0;
+    color: #303133;
+    font-weight: 600;
+}
+
+.topic-card-description {
+    font-size: 1em;
+    line-height: 1.6;
     color: #606266;
-    padding: 4px 10px;
-    border-radius: 15px;
-    font-size: 0.8em;
+    margin: 0;
+}
+
+.topic-card-footer {
+  position: relative;
+  width: 100%;
+  color: #9fa4aa;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* Align date to the left */
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f0f2f5;
+}
+
+.topic-card-date {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.topic-card-date svg {
+  margin-right: 8px;
+  height: 20px;
+  width: 20px;
+  stroke: #9fa4aa;
 }
 
 /*// END OF FILE: src/pages/HomePage/HomePage.css*/
@@ -2022,17 +2104,35 @@ import { Link } from 'react-router-dom';
 import { topics, Topic } from '../../topics';
 import './HomePage.css';
 
+const TAG_COLORS = ['color-1', 'color-2', 'color-3', 'color-4', 'color-5'];
+
 const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {
     return (
         <Link to={`/topic/${topic.id}`} className="topic-card-link">
             <div className="topic-card">
                 <div className="topic-card-header">
-                    <h2 className="topic-card-title">{topic.title}</h2>
-                    <span className="topic-card-date">{topic.date}</span>
+                    <div className="topic-card-tags">
+                        {topic.tags.map((tag, index) => (
+                            <span key={tag} className={`topic-card-tag ${TAG_COLORS[index % TAG_COLORS.length]}`}>{tag}</span>
+                        ))}
+                    </div>
                 </div>
-                <p className="topic-card-description">{topic.description}</p>
-                 <div className="topic-card-tags">
-                    {topic.tags.map(tag => <span key={tag} className="topic-card-tag">{tag}</span>)}
+                <div className="topic-card-content">
+                    <h3 className="topic-card-title">{topic.title}</h3>
+                    <p className="topic-card-description">{topic.description}</p>
+                </div>
+                <div className="topic-card-footer">
+                    <div className="topic-card-date">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <g strokeWidth="0" id="SVGRepo_bgCarrier"></g>
+                            <g strokeLinejoin="round" strokeLinecap="round" id="SVGRepo_tracerCarrier"></g>
+                            <g id="SVGRepo_iconCarrier">
+                                <path strokeLinecap="round" strokeWidth="2" d="M12 8V12L15 15"></path>
+                                <circle strokeWidth="2" r="9" cy="12" cx="12"></circle>
+                            </g>
+                        </svg>
+                        {topic.date}
+                    </div>
                 </div>
             </div>
         </Link>
@@ -2042,15 +2142,17 @@ const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {
 
 export const HomePage: React.FC = () => {
     return (
-        <div className="homepage-container">
-            <div className="homepage-intro">
-                <h2>欢迎来到 AI 深度探索</h2>
-                <p>一个旨在通过交互式可视化和深度文章，剖析前沿AI技术的知识平台。</p>
-            </div>
-            <div className="topic-grid">
-                {topics.map(topic => (
-                    <TopicCard key={topic.id} topic={topic} />
-                ))}
+        <div className="page-scroll-container">
+            <div className="homepage-container">
+                <div className="homepage-intro">
+                    <h2>欢迎来到 AI 深度探索</h2>
+                    <p>一个旨在通过交互式可视化和深度文章，剖析前沿AI技术的知识平台。</p>
+                </div>
+                <div className="topic-grid">
+                    {topics.map(topic => (
+                        <TopicCard key={topic.id} topic={topic} />
+                    ))}
+                </div>
             </div>
         </div>
     );
@@ -2064,8 +2166,33 @@ export const HomePage: React.FC = () => {
 ================================================================================
 
 /* FILE: src/pages/TopicPage/TopicPage.css */
+.topic-page-layout {
+    display: flex;
+    height: 100%;
+    overflow: hidden; /* Important: this container does not scroll */
+}
 
-/*// END OF FILE: src/pages/TopicPage/TopicPage.css*/
+.topic-content-area {
+    flex-grow: 1;
+    height: 100%;
+    min-width: 0; /* Crucial for flexbox children overflow */
+    display: flex;
+    flex-direction: column; /* Allows child components to manage their own layout */
+}
+
+/* This is the wrapper for the actual topic component, e.g., TransformerExplorer or an article */
+.topic-component-wrapper {
+    flex-grow: 1;
+    overflow-y: auto; /* Standard articles will scroll here */
+    min-height: 0;
+}
+
+/* Specific override for components like TransformerExplorer that manage their own scrolling */
+.topic-component-wrapper.no-scroll {
+    overflow-y: hidden;
+}
+
+/* END OF FILE: src/pages/TopicPage/TopicPage.css */
 
 
 ================================================================================
@@ -2076,6 +2203,8 @@ export const HomePage: React.FC = () => {
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { topics } from '../../topics';
+import { TopicSidebar } from './components/TopicSidebar';
+import './TopicPage.css';
 
 export const TopicPage: React.FC = () => {
     const { topicId } = useParams<{ topicId: string }>();
@@ -2087,22 +2216,120 @@ export const TopicPage: React.FC = () => {
 
     const TopicComponent = topic.component;
 
-    // For the transformer explorer, we render it directly to control its unique layout
-    if (topic.id === 'transformer-explorer') {
-        return <TopicComponent />;
-    }
+    // Some topics like the explorers have their own internal scrolling mechanisms
+    // and should not be wrapped in a scrolling container.
+    const hasCustomLayout = ['transformer-explorer', 'attention-variants'].includes(topic.id);
 
-    // For other topics (like markdown articles), wrap them in a standard container
     return (
-        <div className="topic-page-container">
-            <TopicComponent />
+        <div className="topic-page-layout">
+            <TopicSidebar />
+            <div className="topic-content-area">
+                <div className={`topic-component-wrapper ${hasCustomLayout ? 'no-scroll' : ''}`}>
+                    <TopicComponent />
+                </div>
+            </div>
         </div>
     );
 };
 
-export {}
-
 // END OF FILE: src/pages/TopicPage/TopicPage.tsx
+
+
+================================================================================
+### 文件路径: src/pages/TopicPage/components/TopicSidebar.css
+================================================================================
+
+/* FILE: src/pages/TopicPage/components/TopicSidebar.css */
+.topic-sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    background-color: var(--component-bg);
+    border-right: 1px solid var(--border-color);
+    padding: 20px;
+    overflow-y: auto;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.sidebar-title {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: var(--text-color);
+    padding-bottom: 10px;
+    margin: 0 0 15px 0;
+    border-bottom: 2px solid var(--highlight-color);
+}
+
+.sidebar-topic-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-topic-item {
+    margin-bottom: 5px;
+}
+
+.sidebar-topic-link {
+    display: block;
+    padding: 12px 15px;
+    text-decoration: none;
+    color: #606266;
+    border-radius: 6px;
+    font-size: 0.95em;
+    font-weight: 500;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.sidebar-topic-link:hover {
+    background-color: var(--highlight-bg);
+    color: var(--highlight-color);
+}
+
+.sidebar-topic-link.active {
+    background-color: var(--highlight-bg);
+    color: var(--highlight-color);
+    font-weight: 700;
+    border-color: var(--highlight-color);
+}
+
+/* END OF FILE: src/pages/TopicPage/components/TopicSidebar.css */
+
+
+================================================================================
+### 文件路径: src/pages/TopicPage/components/TopicSidebar.tsx
+================================================================================
+
+// FILE: src/pages/TopicPage/components/TopicSidebar.tsx
+import React from 'react';
+import { NavLink } from 'react-router-dom';
+import { Topic, topics } from '../../../topics';
+import './TopicSidebar.css';
+
+export const TopicSidebar: React.FC = () => {
+    return (
+        <aside className="topic-sidebar">
+            <h3 className="sidebar-title">所有专题</h3>
+            <ul className="sidebar-topic-list">
+                {topics.map((topic: Topic) => (
+                    <li key={topic.id} className="sidebar-topic-item">
+                        <NavLink
+                            to={`/topic/${topic.id}`}
+                            className={({ isActive }) =>
+                                `sidebar-topic-link ${isActive ? 'active' : ''}`
+                            }
+                        >
+                            {topic.title}
+                        </NavLink>
+                    </li>
+                ))}
+            </ul>
+        </aside>
+    );
+};
+
+// END OF FILE: src/pages/TopicPage/components/TopicSidebar.tsx
 
 
 ================================================================================
@@ -2431,6 +2658,7 @@ export {};
     align-items: center;
     flex-wrap: wrap;
     gap: 10px;
+    justify-content: center;
 }
 
 /* [NEW] Styles for Summary Table */
@@ -2922,7 +3150,8 @@ import { TooltipState } from '../types';
 import { useDraggableAndResizable } from '../../../hooks/useDraggableAndResizable';
 import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 import { MatMulVisualizer } from '../../../components/visualizers/MatMulVisualizer';
-import { InteractiveMatMulVisualizer } from '../../../components/visualizers/InteractiveMatMulVisualizer';
+import 'katex/dist/katex.min.css';
+import { InlineMath } from 'react-katex';
 
 
 interface CalculationTooltipProps {
@@ -2940,6 +3169,7 @@ const formatNumber = (num: number, precision = 4) => {
 export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip, onClose }) => {
     const [isCollapsed, setIsCollapsed] = useState(true);
     const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact');
+    const [hoveredComponentIndex, setHoveredComponentIndex] = useState<number | null>(null);
     const panelRef = useRef<HTMLDivElement>(null);
 
     const { position, size, dragHandleProps, resizeHandleProps } = useDraggableAndResizable({
@@ -2952,9 +3182,11 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
     useEffect(() => {
         setIsCollapsed(false);
         setViewMode('compact');
+        setHoveredComponentIndex(null);
     }, [tooltip]);
 
-    const renderVector = (vec: number[], symbol: string, direction: 'row' | 'column' = 'row', focusIndex: number = -1) => {
+    // This renderVector is for the Softmax case
+    const renderSimpleVector = (vec: number[], symbol: string, direction: 'row' | 'column' = 'row', focusIndex: number = -1) => {
         const visibleIndices = getVisibleIndices(vec.length, focusIndex, 1, 4);
 
         return (
@@ -2979,6 +3211,84 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
         );
     };
 
+    // This function specifically renders the interactive MatMul view
+    const renderMatmulCompact = () => {
+        const step = tooltip.steps[0];
+        if (!step?.components) return null;
+        const { a: vectorA, b: vectorB, result, components, aSymbolInfo, bSymbolInfo } = step;
+
+        const visibleTermIndices = getVisibleIndices(components.length, hoveredComponentIndex ?? -1, 1, 5);
+
+        // A specialized renderVector for the interactive part
+        const renderInteractiveVector = (vec: number[], symbolInfo: TooltipState['steps'][0]['aSymbolInfo'], direction: 'row' | 'column' = 'row') => {
+            let mathSymbol = symbolInfo.base;
+            if (symbolInfo.subscript) mathSymbol += `_{${symbolInfo.subscript}}`;
+            if (symbolInfo.superscript) mathSymbol += `^{${symbolInfo.superscript}}`;
+            const dims = direction === 'row' ? `1 \\times ${vec.length}` : `${vec.length} \\times 1`;
+            mathSymbol += `_{${dims}}`;
+
+            return (
+                <div className="tooltip-vector-group">
+                    <div className="matrix-wrapper side-label">
+                        <div className="matrix-label-side"><InlineMath math={mathSymbol} /></div>
+                    </div>
+                    <span className="tooltip-symbol">=</span>
+                    <div className={`tooltip-vector ${direction}`}>
+                        {vec.map((val, i) => (
+                            <span
+                                key={i}
+                                className={`tooltip-element source ${hoveredComponentIndex === i ? 'highlight' : ''}`}
+                            >
+                                {formatNumber(val, 2)}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        return (
+            <div className="tooltip-matmul-container">
+                {renderInteractiveVector(vectorA, aSymbolInfo, 'row')}
+                <div className="tooltip-op-symbol">·</div>
+                {renderInteractiveVector(vectorB, bSymbolInfo, 'column')}
+                <div className="tooltip-result-line">
+                    <span className="tooltip-op-symbol">=</span>
+                    <span className="tooltip-result">{formatNumber(result, 4)}</span>
+                </div>
+                <div className="tooltip-calculation-detail">
+                    <div className="tooltip-calc-title">点积计算分解 (Dot Product Breakdown):</div>
+                    <div className="tooltip-calc-equation">
+                        <div className="tooltip-braced-group">
+                            <span className="tooltip-curly-brace">{'{'}</span>
+                            <div className="tooltip-calc-terms-wrapper">
+                                {visibleTermIndices.map((idx, i) => {
+                                    if (idx === ELLIPSIS) {
+                                        return <span key={`ellipsis-${i}`} className="op">...</span>;
+                                    }
+                                    const comp = components[idx];
+                                    return (
+                                        <React.Fragment key={idx}>
+                                            {i > 0 && visibleTermIndices[i-1] !== ELLIPSIS && <span className="op">+</span>}
+                                            <span onMouseEnter={() => setHoveredComponentIndex(idx)} onMouseLeave={() => setHoveredComponentIndex(null)}>
+                                                <span className={`tooltip-calc-term ${hoveredComponentIndex === idx ? 'highlight' : ''}`}>
+                                                    ({formatNumber(comp.a, 2)} <span className="op">×</span> {formatNumber(comp.b, 2)})
+                                                </span>
+                                            </span>
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </div>
+                            <span className="tooltip-curly-brace">{'}'}</span>
+                        </div>
+                        <span>=</span>
+                        <span className="result">{formatNumber(result, 4)}</span>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const renderBody = () => {
         if (!tooltip.steps || tooltip.steps.length === 0) return null;
         const step = tooltip.steps[0];
@@ -2987,18 +3297,7 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
         switch (tooltip.opType) {
             case 'matmul':
                  if (step.components) {
-                    return viewMode === 'compact' ? (
-                        <InteractiveMatMulVisualizer
-                            vectorA={step.a}
-                            vectorB={step.b}
-                            symbolAInfo={step.aSymbolInfo}
-                            symbolBInfo={step.bSymbolInfo}
-                            result={step.result}
-                            components={step.components}
-                        />
-                    ) : (
-                        <MatMulVisualizer vectorA={step.a} vectorB={step.b} />
-                    );
+                    return viewMode === 'compact' ? renderMatmulCompact() : <MatMulVisualizer vectorA={step.a} vectorB={step.b} />;
                  }
                  return <div>Matmul visualization requires components data.</div>;
              case 'add':
@@ -3018,7 +3317,7 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
                 const sumExps = exps.reduce((a, b) => a + b, 0);
                  return (
                     <>
-                        {renderVector(step.a, step.aSymbolInfo.base, 'row', focusIndex)}
+                        {renderSimpleVector(step.a, step.aSymbolInfo.base, 'row', focusIndex)}
                          <div className="tooltip-calculation-detail">
                             <div className="tooltip-calc-title">Softmax 计算分解 (for {tooltip.target.symbol}[{tooltip.target.row}, {tooltip.target.col}]):</div>
                             <div className="tooltip-calc-equation-multi">
@@ -5088,19 +5387,10 @@ export const getVisibleIndices = (
 
 /* Upgraded Calculation Tooltip Styles */
 .calculation-tooltip {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    background-color: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
+    /* [MODIFIED] max-width removed to allow wide content */
     width: auto;
-    max-width: 1000px;
     font-size: 0.95em;
-    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
-    overflow: hidden;
+    /* Other properties like position, z-index, etc., are inherited from .resizable-panel in App.css */
 }
 .tooltip-header {
     display: flex;
@@ -5957,6 +6247,7 @@ import { useDraggableAndResizable } from '../../../hooks/useDraggableAndResizabl
 import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 import { MatMulVisualizer } from '../../../components/visualizers/MatMulVisualizer';
 import { InteractiveMatMulVisualizer } from '../../../components/visualizers/InteractiveMatMulVisualizer';
+import { InlineMath } from 'react-katex';
 
 interface CalculationTooltipProps {
   tooltip: TooltipState;
@@ -5973,6 +6264,7 @@ const formatNumber = (num: number, precision = 4) => {
 export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip, onClose }) => {
     const [isCollapsed, setIsCollapsed] = useState(true);
     const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact');
+    const [hoveredComponentIndex, setHoveredComponentIndex] = useState<number | null>(null);
     const panelRef = useRef<HTMLDivElement>(null);
 
     const { position, size, dragHandleProps, resizeHandleProps } = useDraggableAndResizable({
@@ -5984,16 +6276,20 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
 
     useEffect(() => {
         setIsCollapsed(false);
-        // Reset to compact view whenever a new tooltip is shown
         setViewMode('compact');
+        setHoveredComponentIndex(null);
     }, [tooltip]);
 
-    const renderVector = (vec: number[], symbol: string, direction: 'row' | 'column' = 'row', focusIndex: number = -1) => {
+    const renderVector = (vec: number[], symbolInfo: TooltipState['steps'][0]['aSymbolInfo'], direction: 'row' | 'column' = 'row', focusIndex: number = -1) => {
         const visibleIndices = getVisibleIndices(vec.length, focusIndex, 1, 4);
+
+        let mathSymbol = symbolInfo.base;
+        if (symbolInfo.subscript) mathSymbol += `_{${symbolInfo.subscript}}`;
+        if (symbolInfo.superscript) mathSymbol += `^{${symbolInfo.superscript}}`;
 
         return (
             <div className="tooltip-vector-group">
-                <span className="tooltip-symbol">{symbol} =</span>
+                <span className="tooltip-symbol"><InlineMath>{mathSymbol}</InlineMath> =</span>
                 <div className={`tooltip-vector ${direction}`}>
                     {visibleIndices.map((idx, i) => {
                          if (idx === ELLIPSIS) {
@@ -6034,6 +6330,8 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
                                         symbolBInfo={step.bSymbolInfo}
                                         result={step.result}
                                         components={step.components}
+                                        hoveredComponentIndex={hoveredComponentIndex}
+                                        setHoveredComponentIndex={setHoveredComponentIndex}
                                     />
                                 ) : (
                                     <MatMulVisualizer vectorA={step.a} vectorB={step.b} />
@@ -6048,9 +6346,9 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
                         <div className="tooltip-calculation-detail" style={{borderTop: stepIndex > 0 ? '1px solid #eee' : 'none', paddingTop: stepIndex > 0 ? '12px' : '0'}}>
                             <div className="tooltip-calc-title">逐元素加法 (Element-wise Addition):</div>
                             <div className="tooltip-calc-equation">
-                                <span>{formatNumber(step.a[0], 2)} ({step.aSymbolInfo.base})</span>
+                                <span>{formatNumber(step.a[0], 2)} (<InlineMath>{`${step.aSymbolInfo.base}_{...}`}</InlineMath>)</span>
                                 <span className="op"> + </span>
-                                <span>{formatNumber(step.b[0], 2)} ({step.bSymbolInfo.base})</span>
+                                <span>{formatNumber(step.b[0], 2)} (<InlineMath>{`${step.bSymbolInfo.base}_{...}`}</InlineMath>)</span>
                                 <span> = <span className="result">{formatNumber(step.result, 2)}</span></span>
                             </div>
                         </div>
@@ -6062,7 +6360,7 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
                     const sumExps = exps.reduce((a, b) => a + b, 0);
                     content = (
                         <>
-                            {renderVector(step.a, step.aSymbolInfo.base, 'row', focusIndex)}
+                            {renderVector(step.a, step.aSymbolInfo, 'row', focusIndex)}
                             <div className="tooltip-calculation-detail">
                                 <div className="tooltip-calc-title">Softmax 计算分解 (for {tooltip.target.symbol}[{tooltip.target.row}, {tooltip.target.col}]):</div>
                                 <div className="tooltip-calc-equation-multi">
@@ -6078,7 +6376,7 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
                 case 'relu':
                     content = (
                         <>
-                            {renderVector(step.a, step.aSymbolInfo.base, 'row', focusIndex)}
+                            {renderVector(step.a, step.aSymbolInfo, 'row', focusIndex)}
                             <div className="tooltip-calculation-detail">
                                 <div className="tooltip-calc-title">ReLU 计算:</div>
                                 <div className="tooltip-calc-equation">

@@ -8,6 +8,12 @@
     overflow-y: auto;
     height: 100%;
     box-sizing: border-box;
+    /* [NEW] Add transition for smooth slide-in/out */
+    transition: margin-left 0.3s ease-in-out;
+    /* [NEW] Sidebar is hidden by default by being pushed off-screen */
+    margin-left: -280px;
+    /* [NEW] Ensure sidebar is on top of content but below the toggle button */
+    z-index: 1001;
 }
 
 .sidebar-title {
