@@ -1,4 +1,4 @@
-// FILE: src/components/InteractiveSymbolicVector.tsx
+// FILE: src/topics/transformer-explorer/components/InteractiveSymbolicVector.tsx
 import React from 'react';
 import { HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
@@ -12,9 +12,10 @@ interface InteractiveSymbolicVectorProps {
   data: VectorType;
   highlight: HighlightState;
   onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+  sideLabel?: boolean; // For explicit override
 }
 
-export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps> = React.memo(({ name, data, highlight, onSymbolClick }) => {
+export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps> = React.memo(({ name, data, highlight, onSymbolClick, sideLabel = false }) => {
   const displayCols = data.length;
   const symbol = getSymbolParts(name);
 
@@ -49,17 +50,23 @@ export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps>
   if (symbol.subscript) {
     subscriptParts.push(symbol.subscript);
   }
-  subscriptParts.push(`1 \times ${displayCols}`);
+  subscriptParts.push(`1 \\times ${displayCols}`);
   mathSymbol += `_{${subscriptParts.join(',')}}`;
 
-
-  return (
-    <div className="symbolic-matrix-container">
-      <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+  const matrixGrid = (
       <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: `repeat(${gridElements.length}, auto)` }}>
         {gridElements}
       </div>
+  );
+
+  return (
+    <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`}>
+        <div className="matrix-label-side"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+        <div className="symbolic-matrix-container">
+            {matrixGrid}
+        </div>
+        <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
     </div>
   );
 });
-// END OF FILE: src/components/InteractiveSymbolicVector.tsx
+// END OF FILE: src/topics/transformer-explorer/components/InteractiveSymbolicVector.tsx

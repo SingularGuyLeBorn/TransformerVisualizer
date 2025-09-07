@@ -82,21 +82,21 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
       <>
         {/* Step 1: exp(x - max(x)) */}
         <div className="calc-step">
-          <div className="calc-label"><InlineMath math="\\text{exp}(x_i - \\text{max}(\\mathbf{x}))" /></div>
+          <div className="calc-label"><InlineMath math="\text{exp}(x_i - \text{max}(\mathbf{x}))" /></div>
           <div className="elementwise-op-row">
             {renderVisibleElements(exps, 'exp')}
           </div>
         </div>
         {/* Step 2: Sum */}
         <div className="calc-step">
-          <div className="calc-label"><InlineMath math="\\sum \\text{exp}(\\dots)" /></div>
+          <div className="calc-label"><InlineMath math="\sum \text{exp}(\dots)" /></div>
           <div className={`elementwise-op-element sum ${fullSumIsSource ? 'source' : ''}`} onClick={(e) => handleClick(e, -1)}>
             {formatNumber(sumExps)}
           </div>
         </div>
         {/* Step 3: Division */}
         <div className="calc-step">
-          <div className="calc-label"><InlineMath math="\\text{exp}(\\dots) / \\sum" /></div>
+          <div className="calc-label"><InlineMath math="\text{exp}(\dots) / \sum" /></div>
           <div className="elementwise-op-row">{renderVisibleElements(outputRow, 'output')}</div>
         </div>
       </>

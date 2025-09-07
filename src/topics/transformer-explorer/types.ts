@@ -1,4 +1,4 @@
-// FILE: src/types.ts
+// FILE: src/topics/transformer-explorer/types.ts
 export type Matrix = number[][];
 export type Vector = number[];
 
@@ -12,6 +12,7 @@ export interface ElementIdentifier {
   tokenId?: number; // e.g., 10 for "I"
   tokenStr?: string; // e.g., "I"
   probValue?: number; // For decoding, the probability of the chosen token
+  symbol?: string; // The mathematical symbol for the tooltip title
 }
 
 export interface HighlightSource extends ElementIdentifier {
@@ -34,21 +35,22 @@ export interface CalculationComponent {
 }
 
 export interface CalculationStep {
+    title?: string; // Optional title for multi-step calculations
     a: Vector;
     b: Vector;
     op: string; // e.g., '·', '+', '...'
     result: number;
     aSymbol: string;
     bSymbol: string;
-    components?: CalculationComponent[]; // [NEW] For detailed breakdown of calculations
+    components?: CalculationComponent[];
 }
 
 export interface TooltipState {
     target: ElementIdentifier;
-    opType: 'matmul' | 'add' | 'info';
+    opType: 'matmul' | 'add' | 'info' | 'softmax' | 'relu';
     steps: CalculationStep[];
     title: string;
-    initialPosition: { x: number, y: number }; // [NEW] For positioning the tooltip
+    initialPosition: { x: number, y: number };
 }
 
 export interface AttentionHeadData {
@@ -136,4 +138,4 @@ export interface TransformerData {
     decodedTokens: number[];
     outputText: string[];
 }
-// END OF FILE: src/types.ts
+// END OF FILE: src/topics/transformer-explorer/types.ts

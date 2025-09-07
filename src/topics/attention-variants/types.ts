@@ -11,6 +11,7 @@ export interface ElementIdentifier {
   row: number;
   col: number;
   isInternal?: boolean; // True if it's part of an internal calculation visualization
+  symbol?: string; // e.g., "Z_GQA"
 }
 
 // 用于定义高亮的来源
@@ -66,5 +67,29 @@ export interface AttentionData {
   gqa: AttentionVariantData;
   mla: MLAData; // MLA结构不同，单独定义
 }
+
+// Types for CalculationTooltip
+export interface CalculationComponent {
+    a: number;
+    b: number;
+}
+
+export interface CalculationStep {
+    a: Vector;
+    b: Vector;
+    op: string;
+    result: number;
+    aSymbol: string;
+    bSymbol: string;
+    components?: CalculationComponent[];
+}
+
+export interface TooltipState {
+    target: ElementIdentifier;
+    opType: 'matmul' | 'softmax' | 'info' | 'add';
+    steps: CalculationStep[];
+    title: string;
+}
+
 
 // END OF FILE: src/topics/attention-variants/types.ts

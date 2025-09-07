@@ -1,0 +1,828 @@
+/* FILE: src/topics/transformer-explorer/TransformerExplorerTopic.css */
+/* This file contains all necessary styles for the transformer-explorer topic,
+   ensuring it is fully self-contained. */
+
+.main-layout {
+  display: flex;
+  gap: 20px;
+  flex-grow: 1;
+  overflow: hidden;
+  padding: 20px;
+  min-height: 0;
+  position: relative;
+}
+
+.column {
+  flex: 1;
+  background: var(--component-bg);
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  overflow-y: auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.column-content {
+  padding: 20px;
+}
+
+.column.left-column {
+  flex: 1.4;
+}
+
+.column h2 {
+  font-size: 1.6em;
+  margin: -20px -20px 20px -20px;
+  padding: 20px 20px 15px 20px;
+  text-align: center;
+  color: #000;
+  position: sticky;
+  top: -21px;
+  background: inherit;
+  z-index: 10;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 12px 12px 0 0;
+}
+
+.diagram-component {
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  margin-bottom: 15px;
+  background-color: #fdfdfd;
+  transition: all 0.3s ease;
+}
+
+.diagram-component .component-header {
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.diagram-component .component-header:hover {
+    background-color: #f0f2f5;
+}
+.diagram-component.active {
+    border-color: var(--highlight-formula-border) !important;
+    box-shadow: 0 0 30px var(--highlight-formula-bg) !important;
+    transform: scale(1.01);
+}
+
+.component-header {
+  background-color: var(--component-header-bg);
+  padding: 8px 15px;
+  font-weight: bold;
+  font-size: 1.1em;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 8px 8px 0 0;
+}
+.component-body {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.arrow-down {
+  width: 100%;
+  text-align: center;
+  font-size: 24px;
+  color: var(--arrow-color);
+  margin: 5px 0;
+}
+
+.matrix-wrapper {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    vertical-align: middle;
+}
+
+/* Side-label logic for transformer-explorer */
+.matrix-wrapper .matrix-label-side { display: none; }
+.matrix-wrapper .matrix-label-container { display: flex; }
+.matrix-wrapper > .matrix-label {
+    display: flex;
+    justify-content: center;
+    margin-top: 8px;
+}
+
+.matrix-wrapper.side-label,
+.viz-formula-row.vertical .matrix-wrapper,
+.viz-formula-row > .matrix-wrapper:only-child,
+.formula-display > .matrix-scroll-wrapper:only-child .matrix-wrapper,
+.component-body > .matrix-wrapper
+{
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+}
+
+.matrix-wrapper.side-label .matrix-label-side,
+.viz-formula-row.vertical .matrix-wrapper .matrix-label-side,
+.viz-formula-row > .matrix-wrapper:only-child .matrix-label-side,
+.formula-display > .matrix-scroll-wrapper:only-child .matrix-wrapper .matrix-label-side,
+.component-body > .matrix-wrapper .matrix-label-side {
+    display: flex;
+}
+
+.matrix-wrapper.side-label .matrix-label-container,
+.matrix-wrapper.side-label > .matrix-label,
+.viz-formula-row.vertical .matrix-wrapper .matrix-label-container,
+.viz-formula-row.vertical .matrix-wrapper > .matrix-label,
+.viz-formula-row > .matrix-wrapper:only-child .matrix-label-container,
+.viz-formula-row > .matrix-wrapper:only-child > .matrix-label,
+.formula-display > .matrix-scroll-wrapper:only-child .matrix-wrapper .matrix-label-container,
+.formula-display > .matrix-scroll-wrapper:only-child .matrix-wrapper > .matrix-label,
+.component-body > .matrix-wrapper .matrix-label-container,
+.component-body > .matrix-wrapper > .matrix-label {
+    display: none;
+}
+
+.matrix-container {
+  display: inline-block;
+  border: 1px solid #ccc;
+  padding: 5px;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+.matrix-grid {
+  display: grid;
+  gap: 3px;
+}
+
+.matrix-element {
+  width: 45px;
+  height: 25px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 2px;
+  font-family: monospace;
+  font-size: 0.8em;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  z-index: 2;
+  font-weight: normal;
+}
+
+.matrix-ellipsis {
+    width: 45px;
+    height: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #aaa;
+    font-size: 1.2em;
+    font-family: monospace;
+}
+
+.matrix-element:hover {
+  transform: scale(1.1);
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0,123,255,0.5);
+  z-index: 5;
+}
+
+.matrix-element.source {
+  background-color: var(--highlight-source-bg);
+  color: var(--highlight-source-color);
+  border: 1.5px solid var(--highlight-source-border);
+}
+.matrix-element.target {
+  background-color: var(--highlight-target-bg);
+  color: var(--highlight-target-color);
+  border: 1.5px solid var(--highlight-target-border);
+}
+
+.matrix-element.prob-max {
+    box-shadow: 0 0 8px 2px var(--highlight-target-border);
+    font-weight: bold;
+    transform: scale(1.15);
+    z-index: 6;
+}
+
+.matrix-element.destination {
+  background-color: var(--highlight-formula-bg);
+  border: 1px solid var(--highlight-formula-border);
+}
+
+.matrix-label-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.matrix-label {
+  text-align: center;
+  font-weight: bold;
+  font-family: monospace;
+  font-size: 1.1em;
+  margin: 0;
+}
+
+.matrix-symbol-tag {
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 3px 7px;
+    border-radius: 5px;
+    font-size: 1.1em;
+    border: 1px solid #ced4da;
+    line-height: 1;
+    font-family: 'Times New Roman', serif;
+}
+
+.op-symbol {
+    font-size: 2em;
+    font-weight: bold;
+    color: #909399;
+    align-self: center;
+}
+
+.matrix-header-item, .symbolic-header-item {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f0f2f5;
+    color: #909399;
+    font-family: monospace;
+    font-size: 0.8em;
+    font-weight: bold;
+    border-radius: 2px;
+    padding: 2px;
+    box-sizing: border-box;
+    min-height: 15px;
+}
+.symbolic-header-item {
+    background-color: transparent;
+}
+
+
+.math-block {
+  margin-bottom: 25px;
+  padding: 20px;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  background: #fff;
+  transition: all 0.3s ease;
+}
+.math-block.active {
+  border-color: var(--highlight-formula-border) !important;
+  box-shadow: 0 0 30px var(--highlight-bg) !important;
+  transform: scale(1.01);
+  background-color: var(--highlight-formula-bg);
+}
+.math-block h3 {
+  margin: -20px -20px 15px -20px;
+  padding: 15px 20px;
+  font-size: 1.25em;
+  color: #000;
+  border-bottom: 1px solid #eee;
+  border-radius: 12px 12px 0 0;
+  background-color: var(--component-header-bg);
+}
+.math-block p, .math-block li, .math-block h5 {
+    line-height: 1.7;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+.math-block h5 {
+    font-size: 1.1em;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+.math-block code {
+   background-color: #e9ecef;
+   padding: 2px 5px;
+   border-radius: 4px;
+   font-family: monospace;
+}
+
+.formula-display {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 15px;
+    overflow-x: auto;
+    margin: 20px 0;
+    padding: 15px 10px;
+    background-color: rgba(0,0,0,0.02);
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+.formula-display > * {
+    flex-shrink: 0;
+}
+.formula-display.vertical {
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.katex-display {
+    margin: 0.5em 0 !important;
+}
+
+.matrix-scroll-wrapper {
+    overflow-x: auto;
+    padding: 5px;
+    flex-shrink: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.symbolic-matrix-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+.symbolic-matrix-grid {
+    display: grid;
+    gap: 2px;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+.symbolic-element, .symbolic-ellipsis {
+    min-width: 60px;
+    min-height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.9em;
+    border-radius: 2px;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    transition: all 0.2s ease-in-out;
+}
+.symbolic-ellipsis {
+    border-style: dashed;
+    color: #aaa;
+}
+.symbolic-element.source {
+  background-color: var(--highlight-source-bg);
+  border-color: var(--highlight-source-border);
+}
+.symbolic-element.target {
+  background-color: var(--highlight-target-bg);
+  border-color: var(--highlight-target-border);
+}
+.symbolic-element.destination {
+    background-color: var(--highlight-formula-bg);
+    border-color: var(--highlight-formula-border);
+}
+
+.viz-formula-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 15px 10px;
+    border: 1px solid #eef;
+    border-radius: 8px;
+    background-color: rgba(0,0,0,0.015);
+    gap: 5px;
+    box-sizing: border-box;
+}
+.viz-formula-group > * {
+    flex-shrink: 0;
+}
+.viz-formula-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    justify-content: center;
+    width: max-content;
+    padding: 0 5px;
+    flex-wrap: nowrap;
+}
+.viz-formula-row.vertical {
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+.viz-formula-row > * {
+    flex-shrink: 0;
+}
+
+.viz-step-title {
+    width: 100%;
+    text-align: center;
+    font-weight: bold;
+    color: #606266;
+    margin-top: 10px;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+    border-bottom: 1px solid #eef;
+    padding-bottom: 5px;
+}
+.viz-formula-group .viz-step-title {
+    margin-top: -5px;
+    margin-bottom: 10px;
+}
+
+.residual-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  border: 2px dashed var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #fcfcfc;
+}
+.residual-block:hover {
+    border-color: var(--highlight-formula-border);
+    background-color: var(--highlight-formula-bg);
+}
+.residual-icon {
+    font-size: 1.6em;
+    font-weight: bold;
+    color: var(--arrow-color);
+    line-height: 1;
+}
+.residual-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
+}
+.residual-matrix-symbol {
+    font-size: 1.2em;
+}
+.residual-matrix-dims {
+    font-size: 0.8em;
+    color: #666;
+    font-family: monospace;
+}
+.residual-block.active {
+    border-color: var(--highlight-formula-border);
+    border-style: solid;
+    box-shadow: 0 0 15px var(--highlight-formula-bg);
+    transform: scale(1.05);
+}
+.residual-block.active .residual-icon {
+    color: var(--highlight-formula-border);
+}
+
+.add-norm-component-body {
+    flex-direction: column;
+}
+
+.add-norm-inputs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.token-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 5px;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 2px solid transparent;
+    transition: all 0.2s ease-in-out;
+}
+.token-container:hover {
+    transform: scale(1.05);
+    background-color: rgba(0,0,0,0.02);
+}
+.token-container.target {
+    border-color: var(--highlight-target-border);
+    background-color: var(--highlight-target-bg);
+}
+.token-container.source {
+    border-color: var(--highlight-source-border);
+    background-color: var(--highlight-source-bg);
+}
+.token-text {
+    padding: 4px 8px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 1.05em;
+    min-width: 25px;
+    text-align: center;
+}
+.token-id {
+    padding: 2px 6px;
+    background-color: #e9ecef;
+    border: 1px solid #ced4da;
+    border-radius: 10px;
+    font-size: 0.8em;
+    color: #495057;
+}
+
+.token-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+.decoding-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+.decoding-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.embedding-lookup-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    position: relative;
+    padding: 10px;
+    box-sizing: border-box;
+}
+.embedding-lookup-container.vertical {
+    flex-direction: column;
+}
+.embedding-lookup-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+.embedding-lookup-svg path {
+    fill: none;
+    stroke-width: 2px;
+    stroke: var(--arrow-color);
+    stroke-dasharray: 5 5;
+    transition: all 0.3s ease;
+}
+.embedding-lookup-svg path.highlighted {
+    stroke: var(--highlight-target-border);
+    stroke-width: 3px;
+    stroke-dasharray: none;
+}
+.embedding-lookup-column {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+    flex-shrink: 0;
+}
+.embedding-lookup-vocab {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 0;
+}
+
+
+/* Upgraded Calculation Tooltip Styles */
+.calculation-tooltip {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    width: auto;
+    max-width: 500px;
+    font-size: 0.95em;
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+    overflow: hidden;
+}
+.tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding: 8px 15px;
+    margin: 0;
+    cursor: default;
+}
+.tooltip-title {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+.tooltip-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.tooltip-toggle-btn, .tooltip-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: #999;
+    padding: 0 5px;
+    line-height: 1;
+}
+.tooltip-toggle-btn:hover, .tooltip-close-btn:hover {
+    color: #333;
+}
+.tooltip-content-wrapper {
+    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
+    max-height: 500px;
+    overflow: hidden;
+}
+.calculation-tooltip.collapsed .tooltip-content-wrapper {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+.tooltip-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+}
+.tooltip-vector-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.tooltip-symbol {
+    font-family: 'Times New Roman', serif;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+.tooltip-vector {
+    display: flex;
+    gap: 4px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 2px 4px;
+    background-color: #f9f9f9;
+    overflow-x: auto;
+}
+.tooltip-element {
+    padding: 2px 4px;
+    background-color: #fff;
+    border-radius: 2px;
+    font-family: monospace;
+    transition: all 0.2s ease;
+}
+.tooltip-element.highlight {
+    background-color: var(--highlight-formula-bg);
+    border: 1px solid var(--highlight-formula-border);
+    transform: scale(1.1);
+}
+.tooltip-op-symbol {
+    font-size: 1.5em;
+    font-weight: bold;
+    padding: 0 10px;
+}
+.tooltip-result-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.1em;
+}
+.tooltip-result {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: var(--highlight-target-bg);
+    border: 1px solid var(--highlight-target-border);
+    color: var(--highlight-target-color);
+    font-weight: bold;
+}
+.tooltip-calculation-detail {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+}
+.tooltip-calc-title {
+    font-weight: bold;
+    font-size: 0.9em;
+    color: #333;
+    margin-bottom: 8px;
+    font-family: sans-serif;
+}
+.tooltip-calc-equation, .tooltip-calc-equation-multi {
+    font-family: monospace;
+    font-size: 0.95em;
+    color: #555;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+.tooltip-calc-equation .op {
+    color: #c0392b;
+    font-weight: bold;
+}
+.tooltip-calc-equation .result {
+    font-weight: bold;
+    color: var(--highlight-target-color);
+}
+.tooltip-calc-term {
+    transition: background-color 0.2s ease;
+    border-radius: 3px;
+    padding: 1px 3px;
+}
+.tooltip-calc-term.highlight {
+    background-color: var(--highlight-formula-bg);
+}
+.tooltip-calc-equation-multi {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* [REVISED] Modernized styles for Controls panel */
+.controls-container {
+    display: flex;
+    flex-direction: column;
+    gap: 18px; /* More vertical space */
+    padding: 20px;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.control-group {
+    display: flex;
+    justify-content: space-between; /* Label on left, input on right */
+    align-items: center;
+    width: 100%;
+}
+
+.control-group label {
+    font-size: 0.95em;
+    color: #495057; /* Darker, more professional gray */
+    font-weight: 500; /* Medium weight */
+    flex-shrink: 0;
+    padding-right: 15px; /* Space between label and input */
+}
+
+/* Common styles for number inputs and the d_k display */
+.control-group input[type="number"],
+.control-group .d_k-value {
+    width: 80px; /* Align the number inputs and the d_k value */
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px; /* Slightly more rounded */
+    font-size: 1em;
+    text-align: center;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Specific style for text input */
+.control-group input[type="text"] {
+    flex-grow: 1; /* Allow text input to fill remaining space */
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 1em;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Specific focus state for all interactive inputs */
+.control-group input:focus {
+    outline: none;
+    border-color: #409eff; /* Accent color on focus */
+    box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.2); /* Subtle glow */
+}
+
+/* Style for the read-only d_k value */
+.d_k-value {
+    font-weight: 600; /* Bolder */
+    background-color: #f0f2f5; /* Subtle background */
+    color: #303133;
+    border-color: #e4e7ed;
+}
+/* END OF FILE: src/topics/transformer-explorer/TransformerExplorerTopic.css */

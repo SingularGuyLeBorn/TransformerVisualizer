@@ -3,6 +3,34 @@
    ensuring it is fully self-contained. Many styles are adapted from the
    transformer-explorer topic to maintain visual consistency. */
 
+/* [ADDED] Layout styles for independent scrolling columns */
+.main-layout {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+.column {
+  height: 100%;
+  overflow-y: auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+.column.left-column {
+    border-right: 1px solid var(--border-color);
+}
+.column h2 {
+  text-align: center;
+  margin-top: 0;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: -20px;
+  background-color: var(--bg-color);
+  z-index: 10;
+}
+
+
 .attention-variant-section {
     border: 3px solid var(--border-color);
     border-radius: 12px;
@@ -29,12 +57,46 @@
     gap: 20px;
 }
 
+/* [NEW] Styles for explanation subsections */
+.explanation-subsection {
+    width: 100%;
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #f0f2f5;
+    border-radius: 8px;
+    background: #fcfcfc;
+}
+.explanation-subsection h5 {
+    margin-top: 0;
+    font-size: 1.2em;
+    color: #303133;
+    border-bottom: 2px solid #e4e7ed;
+    padding-bottom: 8px;
+}
+.explanation-subsection p, .explanation-subsection li {
+    line-height: 1.7;
+    color: #606266;
+}
+.explanation-subsection code {
+   background-color: #e9ecef;
+   padding: 2px 5px;
+   border-radius: 4px;
+   font-family: monospace;
+}
+.explanation-subsection ul {
+    padding-left: 20px;
+}
+
+
 .attention-calculation-step {
     width: 100%;
     border: 1px solid #eef;
     border-radius: 8px;
     padding: 15px;
     background-color: rgba(0,0,0,0.015);
+    display: flex; /* [ADDED] For centering single matrices */
+    flex-direction: column; /* [ADDED] */
+    align-items: center; /* [ADDED] */
 }
 
 .step-title {
@@ -74,16 +136,48 @@
     opacity: 0.3;
 }
 
-/* [NEW] Styles for side-label matrix layout */
-.matrix-wrapper.side-label {
+/* [REWRITTEN] Robust side-label logic using CSS context */
+
+/* Default state: bottom label */
+.matrix-wrapper .matrix-label-side { display: none; }
+.matrix-wrapper .matrix-label,
+.matrix-wrapper .matrix-label-container {
     display: flex;
+}
+
+/* Symbolic matrix needs a separate rule for its bottom label */
+.matrix-wrapper > .matrix-label {
+    margin-top: 8px;
+}
+
+/* Side-label state: triggered by prop OR parent class */
+.matrix-wrapper.side-label,
+.viz-row.vertical .matrix-wrapper,
+.explanation-row.vertical .matrix-wrapper,
+.explanation-row > .matrix-wrapper:only-child {
+    flex-direction: row;
     align-items: center;
     gap: 12px;
 }
 
-.matrix-label-side {
-    flex-shrink: 0;
+.matrix-wrapper.side-label .matrix-label-side,
+.viz-row.vertical .matrix-wrapper .matrix-label-side,
+.explanation-row.vertical .matrix-wrapper .matrix-label-side,
+.explanation-row > .matrix-wrapper:only-child .matrix-label-side {
+    display: flex; /* Show side label */
 }
+
+.matrix-wrapper.side-label .matrix-label-container,
+.viz-row.vertical .matrix-wrapper .matrix-label-container,
+.explanation-row.vertical .matrix-wrapper .matrix-label-container,
+.matrix-wrapper.side-label > .matrix-label, /* Target symbolic matrix bottom label */
+.viz-row.vertical .matrix-wrapper > .matrix-label,
+.explanation-row.vertical .matrix-wrapper > .matrix-label,
+.explanation-row > .matrix-wrapper:only-child .matrix-label-container,
+.explanation-row > .matrix-wrapper:only-child > .matrix-label {
+    display: none; /* Hide bottom label */
+}
+
 
 /* [NEW] Styles for Elementwise Operation Visualization */
 .elementwise-op-container {
@@ -167,4 +261,126 @@
     color: var(--highlight-target-color) !important;
     border-color: var(--highlight-target-border) !important;
 }
+
+/* [NEW] Styles for Calculation Tooltip - specific to this topic */
+.tooltip-matmul-container {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* [NEW] Styles for Summary Table */
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 0.95em;
+}
+
+.summary-table th, .summary-table td {
+    border: 1px solid #dcdfe6;
+    padding: 12px 10px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.summary-table th {
+    background-color: #f5f7fa;
+    font-weight: bold;
+    color: #303133;
+}
+
+.summary-table tbody tr:nth-child(even) {
+    background-color: #fdfdfd;
+}
+
+.summary-table td:first-child {
+    font-weight: bold;
+    min-width: 120px;
+}
+
+/* [ADDED & MODERNIZED] Styles for Controls panel in this topic */
+.controls-container {
+    display: flex;
+    flex-direction: column;
+    gap: 18px; /* More vertical space */
+    padding: 20px;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.control-group {
+    display: flex;
+    justify-content: space-between; /* Label on left, input on right */
+    align-items: center;
+    width: 100%;
+}
+
+.control-group label {
+    font-size: 0.95em;
+    color: #495057; /* Darker, more professional gray */
+    font-weight: 500; /* Medium weight */
+    flex-shrink: 0;
+    padding-right: 15px; /* Space between label and input */
+    text-align: left;
+}
+
+/* Common styles for number inputs and the d_model display */
+.control-group input[type="number"],
+.control-group .d_k-value {
+    width: 80px; /* Align the number inputs and the d_k value */
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px; /* Slightly more rounded */
+    font-size: 1em;
+    text-align: center;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.control-group input:focus {
+    outline: none;
+    border-color: #409eff; /* Accent color on focus */
+    box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.2); /* Subtle glow */
+}
+
+.d_k-value {
+    font-weight: 600; /* Bolder */
+    background-color: #f0f2f5; /* Subtle background */
+    color: #303133;
+    border-color: #e4e7ed;
+}
+
+
+/* [NEW] Styles for introduction blocks and other typography */
+.math-block {
+  margin-bottom: 25px;
+  padding: 20px;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  background: #fff;
+  transition: all 0.3s ease;
+}
+.math-block h3 {
+  margin: -20px -20px 15px -20px;
+  padding: 15px 20px;
+  font-size: 1.25em;
+  color: #000;
+  border-bottom: 1px solid #eee;
+  border-radius: 12px 12px 0 0;
+  background-color: var(--component-header-bg);
+}
+.math-block p, .math-block li {
+    line-height: 1.7;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+.math-block code {
+   background-color: #e9ecef;
+   padding: 2px 5px;
+   border-radius: 4px;
+   font-family: monospace;
+}
+
 /* END OF FILE: src/topics/attention-variants/AttentionVariantsTopic.css */

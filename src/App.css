@@ -12,7 +12,6 @@
   --residual-border: #dce775;
 
   /* Highlighting */
-  /* [MODIFIED] Changed to softer, semi-transparent colors for better aesthetics */
   --highlight-target-bg: rgba(230, 57, 70, 0.15);
   --highlight-target-color: #d63031;
   --highlight-target-border: #e63946;
@@ -56,122 +55,150 @@ h1 {
   padding: 20px 0;
   background-color: var(--component-bg);
   border-bottom: 1px solid var(--border-color);
-  flex-shrink: 0; /* Prevent title from shrinking */
+  flex-shrink: 0;
 }
 
-.main-layout {
-  display: flex;
-  gap: 20px;
-  flex-grow: 1; /* Allow layout to fill remaining space */
-  overflow: hidden;
-  padding: 20px;
-  min-height: 0; /* Important for flex children scrolling */
-  position: relative; /* [ADDED] Needed for positioning the tooltip */
-}
 
-.column {
-  flex: 1;
-  background: var(--component-bg);
-  border-radius: 12px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-  overflow-y: auto; /* THIS IS THE KEY FOR SCROLLING */
-  min-height: 0;
-  min-width: 0; /* [ADDED] Critical fix for responsive overflow */
-}
-
-.column-content {
-  padding: 20px;
-}
-
-.column.left-column {
-  flex: 1.4;
-}
-
-.column h2 {
-  font-size: 1.6em;
-  margin: -20px -20px 20px -20px;
-  padding: 20px 20px 15px 20px;
-  text-align: center;
-  color: #000;
-  position: sticky;
-  top: -21px; /* Adjust to hide top border */
-  background: inherit;
-  z-index: 10;
-  border-bottom: 1px solid var(--border-color);
-  border-radius: 12px 12px 0 0;
-}
-
-/* --- Left Column: Viz --- */
-.diagram-component {
-  border: 2px solid var(--border-color);
-  border-radius: 10px;
-  margin-bottom: 15px;
-  background-color: #fdfdfd;
-  transition: all 0.3s ease;
-}
-/* [MODIFIED] Style for component click-to-scroll */
-.diagram-component .component-header {
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-.diagram-component .component-header:hover {
-    background-color: #f0f2f5;
-}
-.diagram-component.active {
-    border-color: var(--highlight-formula-border) !important;
-    box-shadow: 0 0 30px var(--highlight-formula-bg) !important;
-    transform: scale(1.01);
-}
-
-.component-header {
-  background-color: var(--component-header-bg);
-  padding: 8px 15px;
-  font-weight: bold;
-  font-size: 1.1em;
-  border-bottom: 1px solid var(--border-color);
-  border-radius: 8px 8px 0 0;
-}
-.component-body {
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 15px;
-  width: 100%; /* [ADDED] Critical fix for child element scrolling */
-  box-sizing: border-box; /* Ensure padding is included in the width */
-}
-
-.arrow-down {
-  width: 100%;
-  text-align: center;
-  font-size: 24px;
-  color: var(--arrow-color);
-  margin: 5px 0;
-}
-
-/* --- Matrix Styles --- */
-
-.matrix-wrapper {
-    position: relative;
-    display: inline-flex;
+/* [NEW] Generic styles for draggable/resizable panels */
+.resizable-panel {
+    position: absolute;
+    background-color: var(--component-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    overflow: hidden;
+    display: flex;
     flex-direction: column;
+}
+.panel-header {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    vertical-align: middle; /* 改善在 flex 布局行中的对齐 */
+    border-bottom: 1px solid #eee;
+    padding: 8px 15px;
+    margin: 0;
+    cursor: move;
+    background-color: var(--component-header-bg);
+    flex-shrink: 0;
+}
+.panel-title {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+.panel-toggle-btn, .tooltip-close-btn, .tooltip-toggle-btn {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: #999;
+    padding: 0 5px;
+    line-height: 1;
+}
+.panel-toggle-btn:hover, .tooltip-close-btn:hover, .tooltip-toggle-btn:hover {
+    color: #333;
+}
+.resize-handle {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+.resizable-panel:hover .resize-handle {
+    opacity: 1;
+}
+.resize-handle.br { right: 0; bottom: 0; width: 15px; height: 15px; cursor: nwse-resize; }
+.resize-handle.t { top: 0; left: 5px; right: 5px; height: 5px; cursor: ns-resize; }
+.resize-handle.r { top: 5px; right: 0; bottom: 5px; width: 5px; cursor: ew-resize; }
+.resize-handle.b { bottom: 0; left: 5px; right: 5px; height: 5px; cursor: ns-resize; }
+.resize-handle.l { top: 5px; left: 0; bottom: 5px; width: 5px; cursor: ew-resize; }
+
+
+/* Specific overrides for Controls Panel */
+.controls-panel .panel-header {
+    padding: 5px;
+}
+.controls-panel .panel-toggle-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+}
+.controls-panel.collapsed {
+    padding: 0;
+    min-width: 50px;
+    min-height: 50px;
+    width: 50px !important;
+    height: 50px !important;
+    transition: width 0.3s ease, height 0.3s ease;
+}
+.controls-panel.collapsed .resize-handle {
+    display: none;
+}
+.controls-container {
+    padding: 20px;
+    flex-grow: 1;
+    overflow-y: auto;
 }
 
-.matrix-container {
-  display: inline-block;
-  border: 1px solid #ccc;
-  padding: 5px;
-  border-radius: 4px;
-  background-color: #f9f9f9;
+/* Specific overrides for Calculation Tooltip */
+.calculation-tooltip .panel-header {
+    cursor: move;
 }
-.matrix-grid {
-  display: grid;
-  gap: 3px;
+.calculation-tooltip.collapsed {
+    height: auto !important;
+}
+.calculation-tooltip.collapsed .tooltip-content-wrapper {
+    max-height: 0;
+    overflow: hidden;
+}
+.tooltip-content-wrapper {
+    flex-grow: 1;
+    overflow-y: auto;
+    transition: max-height 0.3s ease-in-out;
+    max-height: 1000px;
+}
+.tooltip-body {
+    padding: 15px;
 }
 
-.matrix-element {
+/* [NEW] Styles for upgraded tooltip content */
+.tooltip-step-container {
+    padding: 10px 0;
+    border-bottom: 1px dashed #eee;
+}
+.tooltip-step-container:last-child {
+    border-bottom: none;
+}
+.tooltip-step-title {
+    font-family: sans-serif;
+    font-size: 1em;
+    font-weight: bold;
+    color: #333;
+    margin: -10px 0 10px 0;
+}
+.tooltip-vector-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 5px 0;
+}
+.tooltip-symbol {
+    font-family: 'Times New Roman', serif;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+.tooltip-vector {
+    display: flex;
+    gap: 3px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px;
+    background-color: #f9f9f9;
+    overflow-x: auto;
+}
+.tooltip-vector.column {
+    flex-direction: column;
+}
+.tooltip-element {
   width: 45px;
   height: 25px;
   display: flex;
@@ -182,761 +209,36 @@ h1 {
   border-radius: 2px;
   font-family: monospace;
   font-size: 0.8em;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  position: relative;
-  z-index: 2;
-  font-weight: normal; /* 确保不加粗 */
+  transition: all 0.2s ease;
 }
-
-/* [ADDED] Styling for ellipsis cell in matrix grid */
-.matrix-ellipsis {
-    width: 45px;
-    height: 25px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #aaa;
-    font-size: 1.2em;
-    font-family: monospace;
-}
-
-
-.matrix-element:hover {
-  transform: scale(1.1);
-  border-color: #007bff;
-  box-shadow: 0 0 5px rgba(0,123,255,0.5);
-  z-index: 5;
-}
-
-/* [MODIFIED] Updated highlighting styles */
-.matrix-element.source {
-  background-color: var(--highlight-source-bg);
-  color: var(--highlight-source-color);
-  border: 1.5px solid var(--highlight-source-border);
-}
-.matrix-element.target {
-  background-color: var(--highlight-target-bg);
-  color: var(--highlight-target-color);
-  border: 1.5px solid var(--highlight-target-border);
-}
-
-/* [NEW] Style for highlighting the max probability in a row */
-.matrix-element.prob-max {
-    box-shadow: 0 0 8px 2px var(--highlight-target-border);
-    font-weight: bold;
-    transform: scale(1.15);
-    z-index: 6;
-}
-
-.matrix-element.destination {
-  background-color: var(--highlight-formula-bg);
-  border: 1px solid var(--highlight-formula-border);
-}
-
-.matrix-label-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    margin-top: 8px;
-}
-
-.matrix-label {
-  text-align: center;
-  font-weight: bold;
-  font-family: monospace;
-  font-size: 1.1em;
-  margin: 0;
-}
-
-.matrix-symbol-tag {
-    background-color: #e9ecef;
-    color: #495057;
-    padding: 3px 7px;
-    border-radius: 5px;
-    font-size: 1.1em;
-    border: 1px solid #ced4da;
-    line-height: 1;
-    font-family: 'Times New Roman', serif;
-}
-
-
-.op-symbol {
-    font-size: 2em;
-    font-weight: bold;
-    color: #909399;
-    align-self: center; /* [ADDED] Better alignment in flex */
-}
-
-/* [REMOVED] Old absolute positioned header styles */
-/*
-.matrix-col-headers { ... }
-.matrix-row-headers { ... }
-*/
-
-/* [MODIFIED] Styles for Matrix Index Headers integrated into the grid */
-.matrix-header-item {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #f0f2f5;
-    color: #909399;
-    font-family: monospace;
-    font-size: 0.8em;
-    font-weight: bold;
-    border-radius: 2px;
-    padding: 2px;
-    box-sizing: border-box;
-    min-height: 15px; /* For column headers */
-}
-
-.symbolic-header-item {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: transparent;
-    color: #909399;
-    font-family: monospace;
-    font-size: 0.8em;
-    font-weight: bold;
-}
-
-
-/* --- Right Column: Explanation --- */
-.math-block {
-  margin-bottom: 25px;
-  padding: 20px;
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
-  background: #fff;
-  transition: all 0.3s ease;
-}
-.math-block.active {
-  border-color: var(--highlight-formula-border) !important;
-  box-shadow: 0 0 30px var(--highlight-bg) !important;
-  transform: scale(1.01);
-  background-color: var(--highlight-formula-bg);
-}
-.math-block h3 {
-  margin: -20px -20px 15px -20px;
-  padding: 15px 20px;
-  font-size: 1.25em;
-  color: #000;
-  border-bottom: 1px solid #eee;
-  border-radius: 12px 12px 0 0;
-  background-color: var(--component-header-bg);
-}
-.math-block p, .math-block li, .math-block h5 {
-    line-height: 1.7;
-    margin-top: 0.5em; /* [MODIFIED] Reduced top margin for tighter layout */
-    margin-bottom: 0.5em;
-}
-.math-block h5 {
-    font-size: 1.1em;
-    margin-top: 1.5em;
-    margin-bottom: 0.5em;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 5px;
-}
-.math-block code {
-   background-color: #e9ecef;
-   padding: 2px 5px;
-   border-radius: 4px;
-   font-family: monospace;
-}
-
-.formula-display {
-    display: flex;
-    justify-content: flex-start; /* Aligned to left for better scroll */
-    align-items: center;
-    gap: 15px;
-    overflow-x: auto; /* CRITICAL FIX: Allow horizontal scrolling */
-    margin: 20px 0;
-    padding: 15px 10px;
-    background-color: rgba(0,0,0,0.02);
-    border-radius: 8px;
-    flex-wrap: wrap; /* [MODIFIED] Allow wrapping by default */
-}
-.formula-display > * {
-    flex-shrink: 0; /* CRITICAL FIX: Prevent items from shrinking */
-}
-.formula-display.vertical {
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-}
-.formula-display.vertical .viz-formula-row {
-    justify-content: flex-start;
-}
-
-.katex-display {
-    margin: 0.5em 0 !important; /* [MODIFIED] Added vertical margin for better spacing */
-}
-
-.matrix-scroll-wrapper {
-    overflow-x: auto;
-    padding: 5px;
-    flex-shrink: 0; /* Changed from 1 to 0 */
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-/* Symbolic Matrix & Highlighting */
-.symbolic-matrix-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-}
-.symbolic-matrix-grid {
-    display: grid;
-    gap: 2px;
-    padding: 5px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background-color: #f9f9f9;
-}
-.symbolic-element, .symbolic-ellipsis {
-    min-width: 60px;
-    min-height: 30px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 0.9em;
-    border-radius: 2px;
-    background-color: #fff;
-    border: 1px solid #e0e0e0;
-    transition: all 0.2s ease-in-out;
-}
-.symbolic-ellipsis {
-    border-style: dashed;
-    color: #aaa;
-}
-.symbolic-element.source {
-  background-color: var(--highlight-source-bg);
-  border-color: var(--highlight-source-border);
-}
-.symbolic-element.target {
-  background-color: var(--highlight-target-bg);
-  border-color: var(--highlight-target-border);
-}
-.symbolic-element.destination {
+.tooltip-element.highlight {
     background-color: var(--highlight-formula-bg);
     border-color: var(--highlight-formula-border);
+    transform: scale(1.1);
 }
-
-
-/* Controls */
-.controls-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 15px 20px;
-  background-color: var(--component-bg);
-  border-bottom: 1px solid var(--border-color);
-  gap: 20px; /* Reduced gap */
-  flex-wrap: wrap; /* Allow wrapping */
-  flex-shrink: 0;
-}
-.control-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.control-group label {
-  font-size: 0.9em;
-  margin-bottom: 5px;
-  color: #606266;
-}
-.control-group input[type="number"] {
-  width: 60px;
-  padding: 6px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  text-align: center;
-  font-size: 1em;
-}
-.control-group input[type="text"] {
-    width: 250px;
-    padding: 6px 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    font-size: 1em;
-}
-
-.d_k-value {
-    width: 60px;
-    padding: 6px;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    text-align: center;
-    font-size: 1em;
-    font-weight: bold;
-    background-color: #f0f2f5;
-}
-
-/* [MODIFIED] Fixed Controls Panel in top-right */
-.controls-panel {
-    position: fixed; /* Changed from absolute to fixed */
-    top: 85px; /* Position below main title */
-    right: 20px;
-    z-index: 100;
-    background: var(--component-bg);
-    border-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    border: 1px solid var(--border-color);
-    overflow: hidden;
-    transition: width 0.3s ease-in-out, height 0.3s ease-in-out;
-    max-width: 90vw;
-}
-.controls-panel-header {
-    /* No longer draggable */
-    background-color: var(--component-header-bg);
-}
-.controls-panel-header:active {
-    /* No longer draggable */
-    cursor: default;
-}
-.controls-panel.collapsed {
-    width: 50px;
-    height: 50px;
-    padding: 0;
-}
-.controls-toggle-btn {
-    width: 100%;
-    height: 100%;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 24px;
-    color: var(--text-color);
-    transition: transform 0.3s ease;
-}
-.controls-panel.collapsed .controls-toggle-btn {
-    transform: rotate(45deg);
-}
-.controls-panel:not(.collapsed) .controls-toggle-btn {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 30px;
-    height: 30px;
-    font-size: 20px;
-}
-.controls-panel .controls-container {
-    border-bottom: none;
-    padding: 20px;
-    padding-top: 40px;
-    transition: opacity 0.3s ease;
-}
-.controls-panel.collapsed .controls-container {
-    opacity: 0;
-    pointer-events: none;
-}
-
-
-/* [MODIFIED] Grouping and Scrolling Logic */
-.viz-formula-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%; /* Use 100% to enable internal scrolling */
-    max-width: 100%; /* Prevent overflow from parent */
-    overflow-x: auto;
-    padding: 15px 10px;
-    border: 1px solid #eef;
-    border-radius: 8px;
-    background-color: rgba(0,0,0,0.015);
-    gap: 5px; /* Spacing between rows/arrows inside a group */
-    box-sizing: border-box; /* Ensure padding is included in the width */
-}
-.viz-formula-group > * {
-    flex-shrink: 0; /* Ensure content inside does not shrink */
-}
-.viz-formula-row {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    justify-content: center;
-    width: max-content; /* Let the row size to its content */
-    padding: 0 5px; /* Remove vertical padding */
-    flex-wrap: nowrap; /* [MODIFIED] Default to no-wrap */
-}
-.viz-formula-row.vertical {
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-}
-.viz-formula-row > * {
-    flex-shrink: 0;
-}
-
-
-/* Styling for sub-steps in visualization components */
-.viz-step-title {
-    width: 100%;
-    text-align: center;
-    font-weight: bold;
-    color: #606266;
-    margin-top: 10px;
-    margin-bottom: 5px;
-    font-size: 0.9em;
-    border-bottom: 1px solid #eef;
-    padding-bottom: 5px;
-}
-.viz-formula-group .viz-step-title {
-    margin-top: -5px; /* Adjust margin when inside a group */
-    margin-bottom: 10px;
-}
-
-/* [REMOVED] Elementwise Operation Visualization styles are now in topic-specific CSS */
-/*
-.elementwise-op-container { ... }
-.elementwise-op-label { ... }
-.elementwise-op-viz { ... }
-.elementwise-op-function-call { ... }
-.elementwise-op-row { ... }
-.elementwise-op-element { ... }
-.elementwise-op-element.symbolic-ellipsis { ... }
-*/
-
-/* [REMOVED] ElementwiseCalculation styles are now in topic-specific CSS */
-/*
-.elementwise-calc-container { ... }
-.calc-step { ... }
-.calc-label { ... }
-.elementwise-op-element.sum { ... }
-.elementwise-op-element.source, .elementwise-op-element.sum.source { ... }
-.elementwise-op-element.target, .elementwise-op-element.sum.target { ... }
-*/
-
-/* [NEW] Styles for Residual Block */
-.residual-block {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 5px 10px;
-  border: 2px dashed var(--border-color);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  background-color: #fcfcfc;
-}
-.residual-block:hover {
-    border-color: var(--highlight-formula-border);
-    background-color: var(--highlight-formula-bg);
-}
-.residual-icon {
-    font-size: 1.6em;
-    font-weight: bold;
-    color: var(--arrow-color);
-    line-height: 1;
-}
-.residual-info {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    line-height: 1.2;
-}
-.residual-matrix-symbol {
-    font-size: 1.2em;
-}
-.residual-matrix-dims {
-    font-size: 0.8em;
-    color: #666;
-    font-family: monospace;
-}
-.residual-block.active {
-    border-color: var(--highlight-formula-border);
-    border-style: solid;
-    box-shadow: 0 0 15px var(--highlight-formula-bg);
-    transform: scale(1.05);
-}
-.residual-block.active .residual-icon {
-    color: var(--highlight-formula-border);
-}
-
-.add-norm-component-body {
-    flex-direction: column; /* Changed for vertical layout */
-}
-
-.add-norm-inputs {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    flex-wrap: wrap; /* Allow wrapping on small screens */
-}
-
-/* [NEW] Styles for Tokenization and Decoding */
-.token-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    padding: 5px;
-    cursor: pointer;
-    border-radius: 4px;
-    border: 2px solid transparent;
-    transition: all 0.2s ease-in-out;
-}
-.token-container:hover {
-    transform: scale(1.05);
-    background-color: rgba(0,0,0,0.02);
-}
-.token-container.target {
-    border-color: var(--highlight-target-border);
-    background-color: var(--highlight-target-bg);
-}
-.token-container.source {
-    border-color: var(--highlight-source-border);
-    background-color: var(--highlight-source-bg);
-}
-.token-text {
-    padding: 4px 8px;
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 1.05em;
-    min-width: 25px;
-    text-align: center;
-}
-.token-id {
-    padding: 2px 6px;
-    background-color: #e9ecef;
-    border: 1px solid #ced4da;
-    border-radius: 10px;
-    font-size: 0.8em;
-    color: #495057;
-}
-
-.token-row {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 10px;
-}
-
-.decoding-step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-}
-.decoding-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    width: 100%;
-}
-.decoding-matrix-wrapper {
-    flex-shrink: 1;
-    min-width: 0;
-}
-.decoding-token-wrapper {
-    flex-shrink: 0;
-}
-
-/* [MODIFIED] Calculation Tooltip now fixed in top-left */
-.calculation-tooltip {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    background-color: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    width: auto;
-    max-width: 500px;
-    font-size: 0.95em;
-    transition: opacity 0.2s ease-in-out, height 0.3s ease;
-    overflow: hidden; /* Important for collapse animation */
-}
-.tooltip-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #eee;
-    padding: 8px 15px;
-    margin: 0;
-    cursor: default; /* No longer draggable */
-}
-.tooltip-header:active {
-    cursor: default; /* No longer draggable */
-}
-.tooltip-title {
-    font-weight: bold;
-    font-size: 1.1em;
-}
-.tooltip-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.tooltip-toggle-btn, .tooltip-close-btn {
-    background: none;
-    border: none;
+.tooltip-op-symbol {
     font-size: 1.5em;
-    cursor: pointer;
-    color: #999;
-    padding: 0 5px;
-    line-height: 1;
+    font-weight: bold;
+    padding: 0 10px;
 }
-.tooltip-toggle-btn:hover, .tooltip-close-btn:hover {
-    color: #333;
-}
-.tooltip-content-wrapper {
-    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
-    max-height: 500px; /* Adjust as needed */
-    overflow: hidden;
-}
-.calculation-tooltip.collapsed .tooltip-content-wrapper {
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-}
-.tooltip-body {
-    font-family: monospace;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 15px;
-}
-.tooltip-step {
+.tooltip-matmul-container {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap; /* Allow wrapping for small widths */
-}
-.tooltip-vector {
-    display: flex;
-    gap: 4px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 2px 4px;
-    background-color: #f9f9f9;
-    overflow-x: auto;
-}
-.tooltip-element {
-    padding: 2px 4px;
-    background-color: #fff;
-    border-radius: 2px;
-}
-.tooltip-element.source {
-    background-color: var(--highlight-source-bg);
-}
-.tooltip-op {
-    font-weight: bold;
-}
-.tooltip-result {
-    padding: 2px 6px;
-    border-radius: 4px;
-    background-color: var(--highlight-target-bg);
-    border: 1px solid var(--highlight-target-border);
-    color: var(--highlight-target-color);
-    font-weight: bold;
-}
-.tooltip-explanation {
-    margin-top: 10px;
-    font-style: italic;
-    color: #666;
-    font-size: 0.9em;
-    font-family: sans-serif;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
-/* [ADDED] Styles for detailed calculation view in tooltip */
-.tooltip-calculation-detail {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid #eee;
-}
-.tooltip-calc-title {
-    font-weight: bold;
-    font-size: 0.9em;
-    color: #333;
-    margin-bottom: 8px;
-    font-family: sans-serif;
-}
-.tooltip-calc-equation {
-    font-family: monospace;
-    font-size: 0.95em;
-    color: #555;
-    background-color: #f8f9fa;
-    padding: 10px;
-    border-radius: 6px;
-    overflow-x: auto;
-    white-space: pre;
-}
-.tooltip-calc-equation .op {
-    color: #c0392b;
-    font-weight: bold;
-}
-.tooltip-calc-equation .result {
-    font-weight: bold;
-    color: var(--highlight-target-color);
-}
-.tooltip-calc-equation .ellipsis {
-    color: #999;
-}
-
-
-/* [NEW] Styles for EmbeddingLookup Component */
-.embedding-lookup-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-    width: 100%;
-    position: relative;
-    padding: 10px;
-    box-sizing: border-box;
-}
-/* [ADDED] Vertical layout for embedding lookup */
-.embedding-lookup-container.vertical {
-    flex-direction: column;
-}
-
-.embedding-lookup-svg {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none; /* Allow clicks to pass through */
-    z-index: 1;
-}
-.embedding-lookup-svg path {
-    fill: none;
-    stroke-width: 2px;
-    stroke: var(--arrow-color);
-    stroke-dasharray: 5 5;
-    transition: all 0.3s ease;
-}
-.embedding-lookup-svg path.highlighted {
-    stroke: var(--highlight-target-border);
-    stroke-width: 3px;
-    stroke-dasharray: none;
-}
-
-.embedding-lookup-column {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    align-items: center;
+/* [NEW] Split pane separator style */
+.split-pane-separator {
+    width: 8px;
+    background-color: #e4e7ed;
+    cursor: col-resize;
     flex-shrink: 0;
+    z-index: 10;
+    transition: background-color 0.2s ease;
 }
-.embedding-lookup-vocab {
-    flex-grow: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-width: 0; /* Allow shrinking */
+.split-pane-separator:hover {
+    background-color: #409eff;
 }
+
 /*// END OF FILE: src/App.css*/

@@ -11,7 +11,7 @@ interface MatrixProps {
   data: MatrixType;
   highlight: HighlightState;
   onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
-  sideLabel?: boolean; // [ADDED] For alternative label positioning
+  sideLabel?: boolean; // For explicit side-labeling when not in a vertical row
 }
 
 export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick, sideLabel = false }) => {
@@ -84,23 +84,21 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
       </div>
   );
 
-  if (sideLabel) {
-    return (
-       <div className="matrix-wrapper side-label" data-name={name}>
-          <div className="matrix-label-side">
-              <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
-          </div>
-          {matrixGrid}
-       </div>
-    );
-  }
-
+  // [MODIFIED] Always render both label structures and let CSS handle visibility
+  // The `side-label` class here is for explicit override when needed.
   return (
-    <div className="matrix-wrapper" data-name={name}>
-      {matrixGrid}
-      <div className="matrix-label-container">
-        <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
-      </div>
+    <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`} data-name={name}>
+        {/* Side label (hidden by default, shown via CSS context) */}
+        <div className="matrix-label-side">
+            <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
+        </div>
+
+        {matrixGrid}
+
+        {/* Bottom label (shown by default, hidden via CSS context) */}
+        <div className="matrix-label-container">
+            <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
+        </div>
     </div>
   );
 };

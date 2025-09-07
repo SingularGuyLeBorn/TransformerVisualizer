@@ -26,11 +26,12 @@ const AttentionVariantViz: React.FC<{
     const headData = variantData.heads[0];
     const { d_model, d_head, seq_len, n_q_heads } = dims;
 
-    // [MODIFIED] Stricter layout breaking rules for viz column (threshold = 15)
-    const break_qkv_proj = (d_model + d_head) > 15;
-    const break_scores = (d_head + seq_len) > 15;
-    const break_output = (seq_len + d_head) > 15;
-    const break_final = (n_q_heads * d_head + d_model) > 15;
+    // [MODIFIED] Layout breaking logic now sums the columns of ALL matrices in the row for more accurate wrapping.
+    const threshold = 15;
+    const break_qkv_proj = (d_model + d_head + d_head) > threshold;
+    const break_scores = (d_head + seq_len + seq_len) > threshold;
+    const break_output = (seq_len + d_head + d_head) > threshold;
+    const break_final = (n_q_heads * d_head + d_model + d_model) > threshold;
 
     const q_head_name = `${variantName}.heads.0.Q`;
     const k_head_name = `${variantName}.heads.0.K`;

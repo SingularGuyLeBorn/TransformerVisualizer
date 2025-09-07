@@ -14,7 +14,7 @@ interface InteractiveSymbolicMatrixProps {
   onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
   transpose?: boolean;
   isPlaceholder?: boolean;
-  sideLabel?: boolean; // [ADDED] For alternative label positioning
+  sideLabel?: boolean; // For explicit side-labeling
 }
 
 export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps> = React.memo(({ name, rows, cols, highlight, onSymbolClick, transpose = false, isPlaceholder = false, sideLabel = false }) => {
@@ -45,7 +45,6 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
 
   const subscriptParts = [];
   if (symbol.subscript) subscriptParts.push(symbol.subscript);
-  // [FIXED] Used double backslash for \times to prevent JS escape sequence issues
   subscriptParts.push(`${rows} \\times ${cols}`);
   mathSymbol += `_{${subscriptParts.join(',')}}`;
 
@@ -89,19 +88,12 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
     </div>
   );
 
-  if (sideLabel) {
-    return (
-       <div className="matrix-wrapper side-label">
+  // [MODIFIED] Always render both label structures and let CSS handle visibility
+  return (
+    <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`}>
         <div className="matrix-label-side"><InlineMath math={`${mathSymbol}`} /></div>
         {matrixGrid}
-       </div>
-    );
-  }
-
-  return (
-    <div className="matrix-wrapper">
-      <div className="matrix-label"><InlineMath math={`${mathSymbol}`} /></div>
-      {matrixGrid}
+        <div className="matrix-label"><InlineMath math={`${mathSymbol}`} /></div>
     </div>
   );
 });

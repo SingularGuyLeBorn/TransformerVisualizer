@@ -1,12 +1,12 @@
 // FILE: src/topics/transformer-explorer/TransformerExplorerTopic.tsx
-import React, { useState, useCallback, useEffect } from 'react';
-
-// [FIXED] 路径已更新，指向当前专题内的文件
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import './TransformerExplorerTopic.css';
 import { Controls } from './components/Controls';
 import { Viz } from './components/Viz';
 import { Explanation } from './components/Explanation';
 import { CalculationTooltip } from './components/CalculationTooltip';
 import { useTransformer } from './hooks/useTransformer';
+import { useSplitPane } from '../../hooks/useSplitPane';
 import { ElementIdentifier, HighlightSource, HighlightState, TransformerData, TooltipState, Matrix, CalculationComponent } from './types';
 import { MATRIX_NAMES } from './config/matrixNames';
 import { getSymbolParts } from './config/symbolMapping';
@@ -117,40 +117,85 @@ const getMatrixByName = (name: string, data: TransformerData, l: number, h: numb
 }
 
 const generateTooltipData = (element: ElementIdentifier, transformerData: TransformerData, sources: HighlightSource[]): TooltipState | null => {
-    const { name, row, col } = element;
+    const { name, row, col, isInternal } = element;
     const [layerIdx, headIdx] = getLayerAndHeadIndices(name);
     let opType: TooltipState['opType'] = 'info';
     let steps: TooltipState['steps'] = [];
-    const targetMatrix = getMatrixByName(name, transformerData, layerIdx, headIdx);
+
+    const baseName = isInternal ? name.replace('.internal', '') : name;
+    const targetMatrix = getMatrixByName(baseName, transformerData, layerIdx, headIdx);
     const targetValue = targetMatrix?.[row]?.[col] ?? 0;
 
-    if (sources.length === 2 && sources[0].highlightRow && sources[1].highlightCol) {
-        opType = 'matmul';
-        const source1 = sources[0];
-        const source2 = sources[1];
-        const matrixA = getMatrixByName(source1.name, transformerData, layerIdx, headIdx);
-        const matrixB = getMatrixByName(source2.name, transformerData, layerIdx, headIdx);
-        if (matrixA && matrixB && matrixA[source1.row] && matrixB.length > 0 && matrixB[0].length > source2.col) {
-            const vecA = matrixA[source1.row];
-            const vecB = matrixB.map(r => r[source2.col]);
+    const matmulSourceRow = sources.find(s => s.highlightRow && !s.highlightCol);
+    const matmulSourceCol = sources.find(s => s.highlightCol && !s.highlightRow);
+    const addSources = sources.filter(s => !s.highlightRow && !s.highlightCol);
+
+    // Wx+b Check (e.g., FFN layers)
+    if (matmulSourceRow && matmulSourceCol && addSources.length > 0) {
+        opType = 'add'; // The final operation is an add
+        const matmulMatrixA = getMatrixByName(matmulSourceRow.name, transformerData, layerIdx, headIdx);
+        const matmulMatrixB = getMatrixByName(matmulSourceCol.name, transformerData, layerIdx, headIdx);
+        const biasSource = addSources[0];
+        const biasMatrix = getMatrixByName(biasSource.name, transformerData, layerIdx, headIdx);
+
+        if (matmulMatrixA && matmulMatrixB && biasMatrix) {
+            // Step 1: Matmul
+            const vecA = matmulMatrixA[matmulSourceRow.row];
+            const vecB = matmulMatrixB.map(r => r[matmulSourceCol.col]);
+            const matmulResult = vecA.reduce((sum, val, i) => sum + val * vecB[i], 0);
             const components: CalculationComponent[] = vecA.map((val, i) => ({ a: val, b: vecB[i] }));
-            steps.push({ a: vecA, b: vecB, op: '·', result: targetValue, aSymbol: getSymbolParts(source1.name).base, bSymbol: getSymbolParts(source2.name).base, components });
+            steps.push({ title: "Step 1: Matmul", a: vecA, b: vecB, op: '·', result: matmulResult, aSymbol: getSymbolParts(matmulSourceRow.name).base, bSymbol: getSymbolParts(matmulSourceCol.name).base, components });
+
+            // Step 2: Add bias
+            const biasValue = biasMatrix[biasSource.row][biasSource.col];
+            steps.push({ title: "Step 2: Add Bias", a: [matmulResult], b: [biasValue], op: '+', result: targetValue, aSymbol: "Matmul Result", bSymbol: getSymbolParts(biasSource.name).base });
         }
-    } else if (sources.length === 2 && !sources[0].highlightRow && !sources[1].highlightRow) {
+    // Pure Matmul Check
+    } else if (matmulSourceRow && matmulSourceCol) {
+        opType = 'matmul';
+        const matrixA = getMatrixByName(matmulSourceRow.name, transformerData, layerIdx, headIdx);
+        const matrixB = getMatrixByName(matmulSourceCol.name, transformerData, layerIdx, headIdx);
+        if (matrixA && matrixB) {
+            const vecA = matrixA[matmulSourceRow.row];
+            const vecB = matrixB.map(r => r[matmulSourceCol.col]);
+            const components: CalculationComponent[] = vecA.map((val, i) => ({ a: val, b: vecB[i] }));
+            steps.push({ a: vecA, b: vecB, op: '·', result: targetValue, aSymbol: getSymbolParts(matmulSourceRow.name).base, bSymbol: getSymbolParts(matmulSourceCol.name).base, components });
+        }
+    // Pure Element-wise Add Check (e.g., Residual connections)
+    } else if (addSources.length >= 2) {
         opType = 'add';
-        const source1 = sources[0];
-        const source2 = sources[1];
-        const matrixA = getMatrixByName(source1.name, transformerData, layerIdx, headIdx);
-        const matrixB = getMatrixByName(source2.name, transformerData, layerIdx, headIdx);
-        if (matrixA && matrixB && matrixA[source1.row]?.[source1.col] !== undefined && matrixB[source2.row]?.[source2.col] !== undefined) {
-            const valA = matrixA[source1.row][source1.col];
-            const valB = matrixB[source2.row][source2.col];
-            const components: CalculationComponent[] = [{ a: valA, b: valB }];
-            steps.push({ a: [valA], b: [valB], op: '+', result: targetValue, aSymbol: getSymbolParts(source1.name).base, bSymbol: getSymbolParts(source2.name).base, components });
+        const vals = addSources.map(s => getMatrixByName(s.name, transformerData, layerIdx, headIdx)?.[s.row]?.[s.col] ?? 0);
+        if(vals.length >= 2) {
+             steps.push({ a: [vals[0]], b: [vals[1]], op: '+', result: targetValue, aSymbol: getSymbolParts(addSources[0].name).base, bSymbol: getSymbolParts(addSources[1].name).base });
         }
+    // Internal Element-wise Op Check (Softmax/ReLU)
+    } else if (isInternal) {
+         const sourceName = sources[0].name;
+         const sourceMatrix = getMatrixByName(sourceName, transformerData, layerIdx, headIdx);
+         if (sourceMatrix) {
+            const vecA = sourceMatrix[row];
+            if (baseName.includes('AttentionWeights')) {
+                opType = 'softmax';
+                steps.push({ a: vecA, b: [], op: 'softmax', result: targetValue, aSymbol: getSymbolParts(sourceName).base, bSymbol: '' });
+            } else if (baseName.includes('Activated')) {
+                opType = 'relu';
+                steps.push({ a: vecA, b: [], op: 'relu', result: targetValue, aSymbol: getSymbolParts(sourceName).base, bSymbol: '' });
+            }
+         }
     }
+
     if (steps.length === 0) return null;
-    return { target: element, opType, steps, title: `Calculation for ${getSymbolParts(name).base}[${row},${col}]`, initialPosition: { x: 0, y: 0 } };
+
+    const symbol = getSymbolParts(baseName);
+    element.symbol = `${symbol.base}${symbol.subscript ? `_{${symbol.subscript}}` : ''}${symbol.superscript ? `^{${symbol.superscript}}` : ''}`;
+
+    return {
+        target: element,
+        opType,
+        steps,
+        title: `Calculation for ${element.symbol}[${row},${col}]`,
+        initialPosition: { x: 0, y: 0 }
+    };
 };
 
 const createBackwardHighlight = (element: ElementIdentifier, transformerData: TransformerData, dims: any): { highlight: HighlightState } => {
@@ -284,6 +329,8 @@ export const TransformerExplorerTopic: React.FC = () => {
     const [highlight, setHighlight] = useState<HighlightState>({ target: null, sources: [], destinations: [], activeComponent: null, activeResidual: null });
     const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
+    const { primarySize, separatorProps, containerProps } = useSplitPane(window.innerWidth * 0.55);
+
     const transformerData: TransformerData | null = useTransformer(inputText, dims);
 
     useEffect(() => {
@@ -300,13 +347,9 @@ export const TransformerExplorerTopic: React.FC = () => {
     const handleInteraction = useCallback((element: ElementIdentifier, event: React.MouseEvent) => {
         if (!transformerData) return;
         const { highlight: newHighlight } = createBackwardHighlight(element, transformerData, dims);
-
-        let newTooltip: TooltipState | null = null;
-        if (newHighlight.target && newHighlight.sources.length > 0 && !newHighlight.target.isInternal) {
-            newTooltip = generateTooltipData(element, transformerData, newHighlight.sources);
-        }
-
         setHighlight(newHighlight);
+
+        const newTooltip = generateTooltipData(element, transformerData, newHighlight.sources);
         setTooltip(newTooltip);
     }, [transformerData, dims]);
 
@@ -331,10 +374,10 @@ export const TransformerExplorerTopic: React.FC = () => {
   };
 
     return (
-        <div className="main-layout" style={{padding: '0', gap: '0', height: '100%'}}>
+        <div className="main-layout" {...containerProps} style={{padding: '0', gap: '0', height: '100%'}}>
             {tooltip && <CalculationTooltip tooltip={tooltip} onClose={closeTooltip} />}
             <Controls dims={dims} setDims={setDims} inputText={inputText} setInputText={setInputText}/>
-            <div className="column left-column" style={{borderRadius: '0', boxShadow: 'none'}}>
+            <div className="column left-column" style={{width: primarySize, flex: 'none', borderRadius: '0', boxShadow: 'none'}}>
                 <div className="column-content">
                     <h2>模型结构与数据流</h2>
                     <p style={{textAlign: 'center', margin: '-10px 0 15px 0', fontSize: '0.9em', color: '#555'}}>
@@ -348,7 +391,8 @@ export const TransformerExplorerTopic: React.FC = () => {
                     />
                 </div>
             </div>
-            <div className="column right-column" style={{borderRadius: '0', boxShadow: 'none'}}>
+            <div className="split-pane-separator" {...separatorProps} />
+            <div className="column right-column" style={{flex: 1, borderRadius: '0', boxShadow: 'none'}}>
                 <div className="column-content">
                     <h2>数学原理详解</h2>
                     <Explanation

@@ -16,7 +16,6 @@
   --residual-border: #dce775;
 
   /* Highlighting */
-  /* [MODIFIED] Changed to softer, semi-transparent colors for better aesthetics */
   --highlight-target-bg: rgba(230, 57, 70, 0.15);
   --highlight-target-color: #d63031;
   --highlight-target-border: #e63946;
@@ -60,122 +59,150 @@ h1 {
   padding: 20px 0;
   background-color: var(--component-bg);
   border-bottom: 1px solid var(--border-color);
-  flex-shrink: 0; /* Prevent title from shrinking */
+  flex-shrink: 0;
 }
 
-.main-layout {
-  display: flex;
-  gap: 20px;
-  flex-grow: 1; /* Allow layout to fill remaining space */
-  overflow: hidden;
-  padding: 20px;
-  min-height: 0; /* Important for flex children scrolling */
-  position: relative; /* [ADDED] Needed for positioning the tooltip */
-}
 
-.column {
-  flex: 1;
-  background: var(--component-bg);
-  border-radius: 12px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-  overflow-y: auto; /* THIS IS THE KEY FOR SCROLLING */
-  min-height: 0;
-  min-width: 0; /* [ADDED] Critical fix for responsive overflow */
-}
-
-.column-content {
-  padding: 20px;
-}
-
-.column.left-column {
-  flex: 1.4;
-}
-
-.column h2 {
-  font-size: 1.6em;
-  margin: -20px -20px 20px -20px;
-  padding: 20px 20px 15px 20px;
-  text-align: center;
-  color: #000;
-  position: sticky;
-  top: -21px; /* Adjust to hide top border */
-  background: inherit;
-  z-index: 10;
-  border-bottom: 1px solid var(--border-color);
-  border-radius: 12px 12px 0 0;
-}
-
-/* --- Left Column: Viz --- */
-.diagram-component {
-  border: 2px solid var(--border-color);
-  border-radius: 10px;
-  margin-bottom: 15px;
-  background-color: #fdfdfd;
-  transition: all 0.3s ease;
-}
-/* [MODIFIED] Style for component click-to-scroll */
-.diagram-component .component-header {
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-.diagram-component .component-header:hover {
-    background-color: #f0f2f5;
-}
-.diagram-component.active {
-    border-color: var(--highlight-formula-border) !important;
-    box-shadow: 0 0 30px var(--highlight-formula-bg) !important;
-    transform: scale(1.01);
-}
-
-.component-header {
-  background-color: var(--component-header-bg);
-  padding: 8px 15px;
-  font-weight: bold;
-  font-size: 1.1em;
-  border-bottom: 1px solid var(--border-color);
-  border-radius: 8px 8px 0 0;
-}
-.component-body {
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 15px;
-  width: 100%; /* [ADDED] Critical fix for child element scrolling */
-  box-sizing: border-box; /* Ensure padding is included in the width */
-}
-
-.arrow-down {
-  width: 100%;
-  text-align: center;
-  font-size: 24px;
-  color: var(--arrow-color);
-  margin: 5px 0;
-}
-
-/* --- Matrix Styles --- */
-
-.matrix-wrapper {
-    position: relative;
-    display: inline-flex;
+/* [NEW] Generic styles for draggable/resizable panels */
+.resizable-panel {
+    position: absolute;
+    background-color: var(--component-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    overflow: hidden;
+    display: flex;
     flex-direction: column;
+}
+.panel-header {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    vertical-align: middle; /* 改善在 flex 布局行中的对齐 */
+    border-bottom: 1px solid #eee;
+    padding: 8px 15px;
+    margin: 0;
+    cursor: move;
+    background-color: var(--component-header-bg);
+    flex-shrink: 0;
+}
+.panel-title {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+.panel-toggle-btn, .tooltip-close-btn, .tooltip-toggle-btn {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: #999;
+    padding: 0 5px;
+    line-height: 1;
+}
+.panel-toggle-btn:hover, .tooltip-close-btn:hover, .tooltip-toggle-btn:hover {
+    color: #333;
+}
+.resize-handle {
+    position: absolute;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+.resizable-panel:hover .resize-handle {
+    opacity: 1;
+}
+.resize-handle.br { right: 0; bottom: 0; width: 15px; height: 15px; cursor: nwse-resize; }
+.resize-handle.t { top: 0; left: 5px; right: 5px; height: 5px; cursor: ns-resize; }
+.resize-handle.r { top: 5px; right: 0; bottom: 5px; width: 5px; cursor: ew-resize; }
+.resize-handle.b { bottom: 0; left: 5px; right: 5px; height: 5px; cursor: ns-resize; }
+.resize-handle.l { top: 5px; left: 0; bottom: 5px; width: 5px; cursor: ew-resize; }
+
+
+/* Specific overrides for Controls Panel */
+.controls-panel .panel-header {
+    padding: 5px;
+}
+.controls-panel .panel-toggle-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+}
+.controls-panel.collapsed {
+    padding: 0;
+    min-width: 50px;
+    min-height: 50px;
+    width: 50px !important;
+    height: 50px !important;
+    transition: width 0.3s ease, height 0.3s ease;
+}
+.controls-panel.collapsed .resize-handle {
+    display: none;
+}
+.controls-container {
+    padding: 20px;
+    flex-grow: 1;
+    overflow-y: auto;
 }
 
-.matrix-container {
-  display: inline-block;
-  border: 1px solid #ccc;
-  padding: 5px;
-  border-radius: 4px;
-  background-color: #f9f9f9;
+/* Specific overrides for Calculation Tooltip */
+.calculation-tooltip .panel-header {
+    cursor: move;
 }
-.matrix-grid {
-  display: grid;
-  gap: 3px;
+.calculation-tooltip.collapsed {
+    height: auto !important;
+}
+.calculation-tooltip.collapsed .tooltip-content-wrapper {
+    max-height: 0;
+    overflow: hidden;
+}
+.tooltip-content-wrapper {
+    flex-grow: 1;
+    overflow-y: auto;
+    transition: max-height 0.3s ease-in-out;
+    max-height: 1000px;
+}
+.tooltip-body {
+    padding: 15px;
 }
 
-.matrix-element {
+/* [NEW] Styles for upgraded tooltip content */
+.tooltip-step-container {
+    padding: 10px 0;
+    border-bottom: 1px dashed #eee;
+}
+.tooltip-step-container:last-child {
+    border-bottom: none;
+}
+.tooltip-step-title {
+    font-family: sans-serif;
+    font-size: 1em;
+    font-weight: bold;
+    color: #333;
+    margin: -10px 0 10px 0;
+}
+.tooltip-vector-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 5px 0;
+}
+.tooltip-symbol {
+    font-family: 'Times New Roman', serif;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+.tooltip-vector {
+    display: flex;
+    gap: 3px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px;
+    background-color: #f9f9f9;
+    overflow-x: auto;
+}
+.tooltip-vector.column {
+    flex-direction: column;
+}
+.tooltip-element {
   width: 45px;
   height: 25px;
   display: flex;
@@ -186,763 +213,38 @@ h1 {
   border-radius: 2px;
   font-family: monospace;
   font-size: 0.8em;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  position: relative;
-  z-index: 2;
-  font-weight: normal; /* 确保不加粗 */
+  transition: all 0.2s ease;
 }
-
-/* [ADDED] Styling for ellipsis cell in matrix grid */
-.matrix-ellipsis {
-    width: 45px;
-    height: 25px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: #aaa;
-    font-size: 1.2em;
-    font-family: monospace;
-}
-
-
-.matrix-element:hover {
-  transform: scale(1.1);
-  border-color: #007bff;
-  box-shadow: 0 0 5px rgba(0,123,255,0.5);
-  z-index: 5;
-}
-
-/* [MODIFIED] Updated highlighting styles */
-.matrix-element.source {
-  background-color: var(--highlight-source-bg);
-  color: var(--highlight-source-color);
-  border: 1.5px solid var(--highlight-source-border);
-}
-.matrix-element.target {
-  background-color: var(--highlight-target-bg);
-  color: var(--highlight-target-color);
-  border: 1.5px solid var(--highlight-target-border);
-}
-
-/* [NEW] Style for highlighting the max probability in a row */
-.matrix-element.prob-max {
-    box-shadow: 0 0 8px 2px var(--highlight-target-border);
-    font-weight: bold;
-    transform: scale(1.15);
-    z-index: 6;
-}
-
-.matrix-element.destination {
-  background-color: var(--highlight-formula-bg);
-  border: 1px solid var(--highlight-formula-border);
-}
-
-.matrix-label-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    margin-top: 8px;
-}
-
-.matrix-label {
-  text-align: center;
-  font-weight: bold;
-  font-family: monospace;
-  font-size: 1.1em;
-  margin: 0;
-}
-
-.matrix-symbol-tag {
-    background-color: #e9ecef;
-    color: #495057;
-    padding: 3px 7px;
-    border-radius: 5px;
-    font-size: 1.1em;
-    border: 1px solid #ced4da;
-    line-height: 1;
-    font-family: 'Times New Roman', serif;
-}
-
-
-.op-symbol {
-    font-size: 2em;
-    font-weight: bold;
-    color: #909399;
-    align-self: center; /* [ADDED] Better alignment in flex */
-}
-
-/* [REMOVED] Old absolute positioned header styles */
-/*
-.matrix-col-headers { ... }
-.matrix-row-headers { ... }
-*/
-
-/* [MODIFIED] Styles for Matrix Index Headers integrated into the grid */
-.matrix-header-item {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: #f0f2f5;
-    color: #909399;
-    font-family: monospace;
-    font-size: 0.8em;
-    font-weight: bold;
-    border-radius: 2px;
-    padding: 2px;
-    box-sizing: border-box;
-    min-height: 15px; /* For column headers */
-}
-
-.symbolic-header-item {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background-color: transparent;
-    color: #909399;
-    font-family: monospace;
-    font-size: 0.8em;
-    font-weight: bold;
-}
-
-
-/* --- Right Column: Explanation --- */
-.math-block {
-  margin-bottom: 25px;
-  padding: 20px;
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
-  background: #fff;
-  transition: all 0.3s ease;
-}
-.math-block.active {
-  border-color: var(--highlight-formula-border) !important;
-  box-shadow: 0 0 30px var(--highlight-bg) !important;
-  transform: scale(1.01);
-  background-color: var(--highlight-formula-bg);
-}
-.math-block h3 {
-  margin: -20px -20px 15px -20px;
-  padding: 15px 20px;
-  font-size: 1.25em;
-  color: #000;
-  border-bottom: 1px solid #eee;
-  border-radius: 12px 12px 0 0;
-  background-color: var(--component-header-bg);
-}
-.math-block p, .math-block li, .math-block h5 {
-    line-height: 1.7;
-    margin-top: 0.5em; /* [MODIFIED] Reduced top margin for tighter layout */
-    margin-bottom: 0.5em;
-}
-.math-block h5 {
-    font-size: 1.1em;
-    margin-top: 1.5em;
-    margin-bottom: 0.5em;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 5px;
-}
-.math-block code {
-   background-color: #e9ecef;
-   padding: 2px 5px;
-   border-radius: 4px;
-   font-family: monospace;
-}
-
-.formula-display {
-    display: flex;
-    justify-content: flex-start; /* Aligned to left for better scroll */
-    align-items: center;
-    gap: 15px;
-    overflow-x: auto; /* CRITICAL FIX: Allow horizontal scrolling */
-    margin: 20px 0;
-    padding: 15px 10px;
-    background-color: rgba(0,0,0,0.02);
-    border-radius: 8px;
-    flex-wrap: wrap; /* [MODIFIED] Allow wrapping by default */
-}
-.formula-display > * {
-    flex-shrink: 0; /* CRITICAL FIX: Prevent items from shrinking */
-}
-.formula-display.vertical {
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-}
-.formula-display.vertical .viz-formula-row {
-    justify-content: flex-start;
-}
-
-.katex-display {
-    margin: 0.5em 0 !important; /* [MODIFIED] Added vertical margin for better spacing */
-}
-
-.matrix-scroll-wrapper {
-    overflow-x: auto;
-    padding: 5px;
-    flex-shrink: 0; /* Changed from 1 to 0 */
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-/* Symbolic Matrix & Highlighting */
-.symbolic-matrix-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-}
-.symbolic-matrix-grid {
-    display: grid;
-    gap: 2px;
-    padding: 5px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background-color: #f9f9f9;
-}
-.symbolic-element, .symbolic-ellipsis {
-    min-width: 60px;
-    min-height: 30px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 0.9em;
-    border-radius: 2px;
-    background-color: #fff;
-    border: 1px solid #e0e0e0;
-    transition: all 0.2s ease-in-out;
-}
-.symbolic-ellipsis {
-    border-style: dashed;
-    color: #aaa;
-}
-.symbolic-element.source {
-  background-color: var(--highlight-source-bg);
-  border-color: var(--highlight-source-border);
-}
-.symbolic-element.target {
-  background-color: var(--highlight-target-bg);
-  border-color: var(--highlight-target-border);
-}
-.symbolic-element.destination {
+.tooltip-element.highlight {
     background-color: var(--highlight-formula-bg);
     border-color: var(--highlight-formula-border);
+    transform: scale(1.1);
 }
-
-
-/* Controls */
-.controls-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 15px 20px;
-  background-color: var(--component-bg);
-  border-bottom: 1px solid var(--border-color);
-  gap: 20px; /* Reduced gap */
-  flex-wrap: wrap; /* Allow wrapping */
-  flex-shrink: 0;
-}
-.control-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.control-group label {
-  font-size: 0.9em;
-  margin-bottom: 5px;
-  color: #606266;
-}
-.control-group input[type="number"] {
-  width: 60px;
-  padding: 6px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  text-align: center;
-  font-size: 1em;
-}
-.control-group input[type="text"] {
-    width: 250px;
-    padding: 6px 8px;
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    font-size: 1em;
-}
-
-.d_k-value {
-    width: 60px;
-    padding: 6px;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    text-align: center;
-    font-size: 1em;
-    font-weight: bold;
-    background-color: #f0f2f5;
-}
-
-/* [MODIFIED] Fixed Controls Panel in top-right */
-.controls-panel {
-    position: fixed; /* Changed from absolute to fixed */
-    top: 85px; /* Position below main title */
-    right: 20px;
-    z-index: 100;
-    background: var(--component-bg);
-    border-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    border: 1px solid var(--border-color);
-    overflow: hidden;
-    transition: width 0.3s ease-in-out, height 0.3s ease-in-out;
-    max-width: 90vw;
-}
-.controls-panel-header {
-    /* No longer draggable */
-    background-color: var(--component-header-bg);
-}
-.controls-panel-header:active {
-    /* No longer draggable */
-    cursor: default;
-}
-.controls-panel.collapsed {
-    width: 50px;
-    height: 50px;
-    padding: 0;
-}
-.controls-toggle-btn {
-    width: 100%;
-    height: 100%;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 24px;
-    color: var(--text-color);
-    transition: transform 0.3s ease;
-}
-.controls-panel.collapsed .controls-toggle-btn {
-    transform: rotate(45deg);
-}
-.controls-panel:not(.collapsed) .controls-toggle-btn {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 30px;
-    height: 30px;
-    font-size: 20px;
-}
-.controls-panel .controls-container {
-    border-bottom: none;
-    padding: 20px;
-    padding-top: 40px;
-    transition: opacity 0.3s ease;
-}
-.controls-panel.collapsed .controls-container {
-    opacity: 0;
-    pointer-events: none;
-}
-
-
-/* [MODIFIED] Grouping and Scrolling Logic */
-.viz-formula-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%; /* Use 100% to enable internal scrolling */
-    max-width: 100%; /* Prevent overflow from parent */
-    overflow-x: auto;
-    padding: 15px 10px;
-    border: 1px solid #eef;
-    border-radius: 8px;
-    background-color: rgba(0,0,0,0.015);
-    gap: 5px; /* Spacing between rows/arrows inside a group */
-    box-sizing: border-box; /* Ensure padding is included in the width */
-}
-.viz-formula-group > * {
-    flex-shrink: 0; /* Ensure content inside does not shrink */
-}
-.viz-formula-row {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    justify-content: center;
-    width: max-content; /* Let the row size to its content */
-    padding: 0 5px; /* Remove vertical padding */
-    flex-wrap: nowrap; /* [MODIFIED] Default to no-wrap */
-}
-.viz-formula-row.vertical {
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-}
-.viz-formula-row > * {
-    flex-shrink: 0;
-}
-
-
-/* Styling for sub-steps in visualization components */
-.viz-step-title {
-    width: 100%;
-    text-align: center;
-    font-weight: bold;
-    color: #606266;
-    margin-top: 10px;
-    margin-bottom: 5px;
-    font-size: 0.9em;
-    border-bottom: 1px solid #eef;
-    padding-bottom: 5px;
-}
-.viz-formula-group .viz-step-title {
-    margin-top: -5px; /* Adjust margin when inside a group */
-    margin-bottom: 10px;
-}
-
-/* [REMOVED] Elementwise Operation Visualization styles are now in topic-specific CSS */
-/*
-.elementwise-op-container { ... }
-.elementwise-op-label { ... }
-.elementwise-op-viz { ... }
-.elementwise-op-function-call { ... }
-.elementwise-op-row { ... }
-.elementwise-op-element { ... }
-.elementwise-op-element.symbolic-ellipsis { ... }
-*/
-
-/* [REMOVED] ElementwiseCalculation styles are now in topic-specific CSS */
-/*
-.elementwise-calc-container { ... }
-.calc-step { ... }
-.calc-label { ... }
-.elementwise-op-element.sum { ... }
-.elementwise-op-element.source, .elementwise-op-element.sum.source { ... }
-.elementwise-op-element.target, .elementwise-op-element.sum.target { ... }
-*/
-
-/* [NEW] Styles for Residual Block */
-.residual-block {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 5px 10px;
-  border: 2px dashed var(--border-color);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  background-color: #fcfcfc;
-}
-.residual-block:hover {
-    border-color: var(--highlight-formula-border);
-    background-color: var(--highlight-formula-bg);
-}
-.residual-icon {
-    font-size: 1.6em;
-    font-weight: bold;
-    color: var(--arrow-color);
-    line-height: 1;
-}
-.residual-info {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    line-height: 1.2;
-}
-.residual-matrix-symbol {
-    font-size: 1.2em;
-}
-.residual-matrix-dims {
-    font-size: 0.8em;
-    color: #666;
-    font-family: monospace;
-}
-.residual-block.active {
-    border-color: var(--highlight-formula-border);
-    border-style: solid;
-    box-shadow: 0 0 15px var(--highlight-formula-bg);
-    transform: scale(1.05);
-}
-.residual-block.active .residual-icon {
-    color: var(--highlight-formula-border);
-}
-
-.add-norm-component-body {
-    flex-direction: column; /* Changed for vertical layout */
-}
-
-.add-norm-inputs {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    flex-wrap: wrap; /* Allow wrapping on small screens */
-}
-
-/* [NEW] Styles for Tokenization and Decoding */
-.token-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 5px;
-    padding: 5px;
-    cursor: pointer;
-    border-radius: 4px;
-    border: 2px solid transparent;
-    transition: all 0.2s ease-in-out;
-}
-.token-container:hover {
-    transform: scale(1.05);
-    background-color: rgba(0,0,0,0.02);
-}
-.token-container.target {
-    border-color: var(--highlight-target-border);
-    background-color: var(--highlight-target-bg);
-}
-.token-container.source {
-    border-color: var(--highlight-source-border);
-    background-color: var(--highlight-source-bg);
-}
-.token-text {
-    padding: 4px 8px;
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    font-family: monospace;
-    font-size: 1.05em;
-    min-width: 25px;
-    text-align: center;
-}
-.token-id {
-    padding: 2px 6px;
-    background-color: #e9ecef;
-    border: 1px solid #ced4da;
-    border-radius: 10px;
-    font-size: 0.8em;
-    color: #495057;
-}
-
-.token-row {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 10px;
-}
-
-.decoding-step {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-}
-.decoding-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    width: 100%;
-}
-.decoding-matrix-wrapper {
-    flex-shrink: 1;
-    min-width: 0;
-}
-.decoding-token-wrapper {
-    flex-shrink: 0;
-}
-
-/* [MODIFIED] Calculation Tooltip now fixed in top-left */
-.calculation-tooltip {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    background-color: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    width: auto;
-    max-width: 500px;
-    font-size: 0.95em;
-    transition: opacity 0.2s ease-in-out, height 0.3s ease;
-    overflow: hidden; /* Important for collapse animation */
-}
-.tooltip-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #eee;
-    padding: 8px 15px;
-    margin: 0;
-    cursor: default; /* No longer draggable */
-}
-.tooltip-header:active {
-    cursor: default; /* No longer draggable */
-}
-.tooltip-title {
-    font-weight: bold;
-    font-size: 1.1em;
-}
-.tooltip-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.tooltip-toggle-btn, .tooltip-close-btn {
-    background: none;
-    border: none;
+.tooltip-op-symbol {
     font-size: 1.5em;
-    cursor: pointer;
-    color: #999;
-    padding: 0 5px;
-    line-height: 1;
+    font-weight: bold;
+    padding: 0 10px;
 }
-.tooltip-toggle-btn:hover, .tooltip-close-btn:hover {
-    color: #333;
-}
-.tooltip-content-wrapper {
-    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
-    max-height: 500px; /* Adjust as needed */
-    overflow: hidden;
-}
-.calculation-tooltip.collapsed .tooltip-content-wrapper {
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-}
-.tooltip-body {
-    font-family: monospace;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 15px;
-}
-.tooltip-step {
+.tooltip-matmul-container {
     display: flex;
     align-items: center;
-    gap: 8px;
-    flex-wrap: wrap; /* Allow wrapping for small widths */
-}
-.tooltip-vector {
-    display: flex;
-    gap: 4px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 2px 4px;
-    background-color: #f9f9f9;
-    overflow-x: auto;
-}
-.tooltip-element {
-    padding: 2px 4px;
-    background-color: #fff;
-    border-radius: 2px;
-}
-.tooltip-element.source {
-    background-color: var(--highlight-source-bg);
-}
-.tooltip-op {
-    font-weight: bold;
-}
-.tooltip-result {
-    padding: 2px 6px;
-    border-radius: 4px;
-    background-color: var(--highlight-target-bg);
-    border: 1px solid var(--highlight-target-border);
-    color: var(--highlight-target-color);
-    font-weight: bold;
-}
-.tooltip-explanation {
-    margin-top: 10px;
-    font-style: italic;
-    color: #666;
-    font-size: 0.9em;
-    font-family: sans-serif;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
-/* [ADDED] Styles for detailed calculation view in tooltip */
-.tooltip-calculation-detail {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid #eee;
-}
-.tooltip-calc-title {
-    font-weight: bold;
-    font-size: 0.9em;
-    color: #333;
-    margin-bottom: 8px;
-    font-family: sans-serif;
-}
-.tooltip-calc-equation {
-    font-family: monospace;
-    font-size: 0.95em;
-    color: #555;
-    background-color: #f8f9fa;
-    padding: 10px;
-    border-radius: 6px;
-    overflow-x: auto;
-    white-space: pre;
-}
-.tooltip-calc-equation .op {
-    color: #c0392b;
-    font-weight: bold;
-}
-.tooltip-calc-equation .result {
-    font-weight: bold;
-    color: var(--highlight-target-color);
-}
-.tooltip-calc-equation .ellipsis {
-    color: #999;
-}
-
-
-/* [NEW] Styles for EmbeddingLookup Component */
-.embedding-lookup-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-    width: 100%;
-    position: relative;
-    padding: 10px;
-    box-sizing: border-box;
-}
-/* [ADDED] Vertical layout for embedding lookup */
-.embedding-lookup-container.vertical {
-    flex-direction: column;
-}
-
-.embedding-lookup-svg {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none; /* Allow clicks to pass through */
-    z-index: 1;
-}
-.embedding-lookup-svg path {
-    fill: none;
-    stroke-width: 2px;
-    stroke: var(--arrow-color);
-    stroke-dasharray: 5 5;
-    transition: all 0.3s ease;
-}
-.embedding-lookup-svg path.highlighted {
-    stroke: var(--highlight-target-border);
-    stroke-width: 3px;
-    stroke-dasharray: none;
-}
-
-.embedding-lookup-column {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    align-items: center;
+/* [NEW] Split pane separator style */
+.split-pane-separator {
+    width: 8px;
+    background-color: #e4e7ed;
+    cursor: col-resize;
     flex-shrink: 0;
+    z-index: 10;
+    transition: background-color 0.2s ease;
 }
-.embedding-lookup-vocab {
-    flex-grow: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-width: 0; /* Allow shrinking */
+.split-pane-separator:hover {
+    background-color: #409eff;
 }
+
 /*// END OF FILE: src/App.css*/
 
 
@@ -1062,6 +364,214 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ children }) => {
 
 export default MarkdownRenderer;
 // END OF FILE: src/components/MarkdownRenderer.tsx
+
+
+================================================================================
+### 文件路径: src/hooks/useDraggableAndResizable.tsx
+================================================================================
+
+// FILE: src/hooks/useDraggableAndResizable.ts
+import { useState, useCallback, useRef, MouseEvent, useEffect } from 'react';
+
+type DragType = 'move' | 'resize-t' | 'resize-r' | 'resize-b' | 'resize-l' | 'resize-br';
+
+interface DragState {
+  type: DragType;
+  startX: number;
+  startY: number;
+  startWidth: number;
+  startHeight: number;
+  startLeft: number;
+  startTop: number;
+}
+
+export const useDraggableAndResizable = (initialState: {
+  width: number;
+  height: number | 'auto';
+  x: number;
+  y: number;
+}, contentRef: React.RefObject<HTMLDivElement>) => {
+  const [size, setSize] = useState<{width: number, height: number | 'auto'}>({ width: initialState.width, height: initialState.height });
+  const [position, setPosition] = useState({ x: initialState.x, y: initialState.y });
+  const observerRef = useRef<ResizeObserver | null>(null);
+
+  const dragState = useRef<DragState | null>(null);
+
+  const disconnectObserver = useCallback(() => {
+    if (observerRef.current) {
+        observerRef.current.disconnect();
+        observerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (size.height === 'auto' && contentRef.current) {
+        disconnectObserver();
+        observerRef.current = new ResizeObserver(entries => {
+            const entry = entries[0];
+            if (entry) {
+                const contentHeight = entry.contentRect.height;
+                setSize(s => ({...s, height: Math.min(contentHeight + 40, 600)}));
+            }
+        });
+        observerRef.current.observe(contentRef.current);
+    }
+    return () => disconnectObserver();
+  }, [contentRef, size.height, disconnectObserver]);
+
+
+  const handleMouseDown = useCallback((e: MouseEvent<HTMLDivElement>, type: DragType) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!contentRef.current) return;
+
+    // Switch to numeric height for resizing calculations
+    const currentHeight = typeof size.height === 'number' ? size.height : contentRef.current.offsetHeight;
+    // [FIXED] Correctly check the value, not the typeof
+    if (size.height === 'auto') {
+        setSize(s => ({...s, height: currentHeight}));
+    }
+
+    dragState.current = {
+      type,
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: contentRef.current.offsetWidth,
+      startHeight: currentHeight,
+      startLeft: position.x,
+      startTop: position.y,
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [size, position, contentRef]);
+
+  const handleMouseMove = useCallback((e: globalThis.MouseEvent) => {
+    if (!dragState.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const dx = e.clientX - dragState.current.startX;
+    const dy = e.clientY - dragState.current.startY;
+    const { type, startWidth, startHeight, startLeft, startTop } = dragState.current;
+
+    let newWidth = startWidth;
+    let newHeight = startHeight;
+    let newX = startLeft;
+    let newY = startTop;
+
+    if (type === 'move') {
+      newX = startLeft + dx;
+      newY = startTop + dy;
+    } else {
+        if (type.includes('r')) newWidth = startWidth + dx;
+        if (type.includes('l')) {
+            newWidth = startWidth - dx;
+            newX = startLeft + dx;
+        }
+        if (type.includes('b')) newHeight = startHeight + dy;
+        if (type.includes('t')) {
+            newHeight = startHeight - dy;
+            newY = startTop + dy;
+        }
+    }
+
+    if (newWidth < 200) {
+        if(type.includes('l')) newX = position.x;
+        newWidth = 200;
+    }
+    if (newHeight < 100) {
+        if(type.includes('t')) newY = position.y;
+        newHeight = 100;
+    }
+
+    setSize({ width: newWidth, height: newHeight });
+    setPosition({ x: newX, y: newY });
+
+  }, [position.x, position.y]);
+
+  const handleMouseUp = useCallback(() => {
+    dragState.current = null;
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  }, []);
+
+  return {
+    size,
+    position,
+    dragHandleProps: { onMouseDown: (e: MouseEvent<HTMLDivElement>) => handleMouseDown(e, 'move') },
+    resizeHandleProps: {
+        br: { onMouseDown: (e: MouseEvent<HTMLDivElement>) => handleMouseDown(e, 'resize-br') },
+        r: { onMouseDown: (e: MouseEvent<HTMLDivElement>) => handleMouseDown(e, 'resize-r') },
+        b: { onMouseDown: (e: MouseEvent<HTMLDivElement>) => handleMouseDown(e, 'resize-b') },
+        l: { onMouseDown: (e: MouseEvent<HTMLDivElement>) => handleMouseDown(e, 'resize-l') },
+        t: { onMouseDown: (e: MouseEvent<HTMLDivElement>) => handleMouseDown(e, 'resize-t') },
+    },
+  };
+};
+
+// END OF FILE: src/hooks/useDraggableAndResizable.ts
+
+
+================================================================================
+### 文件路径: src/hooks/useSplitPane.ts
+================================================================================
+
+// FILE: src/hooks/useSplitPane.ts
+import { useState, useCallback, useRef, MouseEvent } from 'react';
+
+export const useSplitPane = (initialPrimarySize: number, minPrimarySize: number = 200, minSecondarySize: number = 200) => {
+    const [primarySize, setPrimarySize] = useState(initialPrimarySize);
+    const separatorRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    const handleMouseDown = useCallback((e: MouseEvent<HTMLDivElement>) => {
+        e.preventDefault();
+
+        const startX = e.clientX;
+        const startSize = primarySize;
+
+        const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
+            if (!containerRef.current) return;
+            const dx = moveEvent.clientX - startX;
+            const containerWidth = containerRef.current.offsetWidth;
+
+            let newPrimarySize = startSize + dx;
+
+            // Enforce min sizes
+            if (newPrimarySize < minPrimarySize) {
+                newPrimarySize = minPrimarySize;
+            }
+            if (containerWidth - newPrimarySize < minSecondarySize) {
+                newPrimarySize = containerWidth - minSecondarySize;
+            }
+
+            setPrimarySize(newPrimarySize);
+        };
+
+        const handleMouseUp = () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+    }, [primarySize, minPrimarySize, minSecondarySize]);
+
+    return {
+        primarySize,
+        separatorProps: {
+            ref: separatorRef,
+            onMouseDown: handleMouseDown,
+        },
+        containerProps: {
+            ref: containerRef,
+        },
+    };
+};
+
+// END OF FILE: src/hooks/useSplitPane.ts
 
 
 ================================================================================
@@ -1337,12 +847,46 @@ export {};
     gap: 20px;
 }
 
+/* [NEW] Styles for explanation subsections */
+.explanation-subsection {
+    width: 100%;
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #f0f2f5;
+    border-radius: 8px;
+    background: #fcfcfc;
+}
+.explanation-subsection h5 {
+    margin-top: 0;
+    font-size: 1.2em;
+    color: #303133;
+    border-bottom: 2px solid #e4e7ed;
+    padding-bottom: 8px;
+}
+.explanation-subsection p, .explanation-subsection li {
+    line-height: 1.7;
+    color: #606266;
+}
+.explanation-subsection code {
+   background-color: #e9ecef;
+   padding: 2px 5px;
+   border-radius: 4px;
+   font-family: monospace;
+}
+.explanation-subsection ul {
+    padding-left: 20px;
+}
+
+
 .attention-calculation-step {
     width: 100%;
     border: 1px solid #eef;
     border-radius: 8px;
     padding: 15px;
     background-color: rgba(0,0,0,0.015);
+    display: flex; /* [ADDED] For centering single matrices */
+    flex-direction: column; /* [ADDED] */
+    align-items: center; /* [ADDED] */
 }
 
 .step-title {
@@ -1382,16 +926,44 @@ export {};
     opacity: 0.3;
 }
 
-/* [NEW] Styles for side-label matrix layout */
-.matrix-wrapper.side-label {
+/* [REWRITTEN] Robust side-label logic using CSS context */
+
+/* Default state: bottom label */
+.matrix-wrapper .matrix-label-side { display: none; }
+.matrix-wrapper .matrix-label,
+.matrix-wrapper .matrix-label-container {
     display: flex;
+}
+
+/* Symbolic matrix needs a separate rule for its bottom label */
+.matrix-wrapper > .matrix-label {
+    margin-top: 8px;
+}
+
+/* Side-label state: triggered by prop OR parent class */
+.matrix-wrapper.side-label,
+.viz-row.vertical .matrix-wrapper,
+.explanation-row.vertical .matrix-wrapper {
+    flex-direction: row;
     align-items: center;
     gap: 12px;
 }
 
-.matrix-label-side {
-    flex-shrink: 0;
+.matrix-wrapper.side-label .matrix-label-side,
+.viz-row.vertical .matrix-wrapper .matrix-label-side,
+.explanation-row.vertical .matrix-wrapper .matrix-label-side {
+    display: flex; /* Show side label */
 }
+
+.matrix-wrapper.side-label .matrix-label-container,
+.viz-row.vertical .matrix-wrapper .matrix-label-container,
+.explanation-row.vertical .matrix-wrapper .matrix-label-container,
+.matrix-wrapper.side-label > .matrix-label, /* Target symbolic matrix bottom label */
+.viz-row.vertical .matrix-wrapper > .matrix-label,
+.explanation-row.vertical .matrix-wrapper > .matrix-label {
+    display: none; /* Hide bottom label */
+}
+
 
 /* [NEW] Styles for Elementwise Operation Visualization */
 .elementwise-op-container {
@@ -1475,6 +1047,97 @@ export {};
     color: var(--highlight-target-color) !important;
     border-color: var(--highlight-target-border) !important;
 }
+
+/* [NEW] Styles for Calculation Tooltip - specific to this topic */
+.tooltip-matmul-container {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* [NEW] Styles for Summary Table */
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 0.95em;
+}
+
+.summary-table th, .summary-table td {
+    border: 1px solid #dcdfe6;
+    padding: 12px 10px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.summary-table th {
+    background-color: #f5f7fa;
+    font-weight: bold;
+    color: #303133;
+}
+
+.summary-table tbody tr:nth-child(even) {
+    background-color: #fdfdfd;
+}
+
+.summary-table td:first-child {
+    font-weight: bold;
+    min-width: 120px;
+}
+
+/* [ADDED & MODERNIZED] Styles for Controls panel in this topic */
+.controls-container {
+    display: flex;
+    flex-direction: column;
+    gap: 18px; /* More vertical space */
+    padding: 20px;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.control-group {
+    display: flex;
+    justify-content: space-between; /* Label on left, input on right */
+    align-items: center;
+    width: 100%;
+}
+
+.control-group label {
+    font-size: 0.95em;
+    color: #495057; /* Darker, more professional gray */
+    font-weight: 500; /* Medium weight */
+    flex-shrink: 0;
+    padding-right: 15px; /* Space between label and input */
+    text-align: left;
+}
+
+/* Common styles for number inputs and the d_model display */
+.control-group input[type="number"],
+.control-group .d_k-value {
+    width: 80px; /* Align the number inputs and the d_k value */
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px; /* Slightly more rounded */
+    font-size: 1em;
+    text-align: center;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.control-group input:focus {
+    outline: none;
+    border-color: #409eff; /* Accent color on focus */
+    box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.2); /* Subtle glow */
+}
+
+.d_k-value {
+    font-weight: 600; /* Bolder */
+    background-color: #f0f2f5; /* Subtle background */
+    color: #303133;
+    border-color: #e4e7ed;
+}
+
 /* END OF FILE: src/topics/attention-variants/AttentionVariantsTopic.css */
 
 
@@ -1488,51 +1151,141 @@ import './AttentionVariantsTopic.css';
 import { Controls } from './components/Controls';
 import { Viz } from './components/Viz';
 import { Explanation } from './components/Explanation';
+import { CalculationTooltip } from './components/CalculationTooltip';
 import { useAttention } from './hooks/useAttention';
-import { HighlightState, ElementIdentifier, AttentionData, HighlightSource } from './types';
+import { useSplitPane } from '../../hooks/useSplitPane';
+import { HighlightState, ElementIdentifier, AttentionData, HighlightSource, TooltipState, CalculationComponent, AttentionVariantData } from './types';
+import { getSymbolParts } from './lib/symbolMapping';
+
+// =======================
+//   TOOLTIP LOGIC
+// =======================
+const getMatrixByName = (name: string, data: AttentionData): number[][] | undefined => {
+    const parts = name.split('.');
+    if (parts.length < 2) return undefined;
+
+    const variant = parts[0] as keyof AttentionData;
+    const conceptualName = name.split('.').pop() || '';
+
+    if (variant !== 'mha' && variant !== 'gqa' && variant !== 'mqa') return undefined;
+
+    const variantData = data[variant] as AttentionVariantData;
+    if (!variantData) return undefined;
+
+    const headIndexMatch = name.match(/heads\.(\d+)/);
+    const headIndex = headIndexMatch ? parseInt(headIndexMatch[1], 10) : 0;
+
+    if (name.includes('.heads.')) {
+        const headData = variantData.heads[headIndex];
+        if (!headData) return undefined;
+        // This is a type assertion, be careful with it.
+        return headData[conceptualName as keyof typeof headData] as number[][] | undefined;
+    }
+
+    if (conceptualName === 'input') return data.input;
+    if (conceptualName === 'wo') return data.Wo;
+    if (conceptualName === 'combined') return variantData.CombinedOutput;
+    if (conceptualName === 'output') return variantData.FinalOutput;
+
+    // For weights like mha.wq.0
+    if(parts[1]?.startsWith('w')) {
+        const type = parts[1].charAt(1); // q, k, v
+        const index = parseInt(parts[2] || '0', 10);
+        if (type === 'q') return data.Wq[index];
+        if (type === 'k') return data.Wk[index];
+        if (type === 'v') return data.Wv[index];
+    }
+
+
+    return undefined;
+};
+
+
+const generateTooltipData = (element: ElementIdentifier, data: AttentionData, sources: HighlightSource[]): TooltipState | null => {
+    const { name, row, col } = element;
+    let opType: TooltipState['opType'] = 'info';
+    let steps: TooltipState['steps'] = [];
+
+    const targetMatrix = getMatrixByName(name, data);
+    if (!targetMatrix || targetMatrix[row]?.[col] === undefined) return null;
+    const targetValue = targetMatrix[row][col];
+
+    const conceptualName = name.split('.').pop() || '';
+
+    if (['Q', 'K', 'V', 'Scores', 'Output', 'combined', 'output'].includes(conceptualName)) {
+        opType = 'matmul';
+        const source1 = sources.find(s => s.highlightRow);
+        const source2 = sources.find(s => s.highlightCol);
+        if (source1 && source2) {
+             const matrixA = getMatrixByName(source1.name, data);
+             const matrixB = getMatrixByName(source2.name, data);
+             if (matrixA && matrixB) {
+                 const vecA = matrixA[source1.row];
+                 const vecB = matrixB.map(r => r[source2.col]);
+                 const components: CalculationComponent[] = vecA.map((val, i) => ({ a: val, b: vecB[i] }));
+                 steps.push({ a: vecA, b: vecB, op: '·', result: targetValue, aSymbol: getSymbolParts(source1.name).base, bSymbol: getSymbolParts(source2.name).base, components });
+             }
+        }
+    } else if (conceptualName === 'Weights' && element.isInternal) {
+        opType = 'softmax';
+        const scoresName = sources.find(s => s.name.endsWith('.Scores'))?.name;
+        if(scoresName){
+            const matrixA = getMatrixByName(scoresName, data);
+            if(matrixA) {
+                const vecA = matrixA[row];
+                steps.push({a: vecA, b: [], op: 'softmax', result: targetValue, aSymbol: getSymbolParts(scoresName).base, bSymbol: ''});
+            }
+        }
+    }
+
+    if (steps.length === 0) return null;
+
+    const symbol = getSymbolParts(name);
+    element.symbol = `${symbol.base}${symbol.subscript ? `_{${symbol.subscript}}` : ''}${symbol.superscript ? `^{${symbol.superscript}}` : ''}`;
+
+    return { target: element, opType, steps, title: `Calculation for ${element.symbol}[${row},${col}]` };
+};
 
 // =======================
 //   HIGHLIGHTING LOGIC
 // =======================
-const createBackwardHighlight = (element: ElementIdentifier, data: AttentionData): HighlightState => {
+const createBackwardHighlight = (element: ElementIdentifier, data: AttentionData, dims: any): HighlightState => {
     const { variant, name, row, col, isInternal } = element;
     const sources: HighlightSource[] = [];
 
-    // Short-circuit for MLA as it has a different structure not yet fully visualized
     if (variant === 'mla') {
         return { target: element, sources: [] };
     }
 
-    const dims = {
+    const internalDims = {
         d_head: data.mha.heads[0].Q[0].length,
         n_q_heads: data.gqa.heads.length,
-        n_kv_heads_gqa: data.gqa.K_proj[0].length / data.mha.heads[0].Q[0].length,
+        n_kv_heads_gqa: data.gqa.K_proj ? (data.gqa.K_proj[0].length / data.mha.heads[0].Q[0].length) : dims.n_kv_heads,
     };
 
     const conceptualName = name.split('.').pop() || '';
     const headIndexMatch = name.match(/heads\.(\d+)/);
     const headIndex = headIndexMatch ? parseInt(headIndexMatch[1], 10) : 0;
 
-    // Handle clicks inside the ElementwiseCalculation component
     if (isInternal) {
         const baseName = name.replace('.internal', '');
         const baseElementName = `${baseName.split('.')[0]}.heads.${headIndex}.Scores`;
-        if (col === -1) { // Clicked on the sum
+        if (col === -1) {
              sources.push({ ...element, name: baseElementName, row: row, col: -1, highlightRow: true, isInternal: true });
-        } else { // Clicked on an element
-             sources.push({ ...element, name: baseElementName, row: row, col: col, isInternal: true });
+        } else {
+             sources.push({ ...element, name: `${baseName.split('.')[0]}.heads.${headIndex}.Scores`, row: row, col: col, isInternal: true });
         }
         return { target: element, sources };
     }
 
 
-    if (conceptualName === 'output') { // FinalOutput
+    if (conceptualName === 'output') {
         sources.push({ ...element, name: `${variant}.combined`, row: row, col: -1, highlightRow: true });
         sources.push({ ...element, name: `${variant}.wo`, row: -1, col: col, highlightCol: true });
     }
-    else if (conceptualName === 'combined') { // CombinedOutput
-        const headIndexForCol = Math.floor(col / dims.d_head);
-        sources.push({ ...element, name: `${variant}.heads.${headIndexForCol}.Output`, row: row, col: col % dims.d_head });
+    else if (conceptualName === 'combined') {
+        const headIndexForCol = Math.floor(col / internalDims.d_head);
+        sources.push({ ...element, name: `${variant}.heads.${headIndexForCol}.Output`, row: row, col: col % internalDims.d_head });
     }
     else if (conceptualName === 'Output') {
         sources.push({ ...element, name: `${variant}.heads.${headIndex}.Weights`, row: row, col: -1, highlightRow: true });
@@ -1540,7 +1293,6 @@ const createBackwardHighlight = (element: ElementIdentifier, data: AttentionData
     }
     else if (conceptualName === 'Weights') {
         sources.push({ ...element, name: `${variant}.heads.${headIndex}.Scores`, row: row, col: -1, highlightRow: true });
-        // Add an internal highlight target for the ElementwiseOperation component
         sources.push({ ...element, name: `${name}.internal`, row: row, col: col, isInternal: true });
     }
     else if (conceptualName === 'Scores') {
@@ -1553,13 +1305,13 @@ const createBackwardHighlight = (element: ElementIdentifier, data: AttentionData
 
         if (type === 'q') {
             weightIndex = headIndex;
-        } else { // K or V
+        } else {
             if (variant === 'mha') {
                 weightIndex = headIndex;
             } else if (variant === 'gqa') {
-                const q_heads_per_kv_gqa = dims.n_q_heads / dims.n_kv_heads_gqa;
+                const q_heads_per_kv_gqa = internalDims.n_q_heads / internalDims.n_kv_heads_gqa;
                 weightIndex = Math.floor(headIndex / q_heads_per_kv_gqa);
-            } // for MQA, weightIndex remains 0
+            }
         }
 
         sources.push({ ...element, name: `${variant}.input`, row: row, col: -1, highlightRow: true });
@@ -1580,29 +1332,40 @@ export const AttentionVariantsTopic: React.FC = () => {
     });
 
     const [highlight, setHighlight] = useState<HighlightState>({ target: null, sources: [] });
+    const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+
+    const { primarySize, separatorProps, containerProps } = useSplitPane(window.innerWidth * 0.55);
 
     const attentionData: AttentionData | null = useAttention(dims);
 
     const handleInteraction = useCallback((element: ElementIdentifier, event: React.MouseEvent) => {
         if (!attentionData) return;
-        const newHighlight = createBackwardHighlight(element, attentionData);
+        const newHighlight = createBackwardHighlight(element, attentionData, dims);
         setHighlight(newHighlight);
-    }, [attentionData]);
+
+        const newTooltip = generateTooltipData(element, attentionData, newHighlight.sources);
+        setTooltip(newTooltip);
+
+    }, [attentionData, dims]);
+
+    const closeTooltip = useCallback(() => setTooltip(null), []);
 
     if (!attentionData) {
         return <div style={{ padding: "20px", textAlign: "center" }}>正在加载或维度设置无效... (确保 d_model = n_q_heads * d_head 且 n_q_heads 能被 n_kv_heads 整除)</div>;
     }
 
     return (
-        <div className="main-layout" style={{ height: '100%' }}>
+        <div className="main-layout" {...containerProps}>
+            {tooltip && <CalculationTooltip tooltip={tooltip} onClose={closeTooltip} />}
             <Controls dims={dims} setDims={setDims} />
-            <div className="column left-column">
+            <div className="column left-column" style={{width: primarySize, flex: 'none'}}>
                 <div className="column-content">
                     <h2>数值模拟</h2>
                     <Viz data={attentionData} dims={dims} highlight={highlight} onElementClick={handleInteraction} />
                 </div>
             </div>
-            <div className="column right-column">
+             <div className="split-pane-separator" {...separatorProps} />
+            <div className="column right-column" style={{flex: 1}}>
                 <div className="column-content">
                     <h2>理论推导</h2>
                     <Explanation dims={dims} highlight={highlight} onSymbolClick={handleInteraction} />
@@ -1631,6 +1394,7 @@ export interface ElementIdentifier {
   row: number;
   col: number;
   isInternal?: boolean; // True if it's part of an internal calculation visualization
+  symbol?: string; // e.g., "Z_GQA"
 }
 
 // 用于定义高亮的来源
@@ -1687,74 +1451,185 @@ export interface AttentionData {
   mla: MLAData; // MLA结构不同，单独定义
 }
 
+// Types for CalculationTooltip
+export interface CalculationComponent {
+    a: number;
+    b: number;
+}
+
+export interface CalculationStep {
+    a: Vector;
+    b: Vector;
+    op: string;
+    result: number;
+    aSymbol: string;
+    bSymbol: string;
+    components?: CalculationComponent[];
+}
+
+export interface TooltipState {
+    target: ElementIdentifier;
+    opType: 'matmul' | 'softmax' | 'info' | 'add';
+    steps: CalculationStep[];
+    title: string;
+}
+
+
 // END OF FILE: src/topics/attention-variants/types.ts
 
 
 ================================================================================
-### 文件路径: src/topics/attention-variants/components/Controls.css
+### 文件路径: src/topics/attention-variants/components/CalculationTooltip.tsx
 ================================================================================
 
-/* FILE: src/topics/attention-variants/components/Controls.css */
-/* Styles copied and adapted from src/topics/transformer-explorer/components/Controls.css */
-/* This ensures the component is self-contained within its topic. */
+// FILE: src/topics/attention-variants/components/CalculationTooltip.tsx
+import React, { useState, useEffect, useRef } from 'react';
+import { TooltipState } from '../types';
+import { useDraggableAndResizable } from '../../../hooks/useDraggableAndResizable';
 
-.controls-panel {
-    position: fixed;
-    top: 85px; /* Position below main title */
-    right: 20px;
-    z-index: 100;
-    background: var(--component-bg);
-    border-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    border: 1px solid var(--border-color);
-    overflow: hidden;
-    transition: width 0.3s ease-in-out, height 0.3s ease-in-out;
-    max-width: 90vw;
+interface CalculationTooltipProps {
+  tooltip: TooltipState;
+  onClose: () => void;
 }
 
-.controls-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 15px 20px;
-  background-color: var(--component-bg);
-  border-bottom: 1px solid var(--border-color);
-  gap: 20px;
-  flex-wrap: wrap;
-  flex-shrink: 0;
-}
-.control-group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.control-group label {
-  font-size: 0.9em;
-  margin-bottom: 5px;
-  color: #606266;
-}
-.control-group input[type="number"] {
-  width: 60px;
-  padding: 6px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  text-align: center;
-  font-size: 1em;
-}
+const formatNumber = (num: number, precision = 4) => {
+    if (num === -Infinity) return '-∞';
+    if (num === Infinity) return '+∞';
+    const fixed = num.toFixed(precision);
+    return parseFloat(fixed).toString();
+};
 
-.d_k-value {
-    width: auto;
-    min-width: 60px;
-    padding: 6px;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    text-align: center;
-    font-size: 1em;
-    font-weight: bold;
-    background-color: #f0f2f5;
-}
+export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip, onClose }) => {
+    const [isCollapsed, setIsCollapsed] = useState(true);
+    const [hoveredComponentIndex, setHoveredComponentIndex] = useState<number | null>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
 
-/*// END OF FILE: src/topics/attention-variants/components/Controls.css*/
+    const { position, size, dragHandleProps, resizeHandleProps } = useDraggableAndResizable({
+        x: 20,
+        y: 20,
+        width: 500,
+        height: 'auto',
+    }, panelRef);
+
+    useEffect(() => {
+        setIsCollapsed(false);
+    }, [tooltip]);
+
+    const renderVector = (vec: number[], symbol: string, direction: 'row' | 'column' = 'row') => (
+        <div className="tooltip-vector-group">
+            <span className="tooltip-symbol">{symbol} =</span>
+            <div className={`tooltip-vector ${direction}`}>
+                {vec.map((val, i) => (
+                    <span
+                        key={i}
+                        className={`tooltip-element source ${hoveredComponentIndex === i ? 'highlight' : ''}`}
+                    >
+                        {formatNumber(val, 2)}
+                    </span>
+                ))}
+            </div>
+        </div>
+    );
+
+    const renderBody = () => {
+        if (!tooltip.steps || tooltip.steps.length === 0) return null;
+        const step = tooltip.steps[0];
+
+        switch (tooltip.opType) {
+            case 'matmul':
+                 return (
+                     <div className="tooltip-matmul-container">
+                        {renderVector(step.a, step.aSymbol, 'row')}
+                        <div className="tooltip-op-symbol">·</div>
+                        {renderVector(step.b, step.bSymbol, 'column')}
+                        <div className="tooltip-result-line">
+                            <span className="tooltip-op">=</span>
+                            <span className="tooltip-result">{formatNumber(step.result, 4)}</span>
+                        </div>
+                        {step.components && (
+                            <div className="tooltip-calculation-detail">
+                                <div className="tooltip-calc-title">点积计算分解:</div>
+                                <div className="tooltip-calc-equation">
+                                    {step.components.map((comp, i) => (
+                                        <span key={i} onMouseEnter={() => setHoveredComponentIndex(i)} onMouseLeave={() => setHoveredComponentIndex(null)}>
+                                            {i > 0 && <span className="op"> + </span>}
+                                            <span className={`tooltip-calc-term ${hoveredComponentIndex === i ? 'highlight' : ''}`}>
+                                                ({formatNumber(comp.a, 2)} <span className="op">×</span> {formatNumber(comp.b, 2)})
+                                            </span>
+                                        </span>
+                                    ))}
+                                    <span> = <span className="result">{formatNumber(step.result, 4)}</span></span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+             case 'add':
+                 return (
+                    <div className="tooltip-calculation-detail">
+                        <div className="tooltip-calc-title">逐元素加法:</div>
+                        <div className="tooltip-calc-equation">
+                            <span>{formatNumber(step.a[0], 2)} <span className="op">+</span> {formatNumber(step.b[0], 2)}</span>
+                            <span> = <span className="result">{formatNumber(step.result, 2)}</span></span>
+                        </div>
+                    </div>
+                );
+            case 'softmax':
+                const finiteInputRow = step.a.filter(v => isFinite(v));
+                const maxVal = finiteInputRow.length > 0 ? Math.max(...finiteInputRow) : 0;
+                const exps = step.a.map(v => isFinite(v) ? Math.exp(v - maxVal) : 0);
+                const sumExps = exps.reduce((a, b) => a + b, 0);
+                 return (
+                    <>
+                        {renderVector(step.a, step.aSymbol, 'row')}
+                         <div className="tooltip-calculation-detail">
+                            <div className="tooltip-calc-title">Softmax 计算分解 (for {tooltip.target.symbol}[{tooltip.target.row}, {tooltip.target.col}]):</div>
+                            <div className="tooltip-calc-equation-multi">
+                                <div>1. 减去最大值: <span>max(...) = {formatNumber(maxVal, 2)}</span></div>
+                                <div>2. 计算指数: <span>e^({formatNumber(step.a[tooltip.target.col], 2)} - {formatNumber(maxVal, 2)}) = {formatNumber(exps[tooltip.target.col], 4)}</span></div>
+                                <div>3. 计算所有指数之和: <span>Σ e^(...) = {formatNumber(sumExps, 4)}</span></div>
+                                <div>4. 归一化: <span>{formatNumber(exps[tooltip.target.col], 4)} / {formatNumber(sumExps, 4)} = <span className="result">{formatNumber(step.result, 4)}</span></span></div>
+                            </div>
+                        </div>
+                    </>
+                );
+            default:
+                return <div>计算过程未定义</div>
+        }
+    };
+
+    const panelStyle: React.CSSProperties = {
+        top: position.y,
+        left: position.x,
+        width: size.width,
+        height: typeof size.height === 'number' && !isCollapsed ? size.height : 'auto',
+    };
+
+    return (
+        <div ref={panelRef} style={panelStyle} className={`calculation-tooltip ${isCollapsed ? 'collapsed' : ''} resizable-panel`}>
+            <div className="panel-header" {...dragHandleProps}>
+                <span className="tooltip-title">{tooltip.title}</span>
+                <div className="tooltip-controls">
+                    <button onClick={() => setIsCollapsed(!isCollapsed)} className="tooltip-toggle-btn">
+                        {isCollapsed ? '⊕' : '⊖'}
+                    </button>
+                    <button onClick={onClose} className="tooltip-close-btn">&times;</button>
+                </div>
+            </div>
+             <div className="tooltip-content-wrapper">
+                <div className="tooltip-body">
+                    {renderBody()}
+                </div>
+            </div>
+            <div className="resize-handle br" {...resizeHandleProps.br}></div>
+            <div className="resize-handle t" {...resizeHandleProps.t}></div>
+            <div className="resize-handle r" {...resizeHandleProps.r}></div>
+            <div className="resize-handle b" {...resizeHandleProps.b}></div>
+            <div className="resize-handle l" {...resizeHandleProps.l}></div>
+        </div>
+    );
+};
+// END OF FILE: src/topics/attention-variants/components/CalculationTooltip.tsx
 
 
 ================================================================================
@@ -1762,8 +1637,8 @@ export interface AttentionData {
 ================================================================================
 
 // FILE: src/topics/attention-variants/components/Controls.tsx
-import React from 'react';
-import './Controls.css'; // 使用独立的CSS文件
+import React, { useState, useRef } from 'react';
+import { useDraggableAndResizable } from '../../../hooks/useDraggableAndResizable';
 
 interface ControlsProps {
   dims: {
@@ -1775,6 +1650,15 @@ interface ControlsProps {
 }
 
 export const Controls: React.FC<ControlsProps> = ({ dims, setDims }) => {
+    const [isCollapsed, setIsCollapsed] = useState(true);
+    const panelRef = useRef<HTMLDivElement>(null); // Create a ref
+    const { position, size, dragHandleProps, resizeHandleProps } = useDraggableAndResizable({
+        x: window.innerWidth - 450,
+        y: 90,
+        width: 420,
+        height: 200,
+    }, panelRef); // Pass the ref to the hook
+
     const handleDimChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { id, value } = e.target;
         const numValue = parseInt(value, 10);
@@ -1784,9 +1668,8 @@ export const Controls: React.FC<ControlsProps> = ({ dims, setDims }) => {
 
             if (id === 'n_q_heads') {
                 if (numValue % newDims.n_kv_heads !== 0) {
-                    // 寻找一个能被新 n_q_heads 整除的 n_kv_heads
                     let new_kv_heads = newDims.n_kv_heads;
-                    while(numValue % new_kv_heads !== 0) {
+                    while(numValue % new_kv_heads !== 0 && new_kv_heads > 1) {
                         new_kv_heads--;
                     }
                     newDims.n_kv_heads = Math.max(1, new_kv_heads);
@@ -1796,6 +1679,7 @@ export const Controls: React.FC<ControlsProps> = ({ dims, setDims }) => {
             if (id === 'n_kv_heads') {
                 if (newDims.n_q_heads % numValue !== 0) {
                      newDims.n_q_heads = numValue * Math.round(newDims.n_q_heads / numValue);
+                     if (newDims.n_q_heads === 0) newDims.n_q_heads = numValue;
                 }
             }
 
@@ -1804,26 +1688,47 @@ export const Controls: React.FC<ControlsProps> = ({ dims, setDims }) => {
         });
     };
 
+    const panelStyle: React.CSSProperties = {
+        position: 'absolute',
+        top: position.y,
+        left: position.x,
+        width: isCollapsed ? 50 : size.width,
+        height: isCollapsed ? 50 : size.height,
+    };
+
     return (
-        <div className="controls-panel">
-            <div className="controls-container" style={{ paddingTop: '15px' }}>
-                <div className="control-group">
-                    <label htmlFor="n_q_heads">查询头 (N_q_heads)</label>
-                    <input type="number" id="n_q_heads" value={dims.n_q_heads} onChange={handleDimChange} step={1} min={1} max={16} />
-                </div>
-                <div className="control-group">
-                    <label htmlFor="n_kv_heads">键/值头 (N_kv_heads)</label>
-                    <input type="number" id="n_kv_heads" value={dims.n_kv_heads} onChange={handleDimChange} step={1} min={1} max={dims.n_q_heads} />
-                </div>
-                 <div className="control-group">
-                    <label htmlFor="d_head">头维度 (d_head)</label>
-                    <input type="number" id="d_head" value={dims.d_head} onChange={handleDimChange} step={2} min={2} max={32} />
-                </div>
-                 <div className="control-group">
-                    <label>模型维度 (d_model)</label>
-                    <div className="d_k-value">{dims.n_q_heads * dims.d_head}</div>
-                </div>
+        <div ref={panelRef} style={panelStyle} className={`controls-panel ${isCollapsed ? 'collapsed' : ''} resizable-panel`}>
+             <div className="panel-header" {...dragHandleProps}>
+                <button className="panel-toggle-btn" onClick={() => setIsCollapsed(!isCollapsed)}>
+                    {isCollapsed ? '⚙️' : '×'}
+                </button>
+                {!isCollapsed && <span className="panel-title">Controls</span>}
             </div>
+            {!isCollapsed && (
+                <div className="controls-container">
+                    <div className="control-group">
+                        <label htmlFor="n_q_heads">查询头 (N_q_heads)</label>
+                        <input type="number" id="n_q_heads" value={dims.n_q_heads} onChange={handleDimChange} step={1} min={1} max={16} />
+                    </div>
+                    <div className="control-group">
+                        <label htmlFor="n_kv_heads">键/值头 (N_kv_heads)</label>
+                        <input type="number" id="n_kv_heads" value={dims.n_kv_heads} onChange={handleDimChange} step={1} min={1} max={dims.n_q_heads} />
+                    </div>
+                    <div className="control-group">
+                        <label htmlFor="d_head">头维度 (d_head)</label>
+                        <input type="number" id="d_head" value={dims.d_head} onChange={handleDimChange} step={2} min={2} max={32} />
+                    </div>
+                    <div className="control-group">
+                        <label>模型维度 (d_model)</label>
+                        <div className="d_k-value">{dims.n_q_heads * dims.d_head}</div>
+                    </div>
+                </div>
+            )}
+             <div className="resize-handle br" {...resizeHandleProps.br}></div>
+             <div className="resize-handle t" {...resizeHandleProps.t}></div>
+             <div className="resize-handle r" {...resizeHandleProps.r}></div>
+             <div className="resize-handle b" {...resizeHandleProps.b}></div>
+             <div className="resize-handle l" {...resizeHandleProps.l}></div>
         </div>
     );
 };
@@ -1961,7 +1866,7 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
   };
 
   const renderSoftmax = () => {
-    // Filter out -Infinity for max calculation, as it's a masked value
+    // [FIXED] Filter out -Infinity for max calculation, as it's a masked value
     const finiteInputRow = inputRow.filter(v => isFinite(v));
     const maxVal = finiteInputRow.length > 0 ? Math.max(...finiteInputRow) : 0;
 
@@ -1974,24 +1879,21 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
       <>
         {/* Step 1: exp(x - max(x)) */}
         <div className="calc-step">
-          {/* [FIXED] Used double backslashes for KaTeX commands */}
-          <div className="calc-label"><InlineMath math="\\text{exp}(x_i - \\text{max}(\\mathbf{x}))" /></div>
+          <div className="calc-label"><InlineMath math="\text{exp}(x_i - \text{max}(\mathbf{x}))" /></div>
           <div className="elementwise-op-row">
             {renderVisibleElements(exps, 'exp')}
           </div>
         </div>
         {/* Step 2: Sum */}
         <div className="calc-step">
-           {/* [FIXED] Used double backslashes for KaTeX commands */}
-          <div className="calc-label"><InlineMath math="\\sum \\text{exp}(\\dots)" /></div>
+          <div className="calc-label"><InlineMath math="\sum \text{exp}(\dots)" /></div>
           <div className={`elementwise-op-element sum ${fullSumIsSource ? 'source' : ''}`} onClick={(e) => handleClick(e, -1)}>
             {formatNumber(sumExps)}
           </div>
         </div>
         {/* Step 3: Division */}
         <div className="calc-step">
-           {/* [FIXED] Used double backslashes for KaTeX commands */}
-          <div className="calc-label"><InlineMath math="\\text{exp}(\\dots) / \\sum" /></div>
+          <div className="calc-label"><InlineMath math="\text{exp}(\dots) / \sum" /></div>
           <div className="elementwise-op-row">{renderVisibleElements(outputRow, 'output')}</div>
         </div>
       </>
@@ -2059,8 +1961,7 @@ export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
     return (
         <div className="elementwise-op-container">
             <div className="elementwise-op-label">
-                {/* [FIXED] Used double backslashes for KaTeX commands */}
-                <InlineMath math={`\\text{Detailed Calculation: } ${opName}`} />
+                <InlineMath math={`\\text{Detailed Calculation: } \\text{${opName}}`} />
             </div>
             <p style={{margin: '0', fontSize: '0.8em', color: '#666'}}>* Showing calculation for Row {targetRowIndex}</p>
             <ElementwiseCalculation
@@ -2113,11 +2014,11 @@ const renderVariantExplanation = (
     const combined_name = `${variant}.combined`;
     const final_output_name = `${variant}.output`;
 
-    // [MODIFIED] Stricter layout breaking rules for explanation column (threshold = 8)
-    const break_qkv_proj = (d_model + d_head) > 8;
-    const break_scores = (d_head + seq_len) > 8;
-    const break_output = (seq_len + d_head) > 8;
-    const break_final = (n_q_heads * d_head + d_model) > 8;
+    const threshold = 8;
+    const break_qkv_proj = (d_model + d_head + d_head) > threshold;
+    const break_scores = (d_head + seq_len + seq_len) > threshold;
+    const break_output = (seq_len + d_head + d_head) > threshold;
+    const break_final = (n_q_heads * d_head + d_model + d_model) > threshold;
 
     return (
       <>
@@ -2149,8 +2050,8 @@ const renderVariantExplanation = (
 
         <div className="attention-calculation-step">
           <div className="step-title">2. 计算注意力分数 (Scaled Dot-Product)</div>
-          <p>此步骤计算每个查询向量与所有键向量的相似度。点积结果越大，表示关联性越强。除以 <InlineMath math="\sqrt{d_{head}}"/> 是为了防止梯度在训练中过小或过大，保持数值稳定性。</p>
-          <BlockMath math={`\\text{Scores}_h = \\frac{Q_h K_{\\text{group}(h)}^T}{\\sqrt{d_{\\text{head}}}}`} />
+          <p>此步骤计算每个查询向量与所有键向量的相似度。点积结果越大，表示关联性越强。除以 <InlineMath math="\sqrt{d_{\text{head}}}" /> 是为了防止梯度在训练中过小或过大，保持数值稳定性。</p>
+          <BlockMath math={"\\text{Scores}_h = \\frac{Q_h K_{\\text{group}(h)}^T}{\\sqrt{d_{\\text{head}}}}"} />
            <div className={`explanation-row ${break_scores ? 'vertical' : ''}`}>
                 <InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                 <BlockMath math="\times" />
@@ -2159,7 +2060,7 @@ const renderVariantExplanation = (
                 <InteractiveSymbolicMatrix name={scores_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} />
            </div>
            <p>然后，应用Softmax函数将原始分数转换为一个和为1的概率分布，即“注意力权重” <InlineMath math="A_h"/>。</p>
-           <BlockMath math={`A_h = \\text{Softmax}(\\text{Scores}_h)`} />
+           <BlockMath math={"A_h = \\text{Softmax}(\\text{Scores}_h)"} />
             <InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} sideLabel={true} />
         </div>
 
@@ -2177,8 +2078,8 @@ const renderVariantExplanation = (
 
         <div className="attention-calculation-step">
             <div className="step-title">4. 合并与最终投影</div>
-            <p>将所有 <InlineMath math="N_q"/> 个头的输出 <InlineMath math="H_h"/> 拼接（Concatenate）起来，然后通过一个最终的线性投影矩阵 <InlineMath math="W^O"/> 将其维度变回 <InlineMath math="d_{model}"/>，得到该子层的最终输出 <InlineMath math="Z"/>。</p>
-            <BlockMath math={`Z = \\text{Concat}(\\text{head}_0, ..., \\text{head}_{N_q-1}) W_O`} />
+            <p>将所有 <InlineMath math="N_q"/> 个头的输出 <InlineMath math="H_h"/> 拼接（Concatenate）起来，然后通过一个最终的线性投影矩阵 <InlineMath math="W^O"/> 将其维度变回 <InlineMath math="d_{\text{model}}"/>，得到该子层的最终输出 <InlineMath math="Z"/>。</p>
+            <BlockMath math={"Z = \\text{Concat}(\\text{head}_0, ..., \\text{head}_{N_q-1}) W_O"} />
             <div className={`explanation-row ${break_final ? 'vertical' : ''}`}>
                 <InteractiveSymbolicMatrix name={combined_name} rows={seq_len} cols={n_q_heads * d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                 <BlockMath math="\times" />
@@ -2192,44 +2093,207 @@ const renderVariantExplanation = (
 }
 
 export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSymbolClick }) => {
-  const { n_q_heads, n_kv_heads } = dims;
+  const { n_q_heads, n_kv_heads, d_head, d_model } = dims;
 
   return (
     <div>
         <div className="math-block">
-          <h3>引言：为何需要注意力变体？</h3>
-            <p>随着模型规模和上下文长度的增长，Transformer核心的<strong>多头注意力 (MHA)</strong> 在自回归生成任务中面临巨大的计算和内存挑战。瓶颈在于<strong>Key-Value (KV) Cache</strong>的体积会随着序列长度线性增长，极大地限制了大型语言模型 (LLM) 的吞吐量和长文本处理能力。</p>
-            <p>为了解决这些问题，研究者们提出了各种注意力变体，旨在优化性能、降低成本。本专题将带您探索从<strong>MHA</strong>到<strong>MQA</strong>、<strong>GQA</strong>的演进之路，理解它们在KV Cache效率和模型性能之间的权衡。</p>
+            <h3>引言</h3>
+            <p>在深度学习，特别是自然语言处理(NLP)领域，注意力机制(Attention Mechanism)是一个非常重要的概念。注意力机制的起源可以追溯到对生物视觉注意力的模拟以及神经机器翻译的实际需求。Bahdanau等人的工作首次将注意力机制引入自然语言处理领域；而Transformer架构则将注意力机制推向了一个新的高度，使其成为现代自然语言处理的核心技术之一。</p>
+            <p>Transformer架构的出现可以说是全球人工智能快速发展的转折点，该架构由Encoder和Decoder两部分组成，其中Encoder部分发展成了Bert、Roberta等模型，Decoder部分发展成了GPT等生成式大模型。此类模型效果强悍，并得到了广泛的应用，这进一步推动了注意力机制的发展。</p>
+            <p>然而，随着模型规模的不断扩大和上下文长度的日益增长，传统的注意力机制在推理阶段面临着巨大的计算和内存挑战。特别是，自回归生成任务中<strong>Key-Value (KV) Cache</strong>的指数级增长成为了瓶颈，极大地限制了大型语言模型(LLM)的吞吐量和可服务性。为了解决这些挑战，研究者们不断探索和提出了各种注意力变体，旨在优化性能、降低成本，并提升LLM在实际应用中的效率。</p>
+        </div>
+        <div className="attention-variant-section">
+            <div className="component-header">变量定义</div>
+            <div className="component-body">
+                <div className="explanation-subsection">
+                  <p>在深入探讨各种注意力机制之前,我们首先统一定义本文中将使用的变量。明确的变量命名有助于我们精确地理解每个计算步骤的含义。</p>
+                    <ul>
+                        <li><strong>基础维度 (Basic Dimensions)</strong>
+                            <ul>
+                                <li><InlineMath math="B"/>: 批处理大小 (Batch Size)</li>
+                                <li><InlineMath math="S"/>: 序列长度 (Sequence Length)</li>
+                                <li><InlineMath math="d_{model}"/>: 模型的隐藏层维度 (Hidden Dimension)</li>
+                                <li><InlineMath math="N_{q\_heads}"/>: 查询头的数量 (Number of Query Heads)</li>
+                                <li><InlineMath math="N_{kv\_heads}"/>: 键/值头的数量 (Number of Key/Value Heads)</li>
+                                <li><InlineMath math="d_{head}"/>: 每个注意力头的维度, 通常 <InlineMath math="d_{head} = d_{model} / N_{q\_heads}"/></li>
+                            </ul>
+                        </li>
+                        <li><strong>张量与向量 (Tensors & Vectors)</strong>
+                            <ul>
+                                <li><InlineMath math="H \in \mathbb{R}^{B \times S \times d_{model}}"/>: 输入张量</li>
+                                <li><InlineMath math="W_Q, W_K, W_V \in \mathbb{R}^{d_{model} \times d_{model}}"/>: MHA的总投影矩阵</li>
+                                <li><InlineMath math="W_O \in \mathbb{R}^{d_{model} \times d_{model}}"/>: 输出投影矩阵</li>
+                            </ul>
+                        </li>
+                         <li><strong>精细化QKV向量 (Granular QKV Vectors)</strong>
+                            <ul>
+                                <li><InlineMath math="q_{t,h} \in \mathbb{R}^{d_{head}}"/>: 位置t, 头h的查询(Query)向量</li>
+                                <li><InlineMath math="k_{j,h} \in \mathbb{R}^{d_{head}}"/>: 位置j, 头h的键(Key)向量</li>
+                                <li><InlineMath math="v_{j,h} \in \mathbb{R}^{d_{head}}"/>: 位置j, 头h的值(Value)向量</li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+
+        <div className="attention-variant-section">
+            <div className="component-header">MHA (Multi-Head Attention)</div>
+            <div className="component-body">
+                <div className="explanation-subsection">
+                    <h5>出现原因与设计思路</h5>
+                    <p><strong>单头注意力的局限性:</strong> 传统的单头注意力(Single-Head Attention)虽然能捕捉到输入元素之间的关系，但它只能在一个单一的、固定的表示空间中进行。这意味着模型在处理复杂信息时能力可能会受限，难以同时关注到输入序列中不同层面（例如语法结构、语义关系等）的细微特征。</p>
+                    <p><strong>并行化与多视角学习:</strong> MHA通过引入多个“注意力头”，将输入的原始维度 <InlineMath math="d_{model}"/> 分割成 <InlineMath math="N_{q\_heads}"/> 个更小的子空间。每个头独立地在自己的子空间中执行注意力计算，学习不同的注意力模式。这种设计允许模型从多个“视角”去理解输入信息，例如，一个头可能关注长距离依赖，另一个头可能关注局部语义，从而捕获更丰富、更复杂的上下文信息。</p>
+                </div>
+                <div className="explanation-subsection">
+                    <h5>交互式公式推导 (以头0为例)</h5>
+                    {renderVariantExplanation('mha', dims, highlight, onSymbolClick)}
+                </div>
+                <div className="explanation-subsection">
+                    <h5>KV Cache: 概念、变化与牺牲</h5>
+                    <p><strong>概念与作用:</strong> 在LLM的自回归生成阶段，模型每次生成一个token，然后将新token附加到序列中。为避免重复计算前序token的Key和Value向量，KV Cache会将这些计算过的K/V向量存储起来，在后续步骤中直接复用，从而<strong>节省了大量的计算时间</strong>。这是一种典型的“<strong>以空间换时间</strong>”的优化策略。</p>
+                    <p><strong>显存占用:</strong> KV Cache最大的牺牲就是显存。在MHA中，每个查询头都有独立的K/V头 (<InlineMath math={`N_q=${n_q_heads}, N_{kv}=${n_q_heads}`}/>)。因此，KV Cache的大小与查询头的数量成正比，公式为：</p>
+                    <BlockMath math={"\\text{Cache}_{\\text{MHA}} \\propto S \\times N_{q\\_\\text{heads}} \\times d_{\\text{head}} = S \\times d_{\\text{model}}"} />
+                    <p>对于Llama3 70B模型(L=80, <InlineMath math="N_{q\_heads}=64"/>, <InlineMath math="d_{head}=128"/>, 16位精度)，当批处理大小 <InlineMath math="B=8"/> 且序列长度 <InlineMath math="S=1000"/> 时，KV Cache大小约为 <strong>20.97 GB</strong>，随着序列长度线性增长，这很快成为瓶颈。</p>
+                </div>
+            </div>
         </div>
 
         <div className="attention-variant-section">
-            <div className="component-header">MHA (多头注意力)</div>
-            <div className="component-body">
-                <h5>设计思想：并行子空间的探索</h5>
-                <p>MHA是Transformer的基石。它将单一注意力计算分解为多个并行的“头”，每个头在输入的不同表示子空间中学习。这使得模型能同时关注来自不同位置、不同方面的多种信息，极大地增强了模型的表达能力。</p>
-                <p><strong>KV Cache分析</strong>: 在MHA中，每个查询头都有独立的K/V头 (<InlineMath math={`N_q=${n_q_heads}, N_{kv}=${n_q_heads}`}/>)。因此，KV Cache的大小与查询头的数量成正比，公式为：</p>
-                <BlockMath math={`\\text{Cache}_{MHA} \\propto S \\times N_{q\\_heads} \\times d_{head} = S \\times d_{model}`} />
-                {renderVariantExplanation('mha', dims, highlight, onSymbolClick)}
-            </div>
-        </div>
-        <div className="attention-variant-section">
-            <div className="component-header">GQA (分组查询注意力)</div>
+            <div className="component-header">GQA (Grouped-Query Attention)</div>
              <div className="component-body">
-                <h5>设计思想：平衡之道</h5>
-                <p>GQA是MHA和MQA之间的折中方案。它将查询头分组，每组共享一对K/V头，从而在保持接近MHA性能的同时，有效减少KV Cache。</p>
-                <p><strong>KV Cache分析</strong>: 在GQA中，查询头被分成 {n_kv_heads}$ 组，每组共享一个K/V头 (<InlineMath math={`N_q=${n_q_heads}, N_{kv}=${n_kv_heads}`}/>)。KV Cache的大小减少为MHA的 <InlineMath math={`${n_kv_heads}/${n_q_heads}`}/> 倍。</p>
-                 <BlockMath math={`\\text{Cache}_{GQA} \\propto S \\times N_{kv\\_heads} \\times d_{head}`} />
-                {renderVariantExplanation('gqa', dims, highlight, onSymbolClick)}
+                <div className="explanation-subsection">
+                    <h5>出现原因与设计思路</h5>
+                    <p>GQA是MHA和MQA之间的折中方案。它认识到MHA的KV头可能存在冗余，而MQA的单一KV头又可能限制了模型性能。因此，GQA将查询头分组，每组共享一对K/V头，旨在保持接近MHA性能的同时，有效减少KV Cache。</p>
+                    <p><strong>分组机制:</strong> GQA的核心思想是将 <InlineMath math="N_{q\_heads}"/> 个查询头平均分配到 <InlineMath math="N_{kv\_heads}"/> 个组中。通过调整组的数量，GQA可以灵活地在MHA(<InlineMath math="N_{kv\_heads} = N_{q\_heads}"/>)和MQA(<InlineMath math="N_{kv\_heads} = 1"/>)之间进行权衡。</p>
+                </div>
+                <div className="explanation-subsection">
+                    <h5>交互式公式推导 (以头0为例)</h5>
+                    {renderVariantExplanation('gqa', dims, highlight, onSymbolClick)}
+                </div>
+                <div className="explanation-subsection">
+                     <h5>KV Cache: 变化与牺牲</h5>
+                    <p><strong>显存占用:</strong> 在GQA中，查询头被分成 {n_kv_heads} 组，每组共享一个K/V头 (<InlineMath math={`N_q=${n_q_heads}, N_{kv}=${n_kv_heads}`}/>)。KV Cache只存储 <InlineMath math="N_{kv\_heads}"/> 份Key和Value，大小减少为MHA的 <InlineMath math={`${n_kv_heads}/${n_q_heads}`}/> 倍。</p>
+                    <BlockMath math={"\\text{Cache}_{\\text{GQA}} \\propto S \\times N_{kv\\_\\text{heads}} \\times d_{\\text{head}}"} />
+                    <p>以Llama3 70B为例，若采用GQA并设置 <InlineMath math="N_{kv\_heads}=8"/>，KV Cache将减少8倍，从20.97 GB降至约 <strong>2.62 GB</strong>，这是一个显著的优化。</p>
+                    <p><strong>牺牲:</strong> GQA的牺牲主要是设计复杂性和需要对组数 <InlineMath math="N_{kv\_heads}"/> 进行超参数调优。虽然性能显著优于MQA，但理论上仍可能略低于MHA。</p>
+                </div>
             </div>
         </div>
+
         <div className="attention-variant-section">
-            <div className="component-header">MQA (多查询注意力)</div>
+            <div className="component-header">MQA (Multi-Query Attention)</div>
             <div className="component-body">
-                <h5>设计思想：极致的KV共享</h5>
-                <p>面对MHA高昂的KV Cache成本，MQA提出了一种极致的解决方案：让所有查询头共享<strong>同一份</strong>Key和Value。</p>
-                <p><strong>KV Cache分析</strong>: 在MQA中，所有查询头共享唯一的K/V头 (<InlineMath math={`N_q=${n_q_heads}, N_{kv}=1`}/>)。这使得KV Cache的大小减少为MHA的 <InlineMath math={`1/${n_q_heads}`}/> 倍，极大地节省了内存。</p>
-                 <BlockMath math={`\\text{Cache}_{MQA} \\propto S \\times 1 \\times d_{head}`} />
-                {renderVariantExplanation('mqa', dims, highlight, onSymbolClick)}
+                <div className="explanation-subsection">
+                    <h5>出现原因与设计思路</h5>
+                    <p>面对MHA高昂的KV Cache成本，MQA提出了一种极致的解决方案：让所有查询头共享<strong>同一份</strong>Key和Value。</p>
+                    <p><strong>最大化共享:</strong> MQA的核心是将 <InlineMath math="N_{kv\_heads}"/> 降至1，即所有 <InlineMath math="N_{q\_heads}"/> 个查询头共享同一组Key和Value矩阵。这意味着模型只需要计算和存储一套Key和Value。</p>
+                </div>
+                <div className="explanation-subsection">
+                    <h5>交互式公式推导 (以头0为例)</h5>
+                    {renderVariantExplanation('mqa', dims, highlight, onSymbolClick)}
+                </div>
+                 <div className="explanation-subsection">
+                    <h5>KV Cache: 变化与牺牲</h5>
+                    <p><strong>显存占用:</strong> 在MQA中，所有查询头共享唯一的K/V头 (<InlineMath math={`N_q=${n_q_heads}, N_{kv}=1`}/>)。这使得KV Cache的大小减少为MHA的 <InlineMath math={`1/${n_q_heads}`}/> 倍，极大地节省了内存。</p>
+                    <BlockMath math={"\\text{Cache}_{\\text{MQA}} \\propto S \\times 1 \\times d_{\\text{head}}"} />
+                     <p>以Llama3 70B为例，当 <InlineMath math="N_{q\_heads}=64"/> 时，KV Cache将减少64倍，从约20.97 GB降至约 <strong>327.6 MB</strong>。这是一个非常显著的内存节省。</p>
+                     <p><strong>牺牲:</strong> MQA的牺牲主要是<strong>模型性能</strong>。由于所有注意力头共享相同的K和V信息，它们无法像MHA那样从多样化的K/V子空间中学习，可能导致表达能力下降或收敛速度变慢。</p>
+                </div>
+            </div>
+        </div>
+
+        <div className="attention-variant-section">
+            <div className="component-header">MLA (Multi-head Latent Attention)</div>
+            <div className="component-body">
+                 <div className="explanation-subsection">
+                    <h5>出现原因与设计思路</h5>
+                    <p><strong>GQA的局限:</strong> 尽管MQA和GQA在KV Cache优化方面取得了显著进展，但它们仍受限于将原始高维KV信息直接绑定到注意力头的数量。当追求更长的上下文时，即使是GQA的KV Cache仍然可能过大。</p>
+                    <p><strong>低秩压缩与矩阵吸收:</strong> MLA (来自DeepSeek-V2) 是一种更激进的优化。其核心思想是：</p>
+                    <ul>
+                        <li><strong>低秩压缩KV:</strong> MLA假设Key和Value的原始高维表示中存在大量冗余，其有效信息可以被压缩到一个低维的“潜在空间”。它通过一个下投影矩阵将每个token的 <InlineMath math="d_{model}"/> 维隐藏状态投影成一个极小的共享潜在向量 <InlineMath math="c^{KV}"/>。KV Cache只存储这些低维向量。</li>
+                        <li><strong>“矩阵吸收”实现计算效率:</strong> MLA利用矩阵乘法结合律的巧妙特性，将重建K、V所需的上投影矩阵“吸收”到Query侧的计算中，从而在推理时避免K、V的显式高维重建，直接在低维潜在空间进行部分计算。</li>
+                        <li><strong>解耦RoPE兼容性:</strong> 为兼容“矩阵吸收”技巧，MLA将Q、K向量解耦为<strong>内容(Content)部分</strong>和<strong>RoPE部分</strong>。内容部分采用低秩压缩；RoPE部分则独立处理，通常采用类似MQA的共享K方式。</li>
+                    </ul>
+                </div>
+                <div className="explanation-subsection">
+                    <h5>实现方法与数学推导 (推理阶段)</h5>
+                    <p>MLA在推理阶段是其效率提升的核心。通过“矩阵吸收”技巧，它可以避免显式的高维投影和重建K、V。</p>
+                    <p><strong>1. 缓存内容:</strong> 在推理时，MLA只缓存两个低维的、所有头共享的向量：共享内容潜在向量 <InlineMath math="c_j^{KV} \in \mathbb{R}^{d_c}"/> 和共享RoPE键向量 <InlineMath math="k_j^R \in \mathbb{R}^{d_r}"/>。</p>
+                    <p><strong>2. “矩阵吸收”技巧:</strong> 核心思想是将K侧的升维矩阵预先与Q侧的投影矩阵组合。训练时内容分数计算为 <InlineMath math="\text{score}^C \propto (c_t^Q W_{UQ,h}) \cdot (c_j^{KV} W_{UK,h})^T"/>。在推理时，利用矩阵乘法结合律重排：</p>
+                    <BlockMath math={"\\text{score}_{t,j,h}^C = c_t^Q (W_{UQ,h} W_{UK,h}^T) (c_j^{KV})^T"}/>
+                    <p>其中，矩阵 <InlineMath math="M_h^K = W_{UQ,h} W_{UK,h}^T"/> 可以在模型加载后<strong>预先计算并存储</strong>。因此，推理时只需用当前的 <InlineMath math="c_t^Q"/> 与预计算的 <InlineMath math="M_h^K"/> 相乘，再与缓存的 <InlineMath math="c_j^{KV}"/> 计算点积，极大地降低了计算量。</p>
+                </div>
+                <div className="explanation-subsection">
+                    <h5>KV Cache: 变化与牺牲</h5>
+                    <p><strong>显存占用:</strong> MLA实现了迄今为止最为极致的KV Cache压缩。其KV Cache只存储低维的潜在向量。</p>
+                    <BlockMath math={"\\text{KV Cache Size (MLA)} = L \\times B \\times S \\times (d_c + d_r) \\times \\text{sizeof(float)}"}/>
+                    <p>以DeepSeek-V2的参数为例(<InlineMath math="d_{model}=7168, d_c=512, d_r=64"/>)，MLA可以将KV Cache大小压缩到MHA的约<strong>1/25</strong>。对于Llama3 70B大小的模型，KV Cache可以从20.97 GB降至约 <strong>0.83 GB</strong>。</p>
+                    <p><strong>牺牲:</strong> MLA的牺牲主要体现在<strong>模型结构和训练的复杂性</strong>。引入了多阶段投影、内容与RoPE解耦等机制，代码实现和理解难度增加，并可能导致训练不稳定，需要特殊的优化策略来稳定训练过程。</p>
+                </div>
+            </div>
+        </div>
+
+        <div className="attention-variant-section">
+            <div className="component-header">总结: 从MHA到MLA的演进之路</div>
+            <div className="component-body">
+                <table className="summary-table">
+                    <thead>
+                        <tr>
+                            <th>特性</th>
+                            <th>MHA (Multi-Head Attention)</th>
+                            <th>MQA (Multi-Query Attention)</th>
+                            <th>GQA (Grouped-Query Attention)</th>
+                            <th>MLA (Multi-head Latent Attention)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>核心思想</strong></td>
+                            <td>并行多子空间学习</td>
+                            <td>极致KV共享，压缩Cache</td>
+                            <td>在性能和效率间折中</td>
+                            <td>低秩压缩KV，推理时吸收权重</td>
+                        </tr>
+                        <tr>
+                            <td><strong>KV头数量</strong></td>
+                            <td><InlineMath math="N_{q\_heads}"/></td>
+                            <td>1</td>
+                            <td><InlineMath math="N_{kv\_heads}"/> (1 ≤ <InlineMath math="N_{kv\_heads}"/> ≤ <InlineMath math="N_{q\_heads}"/>)</td>
+                            <td>推理时等效为1个共享<strong>潜在</strong>K/V</td>
+                        </tr>
+                        <tr>
+                            <td><strong>KV Cache大小 (相对MHA)</strong></td>
+                            <td>1x</td>
+                            <td><InlineMath math="1/N_{q\_heads}"/></td>
+                            <td><InlineMath math="N_{kv\_heads}/N_{q\_heads}"/></td>
+                            <td>极小 (约1/25至1/60)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>优点</strong></td>
+                            <td>强大的表达能力，训练效果佳</td>
+                            <td>极低的KV Cache，显著加速推理</td>
+                            <td>灵活的性能-效率权衡，性能接近MHA</td>
+                            <td>极致的KV Cache压缩，同时保持高性能</td>
+                        </tr>
+                         <tr>
+                            <td><strong>缺点</strong></td>
+                            <td>KV Cache巨大，推理瓶颈</td>
+                            <td>可能损失模型性能</td>
+                            <td>实现复杂度略增，需调参</td>
+                            <td>结构复杂，训练难度高</td>
+                        </tr>
+                        <tr>
+                            <td><strong>适用场景</strong></td>
+                            <td>训练，对性能要求高的场景</td>
+                            <td>对推理速度和显存极度敏感的场景</td>
+                            <td>大多数现代大模型的通用选择</td>
+                            <td>对效率和性能都有极致要求的超长序列场景</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -2297,7 +2361,7 @@ interface InteractiveSymbolicMatrixProps {
   onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
   transpose?: boolean;
   isPlaceholder?: boolean;
-  sideLabel?: boolean; // [ADDED] For alternative label positioning
+  sideLabel?: boolean; // For explicit side-labeling
 }
 
 export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps> = React.memo(({ name, rows, cols, highlight, onSymbolClick, transpose = false, isPlaceholder = false, sideLabel = false }) => {
@@ -2328,7 +2392,6 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
 
   const subscriptParts = [];
   if (symbol.subscript) subscriptParts.push(symbol.subscript);
-  // [FIXED] Used double backslash for \times to prevent JS escape sequence issues
   subscriptParts.push(`${rows} \\times ${cols}`);
   mathSymbol += `_{${subscriptParts.join(',')}}`;
 
@@ -2372,19 +2435,12 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
     </div>
   );
 
-  if (sideLabel) {
-    return (
-       <div className="matrix-wrapper side-label">
-        <div className="matrix-label-side"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
-        {matrixGrid}
-       </div>
-    );
-  }
-
+  // [MODIFIED] Always render both label structures and let CSS handle visibility
   return (
-    <div className="matrix-wrapper">
-      <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
-      {matrixGrid}
+    <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`}>
+        <div className="matrix-label-side"><InlineMath math={`${mathSymbol}`} /></div>
+        {matrixGrid}
+        <div className="matrix-label"><InlineMath math={`${mathSymbol}`} /></div>
     </div>
   );
 });
@@ -2409,7 +2465,7 @@ interface MatrixProps {
   data: MatrixType;
   highlight: HighlightState;
   onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
-  sideLabel?: boolean; // [ADDED] For alternative label positioning
+  sideLabel?: boolean; // For explicit side-labeling when not in a vertical row
 }
 
 export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick, sideLabel = false }) => {
@@ -2482,23 +2538,21 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
       </div>
   );
 
-  if (sideLabel) {
-    return (
-       <div className="matrix-wrapper side-label" data-name={name}>
-          <div className="matrix-label-side">
-              <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
-          </div>
-          {matrixGrid}
-       </div>
-    );
-  }
-
+  // [MODIFIED] Always render both label structures and let CSS handle visibility
+  // The `side-label` class here is for explicit override when needed.
   return (
-    <div className="matrix-wrapper" data-name={name}>
-      {matrixGrid}
-      <div className="matrix-label-container">
-        <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
-      </div>
+    <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`} data-name={name}>
+        {/* Side label (hidden by default, shown via CSS context) */}
+        <div className="matrix-label-side">
+            <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
+        </div>
+
+        {matrixGrid}
+
+        {/* Bottom label (shown by default, hidden via CSS context) */}
+        <div className="matrix-label-container">
+            <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
+        </div>
     </div>
   );
 };
@@ -2513,8 +2567,9 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
 import React from 'react';
 import { AttentionData, HighlightState, ElementIdentifier, AttentionVariantData } from '../types';
 import { Matrix } from './Matrix';
-import { InlineMath } from 'react-katex';
+import { BlockMath } from 'react-katex';
 import { ElementwiseOperation } from './ElementwiseOperation';
+import 'katex/dist/katex.min.css'; // [FIXED] Import KaTeX CSS to fix rendering issues
 
 interface VizProps {
   data: AttentionData;
@@ -2536,11 +2591,12 @@ const AttentionVariantViz: React.FC<{
     const headData = variantData.heads[0];
     const { d_model, d_head, seq_len, n_q_heads } = dims;
 
-    // [MODIFIED] Stricter layout breaking rules for viz column (threshold = 15)
-    const break_qkv_proj = (d_model + d_head) > 15;
-    const break_scores = (d_head + seq_len) > 15;
-    const break_output = (seq_len + d_head) > 15;
-    const break_final = (n_q_heads * d_head + d_model) > 15;
+    // [MODIFIED] Layout breaking logic now sums the columns of ALL matrices in the row for more accurate wrapping.
+    const threshold = 15;
+    const break_qkv_proj = (d_model + d_head + d_head) > threshold;
+    const break_scores = (d_head + seq_len + seq_len) > threshold;
+    const break_output = (seq_len + d_head + d_head) > threshold;
+    const break_final = (n_q_heads * d_head + d_model + d_model) > threshold;
 
     const q_head_name = `${variantName}.heads.0.Q`;
     const k_head_name = `${variantName}.heads.0.K`;
@@ -2563,23 +2619,23 @@ const AttentionVariantViz: React.FC<{
                     <div className="step-title">1. 生成 Q, K, V (以头 0 为例)</div>
                      <div className={`viz-row ${break_qkv_proj ? 'vertical' : ''}`}>
                         <Matrix name={`${variantName}.input`} data={commonData.input} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="\times" />
+                        <BlockMath math="\times" />
                         <Matrix name={wq_name} data={commonData.Wq[0]} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="=" />
+                        <BlockMath math="=" />
                         <Matrix name={q_head_name} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                      <div className={`viz-row ${break_qkv_proj ? 'vertical' : ''}`}>
                         <Matrix name={`${variantName}.input`} data={commonData.input} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="\times" />
+                        <BlockMath math="\times" />
                         <Matrix name={wk_name} data={commonData.Wk[0]} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="=" />
+                        <BlockMath math="=" />
                         <Matrix name={k_head_name} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                      <div className={`viz-row ${break_qkv_proj ? 'vertical' : ''}`}>
                         <Matrix name={`${variantName}.input`} data={commonData.input} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="\times" />
+                        <BlockMath math="\times" />
                         <Matrix name={wv_name} data={commonData.Wv[0]} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="=" />
+                        <BlockMath math="=" />
                         <Matrix name={v_head_name} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                 </div>
@@ -2590,9 +2646,9 @@ const AttentionVariantViz: React.FC<{
                     <div className="step-title">2. 计算注意力分数 (头 0)</div>
                      <div className={`viz-row ${break_scores ? 'vertical' : ''}`}>
                         <Matrix name={q_head_name} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="\times" />
+                        <BlockMath math="\times" />
                         <Matrix name={k_head_name} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="=" />
+                        <BlockMath math="=" />
                         <Matrix name={scores_name} data={headData.Scores} highlight={highlight} onElementClick={onElementClick} />
                     </div>
 
@@ -2614,9 +2670,9 @@ const AttentionVariantViz: React.FC<{
                     <div className="step-title">3. 加权求和 (头 0)</div>
                     <div className={`viz-row ${break_output ? 'vertical' : ''}`}>
                         <Matrix name={weights_name} data={headData.Weights} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="\times" />
+                        <BlockMath math="\times" />
                         <Matrix name={v_head_name} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="=" />
+                        <BlockMath math="=" />
                         <Matrix name={output_head_name} data={headData.Output} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                 </div>
@@ -2627,9 +2683,9 @@ const AttentionVariantViz: React.FC<{
                     <div className="step-title">4. 合并与最终投影</div>
                      <div className={`viz-row ${break_final ? 'vertical' : ''}`}>
                         <Matrix name={`${variantName}.combined`} data={variantData.CombinedOutput} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="\times" />
+                        <BlockMath math="\times" />
                         <Matrix name={`${variantName}.wo`} data={commonData.Wo} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="=" />
+                        <BlockMath math="=" />
                         <Matrix name={`${variantName}.output`} data={variantData.FinalOutput} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                 </div>
@@ -2962,18 +3018,852 @@ export const getVisibleIndices = (
 
 
 ================================================================================
+### 文件路径: src/topics/transformer-explorer/TransformerExplorerTopic.css
+================================================================================
+
+/* FILE: src/topics/transformer-explorer/TransformerExplorerTopic.css */
+/* This file contains all necessary styles for the transformer-explorer topic,
+   ensuring it is fully self-contained. */
+
+.main-layout {
+  display: flex;
+  gap: 20px;
+  flex-grow: 1;
+  overflow: hidden;
+  padding: 20px;
+  min-height: 0;
+  position: relative;
+}
+
+.column {
+  flex: 1;
+  background: var(--component-bg);
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  overflow-y: auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.column-content {
+  padding: 20px;
+}
+
+.column.left-column {
+  flex: 1.4;
+}
+
+.column h2 {
+  font-size: 1.6em;
+  margin: -20px -20px 20px -20px;
+  padding: 20px 20px 15px 20px;
+  text-align: center;
+  color: #000;
+  position: sticky;
+  top: -21px;
+  background: inherit;
+  z-index: 10;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 12px 12px 0 0;
+}
+
+.diagram-component {
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  margin-bottom: 15px;
+  background-color: #fdfdfd;
+  transition: all 0.3s ease;
+}
+
+.diagram-component .component-header {
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.diagram-component .component-header:hover {
+    background-color: #f0f2f5;
+}
+.diagram-component.active {
+    border-color: var(--highlight-formula-border) !important;
+    box-shadow: 0 0 30px var(--highlight-formula-bg) !important;
+    transform: scale(1.01);
+}
+
+.component-header {
+  background-color: var(--component-header-bg);
+  padding: 8px 15px;
+  font-weight: bold;
+  font-size: 1.1em;
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 8px 8px 0 0;
+}
+.component-body {
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.arrow-down {
+  width: 100%;
+  text-align: center;
+  font-size: 24px;
+  color: var(--arrow-color);
+  margin: 5px 0;
+}
+
+.matrix-wrapper {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    vertical-align: middle;
+}
+
+/* Side-label logic for transformer-explorer */
+.matrix-wrapper .matrix-label-side { display: none; }
+.matrix-wrapper .matrix-label-container { display: flex; }
+.matrix-wrapper > .matrix-label {
+    display: flex;
+    justify-content: center;
+    margin-top: 8px;
+}
+
+.matrix-wrapper.side-label,
+.viz-formula-row.vertical .matrix-wrapper,
+.viz-formula-row > .matrix-wrapper:only-child,
+.formula-display > .matrix-scroll-wrapper:only-child .matrix-wrapper,
+.component-body > .matrix-wrapper
+{
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+}
+
+.matrix-wrapper.side-label .matrix-label-side,
+.viz-formula-row.vertical .matrix-wrapper .matrix-label-side,
+.viz-formula-row > .matrix-wrapper:only-child .matrix-label-side,
+.formula-display > .matrix-scroll-wrapper:only-child .matrix-wrapper .matrix-label-side,
+.component-body > .matrix-wrapper .matrix-label-side {
+    display: flex;
+}
+
+.matrix-wrapper.side-label .matrix-label-container,
+.matrix-wrapper.side-label > .matrix-label,
+.viz-formula-row.vertical .matrix-wrapper .matrix-label-container,
+.viz-formula-row.vertical .matrix-wrapper > .matrix-label,
+.viz-formula-row > .matrix-wrapper:only-child .matrix-label-container,
+.viz-formula-row > .matrix-wrapper:only-child > .matrix-label,
+.formula-display > .matrix-scroll-wrapper:only-child .matrix-wrapper .matrix-label-container,
+.formula-display > .matrix-scroll-wrapper:only-child .matrix-wrapper > .matrix-label,
+.component-body > .matrix-wrapper .matrix-label-container,
+.component-body > .matrix-wrapper > .matrix-label {
+    display: none;
+}
+
+.matrix-container {
+  display: inline-block;
+  border: 1px solid #ccc;
+  padding: 5px;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+.matrix-grid {
+  display: grid;
+  gap: 3px;
+}
+
+.matrix-element {
+  width: 45px;
+  height: 25px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 2px;
+  font-family: monospace;
+  font-size: 0.8em;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  z-index: 2;
+  font-weight: normal;
+}
+
+.matrix-ellipsis {
+    width: 45px;
+    height: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #aaa;
+    font-size: 1.2em;
+    font-family: monospace;
+}
+
+.matrix-element:hover {
+  transform: scale(1.1);
+  border-color: #007bff;
+  box-shadow: 0 0 5px rgba(0,123,255,0.5);
+  z-index: 5;
+}
+
+.matrix-element.source {
+  background-color: var(--highlight-source-bg);
+  color: var(--highlight-source-color);
+  border: 1.5px solid var(--highlight-source-border);
+}
+.matrix-element.target {
+  background-color: var(--highlight-target-bg);
+  color: var(--highlight-target-color);
+  border: 1.5px solid var(--highlight-target-border);
+}
+
+.matrix-element.prob-max {
+    box-shadow: 0 0 8px 2px var(--highlight-target-border);
+    font-weight: bold;
+    transform: scale(1.15);
+    z-index: 6;
+}
+
+.matrix-element.destination {
+  background-color: var(--highlight-formula-bg);
+  border: 1px solid var(--highlight-formula-border);
+}
+
+.matrix-label-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.matrix-label {
+  text-align: center;
+  font-weight: bold;
+  font-family: monospace;
+  font-size: 1.1em;
+  margin: 0;
+}
+
+.matrix-symbol-tag {
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 3px 7px;
+    border-radius: 5px;
+    font-size: 1.1em;
+    border: 1px solid #ced4da;
+    line-height: 1;
+    font-family: 'Times New Roman', serif;
+}
+
+.op-symbol {
+    font-size: 2em;
+    font-weight: bold;
+    color: #909399;
+    align-self: center;
+}
+
+.matrix-header-item, .symbolic-header-item {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f0f2f5;
+    color: #909399;
+    font-family: monospace;
+    font-size: 0.8em;
+    font-weight: bold;
+    border-radius: 2px;
+    padding: 2px;
+    box-sizing: border-box;
+    min-height: 15px;
+}
+.symbolic-header-item {
+    background-color: transparent;
+}
+
+
+.math-block {
+  margin-bottom: 25px;
+  padding: 20px;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  background: #fff;
+  transition: all 0.3s ease;
+}
+.math-block.active {
+  border-color: var(--highlight-formula-border) !important;
+  box-shadow: 0 0 30px var(--highlight-bg) !important;
+  transform: scale(1.01);
+  background-color: var(--highlight-formula-bg);
+}
+.math-block h3 {
+  margin: -20px -20px 15px -20px;
+  padding: 15px 20px;
+  font-size: 1.25em;
+  color: #000;
+  border-bottom: 1px solid #eee;
+  border-radius: 12px 12px 0 0;
+  background-color: var(--component-header-bg);
+}
+.math-block p, .math-block li, .math-block h5 {
+    line-height: 1.7;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+.math-block h5 {
+    font-size: 1.1em;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+.math-block code {
+   background-color: #e9ecef;
+   padding: 2px 5px;
+   border-radius: 4px;
+   font-family: monospace;
+}
+
+.formula-display {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 15px;
+    overflow-x: auto;
+    margin: 20px 0;
+    padding: 15px 10px;
+    background-color: rgba(0,0,0,0.02);
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+.formula-display > * {
+    flex-shrink: 0;
+}
+.formula-display.vertical {
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.katex-display {
+    margin: 0.5em 0 !important;
+}
+
+.matrix-scroll-wrapper {
+    overflow-x: auto;
+    padding: 5px;
+    flex-shrink: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.symbolic-matrix-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+.symbolic-matrix-grid {
+    display: grid;
+    gap: 2px;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+.symbolic-element, .symbolic-ellipsis {
+    min-width: 60px;
+    min-height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.9em;
+    border-radius: 2px;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    transition: all 0.2s ease-in-out;
+}
+.symbolic-ellipsis {
+    border-style: dashed;
+    color: #aaa;
+}
+.symbolic-element.source {
+  background-color: var(--highlight-source-bg);
+  border-color: var(--highlight-source-border);
+}
+.symbolic-element.target {
+  background-color: var(--highlight-target-bg);
+  border-color: var(--highlight-target-border);
+}
+.symbolic-element.destination {
+    background-color: var(--highlight-formula-bg);
+    border-color: var(--highlight-formula-border);
+}
+
+.viz-formula-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 15px 10px;
+    border: 1px solid #eef;
+    border-radius: 8px;
+    background-color: rgba(0,0,0,0.015);
+    gap: 5px;
+    box-sizing: border-box;
+}
+.viz-formula-group > * {
+    flex-shrink: 0;
+}
+.viz-formula-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    justify-content: center;
+    width: max-content;
+    padding: 0 5px;
+    flex-wrap: nowrap;
+}
+.viz-formula-row.vertical {
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+.viz-formula-row > * {
+    flex-shrink: 0;
+}
+
+.viz-step-title {
+    width: 100%;
+    text-align: center;
+    font-weight: bold;
+    color: #606266;
+    margin-top: 10px;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+    border-bottom: 1px solid #eef;
+    padding-bottom: 5px;
+}
+.viz-formula-group .viz-step-title {
+    margin-top: -5px;
+    margin-bottom: 10px;
+}
+
+.residual-block {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  border: 2px dashed var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: #fcfcfc;
+}
+.residual-block:hover {
+    border-color: var(--highlight-formula-border);
+    background-color: var(--highlight-formula-bg);
+}
+.residual-icon {
+    font-size: 1.6em;
+    font-weight: bold;
+    color: var(--arrow-color);
+    line-height: 1;
+}
+.residual-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.2;
+}
+.residual-matrix-symbol {
+    font-size: 1.2em;
+}
+.residual-matrix-dims {
+    font-size: 0.8em;
+    color: #666;
+    font-family: monospace;
+}
+.residual-block.active {
+    border-color: var(--highlight-formula-border);
+    border-style: solid;
+    box-shadow: 0 0 15px var(--highlight-formula-bg);
+    transform: scale(1.05);
+}
+.residual-block.active .residual-icon {
+    color: var(--highlight-formula-border);
+}
+
+.add-norm-component-body {
+    flex-direction: column;
+}
+
+.add-norm-inputs {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.token-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 5px;
+    cursor: pointer;
+    border-radius: 4px;
+    border: 2px solid transparent;
+    transition: all 0.2s ease-in-out;
+}
+.token-container:hover {
+    transform: scale(1.05);
+    background-color: rgba(0,0,0,0.02);
+}
+.token-container.target {
+    border-color: var(--highlight-target-border);
+    background-color: var(--highlight-target-bg);
+}
+.token-container.source {
+    border-color: var(--highlight-source-border);
+    background-color: var(--highlight-source-bg);
+}
+.token-text {
+    padding: 4px 8px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 1.05em;
+    min-width: 25px;
+    text-align: center;
+}
+.token-id {
+    padding: 2px 6px;
+    background-color: #e9ecef;
+    border: 1px solid #ced4da;
+    border-radius: 10px;
+    font-size: 0.8em;
+    color: #495057;
+}
+
+.token-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+.decoding-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+.decoding-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.embedding-lookup-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    position: relative;
+    padding: 10px;
+    box-sizing: border-box;
+}
+.embedding-lookup-container.vertical {
+    flex-direction: column;
+}
+.embedding-lookup-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+.embedding-lookup-svg path {
+    fill: none;
+    stroke-width: 2px;
+    stroke: var(--arrow-color);
+    stroke-dasharray: 5 5;
+    transition: all 0.3s ease;
+}
+.embedding-lookup-svg path.highlighted {
+    stroke: var(--highlight-target-border);
+    stroke-width: 3px;
+    stroke-dasharray: none;
+}
+.embedding-lookup-column {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+    flex-shrink: 0;
+}
+.embedding-lookup-vocab {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 0;
+}
+
+
+/* Upgraded Calculation Tooltip Styles */
+.calculation-tooltip {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    width: auto;
+    max-width: 500px;
+    font-size: 0.95em;
+    transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+    overflow: hidden;
+}
+.tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding: 8px 15px;
+    margin: 0;
+    cursor: default;
+}
+.tooltip-title {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+.tooltip-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.tooltip-toggle-btn, .tooltip-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5em;
+    cursor: pointer;
+    color: #999;
+    padding: 0 5px;
+    line-height: 1;
+}
+.tooltip-toggle-btn:hover, .tooltip-close-btn:hover {
+    color: #333;
+}
+.tooltip-content-wrapper {
+    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
+    max-height: 500px;
+    overflow: hidden;
+}
+.calculation-tooltip.collapsed .tooltip-content-wrapper {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+.tooltip-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+}
+.tooltip-vector-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.tooltip-symbol {
+    font-family: 'Times New Roman', serif;
+    font-weight: bold;
+    font-size: 1.2em;
+}
+.tooltip-vector {
+    display: flex;
+    gap: 4px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 2px 4px;
+    background-color: #f9f9f9;
+    overflow-x: auto;
+}
+.tooltip-element {
+    padding: 2px 4px;
+    background-color: #fff;
+    border-radius: 2px;
+    font-family: monospace;
+    transition: all 0.2s ease;
+}
+.tooltip-element.highlight {
+    background-color: var(--highlight-formula-bg);
+    border: 1px solid var(--highlight-formula-border);
+    transform: scale(1.1);
+}
+.tooltip-op-symbol {
+    font-size: 1.5em;
+    font-weight: bold;
+    padding: 0 10px;
+}
+.tooltip-result-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.1em;
+}
+.tooltip-result {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: var(--highlight-target-bg);
+    border: 1px solid var(--highlight-target-border);
+    color: var(--highlight-target-color);
+    font-weight: bold;
+}
+.tooltip-calculation-detail {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+}
+.tooltip-calc-title {
+    font-weight: bold;
+    font-size: 0.9em;
+    color: #333;
+    margin-bottom: 8px;
+    font-family: sans-serif;
+}
+.tooltip-calc-equation, .tooltip-calc-equation-multi {
+    font-family: monospace;
+    font-size: 0.95em;
+    color: #555;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+.tooltip-calc-equation .op {
+    color: #c0392b;
+    font-weight: bold;
+}
+.tooltip-calc-equation .result {
+    font-weight: bold;
+    color: var(--highlight-target-color);
+}
+.tooltip-calc-term {
+    transition: background-color 0.2s ease;
+    border-radius: 3px;
+    padding: 1px 3px;
+}
+.tooltip-calc-term.highlight {
+    background-color: var(--highlight-formula-bg);
+}
+.tooltip-calc-equation-multi {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* [REVISED] Modernized styles for Controls panel */
+.controls-container {
+    display: flex;
+    flex-direction: column;
+    gap: 18px; /* More vertical space */
+    padding: 20px;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.control-group {
+    display: flex;
+    justify-content: space-between; /* Label on left, input on right */
+    align-items: center;
+    width: 100%;
+}
+
+.control-group label {
+    font-size: 0.95em;
+    color: #495057; /* Darker, more professional gray */
+    font-weight: 500; /* Medium weight */
+    flex-shrink: 0;
+    padding-right: 15px; /* Space between label and input */
+}
+
+/* Common styles for number inputs and the d_k display */
+.control-group input[type="number"],
+.control-group .d_k-value {
+    width: 80px; /* Align the number inputs and the d_k value */
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px; /* Slightly more rounded */
+    font-size: 1em;
+    text-align: center;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Specific style for text input */
+.control-group input[type="text"] {
+    flex-grow: 1; /* Allow text input to fill remaining space */
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 1em;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Specific focus state for all interactive inputs */
+.control-group input:focus {
+    outline: none;
+    border-color: #409eff; /* Accent color on focus */
+    box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.2); /* Subtle glow */
+}
+
+/* Style for the read-only d_k value */
+.d_k-value {
+    font-weight: 600; /* Bolder */
+    background-color: #f0f2f5; /* Subtle background */
+    color: #303133;
+    border-color: #e4e7ed;
+}
+/* END OF FILE: src/topics/transformer-explorer/TransformerExplorerTopic.css */
+
+
+================================================================================
 ### 文件路径: src/topics/transformer-explorer/TransformerExplorerTopic.tsx
 ================================================================================
 
 // FILE: src/topics/transformer-explorer/TransformerExplorerTopic.tsx
-import React, { useState, useCallback, useEffect } from 'react';
-
-// [FIXED] 路径已更新，指向当前专题内的文件
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import './TransformerExplorerTopic.css';
 import { Controls } from './components/Controls';
 import { Viz } from './components/Viz';
 import { Explanation } from './components/Explanation';
 import { CalculationTooltip } from './components/CalculationTooltip';
 import { useTransformer } from './hooks/useTransformer';
+import { useSplitPane } from '../../hooks/useSplitPane';
 import { ElementIdentifier, HighlightSource, HighlightState, TransformerData, TooltipState, Matrix, CalculationComponent } from './types';
 import { MATRIX_NAMES } from './config/matrixNames';
 import { getSymbolParts } from './config/symbolMapping';
@@ -3084,40 +3974,85 @@ const getMatrixByName = (name: string, data: TransformerData, l: number, h: numb
 }
 
 const generateTooltipData = (element: ElementIdentifier, transformerData: TransformerData, sources: HighlightSource[]): TooltipState | null => {
-    const { name, row, col } = element;
+    const { name, row, col, isInternal } = element;
     const [layerIdx, headIdx] = getLayerAndHeadIndices(name);
     let opType: TooltipState['opType'] = 'info';
     let steps: TooltipState['steps'] = [];
-    const targetMatrix = getMatrixByName(name, transformerData, layerIdx, headIdx);
+
+    const baseName = isInternal ? name.replace('.internal', '') : name;
+    const targetMatrix = getMatrixByName(baseName, transformerData, layerIdx, headIdx);
     const targetValue = targetMatrix?.[row]?.[col] ?? 0;
 
-    if (sources.length === 2 && sources[0].highlightRow && sources[1].highlightCol) {
-        opType = 'matmul';
-        const source1 = sources[0];
-        const source2 = sources[1];
-        const matrixA = getMatrixByName(source1.name, transformerData, layerIdx, headIdx);
-        const matrixB = getMatrixByName(source2.name, transformerData, layerIdx, headIdx);
-        if (matrixA && matrixB && matrixA[source1.row] && matrixB.length > 0 && matrixB[0].length > source2.col) {
-            const vecA = matrixA[source1.row];
-            const vecB = matrixB.map(r => r[source2.col]);
+    const matmulSourceRow = sources.find(s => s.highlightRow && !s.highlightCol);
+    const matmulSourceCol = sources.find(s => s.highlightCol && !s.highlightRow);
+    const addSources = sources.filter(s => !s.highlightRow && !s.highlightCol);
+
+    // Wx+b Check (e.g., FFN layers)
+    if (matmulSourceRow && matmulSourceCol && addSources.length > 0) {
+        opType = 'add'; // The final operation is an add
+        const matmulMatrixA = getMatrixByName(matmulSourceRow.name, transformerData, layerIdx, headIdx);
+        const matmulMatrixB = getMatrixByName(matmulSourceCol.name, transformerData, layerIdx, headIdx);
+        const biasSource = addSources[0];
+        const biasMatrix = getMatrixByName(biasSource.name, transformerData, layerIdx, headIdx);
+
+        if (matmulMatrixA && matmulMatrixB && biasMatrix) {
+            // Step 1: Matmul
+            const vecA = matmulMatrixA[matmulSourceRow.row];
+            const vecB = matmulMatrixB.map(r => r[matmulSourceCol.col]);
+            const matmulResult = vecA.reduce((sum, val, i) => sum + val * vecB[i], 0);
             const components: CalculationComponent[] = vecA.map((val, i) => ({ a: val, b: vecB[i] }));
-            steps.push({ a: vecA, b: vecB, op: '·', result: targetValue, aSymbol: getSymbolParts(source1.name).base, bSymbol: getSymbolParts(source2.name).base, components });
+            steps.push({ title: "Step 1: Matmul", a: vecA, b: vecB, op: '·', result: matmulResult, aSymbol: getSymbolParts(matmulSourceRow.name).base, bSymbol: getSymbolParts(matmulSourceCol.name).base, components });
+
+            // Step 2: Add bias
+            const biasValue = biasMatrix[biasSource.row][biasSource.col];
+            steps.push({ title: "Step 2: Add Bias", a: [matmulResult], b: [biasValue], op: '+', result: targetValue, aSymbol: "Matmul Result", bSymbol: getSymbolParts(biasSource.name).base });
         }
-    } else if (sources.length === 2 && !sources[0].highlightRow && !sources[1].highlightRow) {
+    // Pure Matmul Check
+    } else if (matmulSourceRow && matmulSourceCol) {
+        opType = 'matmul';
+        const matrixA = getMatrixByName(matmulSourceRow.name, transformerData, layerIdx, headIdx);
+        const matrixB = getMatrixByName(matmulSourceCol.name, transformerData, layerIdx, headIdx);
+        if (matrixA && matrixB) {
+            const vecA = matrixA[matmulSourceRow.row];
+            const vecB = matrixB.map(r => r[matmulSourceCol.col]);
+            const components: CalculationComponent[] = vecA.map((val, i) => ({ a: val, b: vecB[i] }));
+            steps.push({ a: vecA, b: vecB, op: '·', result: targetValue, aSymbol: getSymbolParts(matmulSourceRow.name).base, bSymbol: getSymbolParts(matmulSourceCol.name).base, components });
+        }
+    // Pure Element-wise Add Check (e.g., Residual connections)
+    } else if (addSources.length >= 2) {
         opType = 'add';
-        const source1 = sources[0];
-        const source2 = sources[1];
-        const matrixA = getMatrixByName(source1.name, transformerData, layerIdx, headIdx);
-        const matrixB = getMatrixByName(source2.name, transformerData, layerIdx, headIdx);
-        if (matrixA && matrixB && matrixA[source1.row]?.[source1.col] !== undefined && matrixB[source2.row]?.[source2.col] !== undefined) {
-            const valA = matrixA[source1.row][source1.col];
-            const valB = matrixB[source2.row][source2.col];
-            const components: CalculationComponent[] = [{ a: valA, b: valB }];
-            steps.push({ a: [valA], b: [valB], op: '+', result: targetValue, aSymbol: getSymbolParts(source1.name).base, bSymbol: getSymbolParts(source2.name).base, components });
+        const vals = addSources.map(s => getMatrixByName(s.name, transformerData, layerIdx, headIdx)?.[s.row]?.[s.col] ?? 0);
+        if(vals.length >= 2) {
+             steps.push({ a: [vals[0]], b: [vals[1]], op: '+', result: targetValue, aSymbol: getSymbolParts(addSources[0].name).base, bSymbol: getSymbolParts(addSources[1].name).base });
         }
+    // Internal Element-wise Op Check (Softmax/ReLU)
+    } else if (isInternal) {
+         const sourceName = sources[0].name;
+         const sourceMatrix = getMatrixByName(sourceName, transformerData, layerIdx, headIdx);
+         if (sourceMatrix) {
+            const vecA = sourceMatrix[row];
+            if (baseName.includes('AttentionWeights')) {
+                opType = 'softmax';
+                steps.push({ a: vecA, b: [], op: 'softmax', result: targetValue, aSymbol: getSymbolParts(sourceName).base, bSymbol: '' });
+            } else if (baseName.includes('Activated')) {
+                opType = 'relu';
+                steps.push({ a: vecA, b: [], op: 'relu', result: targetValue, aSymbol: getSymbolParts(sourceName).base, bSymbol: '' });
+            }
+         }
     }
+
     if (steps.length === 0) return null;
-    return { target: element, opType, steps, title: `Calculation for ${getSymbolParts(name).base}[${row},${col}]`, initialPosition: { x: 0, y: 0 } };
+
+    const symbol = getSymbolParts(baseName);
+    element.symbol = `${symbol.base}${symbol.subscript ? `_{${symbol.subscript}}` : ''}${symbol.superscript ? `^{${symbol.superscript}}` : ''}`;
+
+    return {
+        target: element,
+        opType,
+        steps,
+        title: `Calculation for ${element.symbol}[${row},${col}]`,
+        initialPosition: { x: 0, y: 0 }
+    };
 };
 
 const createBackwardHighlight = (element: ElementIdentifier, transformerData: TransformerData, dims: any): { highlight: HighlightState } => {
@@ -3251,6 +4186,8 @@ export const TransformerExplorerTopic: React.FC = () => {
     const [highlight, setHighlight] = useState<HighlightState>({ target: null, sources: [], destinations: [], activeComponent: null, activeResidual: null });
     const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
+    const { primarySize, separatorProps, containerProps } = useSplitPane(window.innerWidth * 0.55);
+
     const transformerData: TransformerData | null = useTransformer(inputText, dims);
 
     useEffect(() => {
@@ -3267,13 +4204,9 @@ export const TransformerExplorerTopic: React.FC = () => {
     const handleInteraction = useCallback((element: ElementIdentifier, event: React.MouseEvent) => {
         if (!transformerData) return;
         const { highlight: newHighlight } = createBackwardHighlight(element, transformerData, dims);
-
-        let newTooltip: TooltipState | null = null;
-        if (newHighlight.target && newHighlight.sources.length > 0 && !newHighlight.target.isInternal) {
-            newTooltip = generateTooltipData(element, transformerData, newHighlight.sources);
-        }
-
         setHighlight(newHighlight);
+
+        const newTooltip = generateTooltipData(element, transformerData, newHighlight.sources);
         setTooltip(newTooltip);
     }, [transformerData, dims]);
 
@@ -3298,10 +4231,10 @@ export const TransformerExplorerTopic: React.FC = () => {
   };
 
     return (
-        <div className="main-layout" style={{padding: '0', gap: '0', height: '100%'}}>
+        <div className="main-layout" {...containerProps} style={{padding: '0', gap: '0', height: '100%'}}>
             {tooltip && <CalculationTooltip tooltip={tooltip} onClose={closeTooltip} />}
             <Controls dims={dims} setDims={setDims} inputText={inputText} setInputText={setInputText}/>
-            <div className="column left-column" style={{borderRadius: '0', boxShadow: 'none'}}>
+            <div className="column left-column" style={{width: primarySize, flex: 'none', borderRadius: '0', boxShadow: 'none'}}>
                 <div className="column-content">
                     <h2>模型结构与数据流</h2>
                     <p style={{textAlign: 'center', margin: '-10px 0 15px 0', fontSize: '0.9em', color: '#555'}}>
@@ -3315,7 +4248,8 @@ export const TransformerExplorerTopic: React.FC = () => {
                     />
                 </div>
             </div>
-            <div className="column right-column" style={{borderRadius: '0', boxShadow: 'none'}}>
+            <div className="split-pane-separator" {...separatorProps} />
+            <div className="column right-column" style={{flex: 1, borderRadius: '0', boxShadow: 'none'}}>
                 <div className="column-content">
                     <h2>数学原理详解</h2>
                     <Explanation
@@ -3336,7 +4270,7 @@ export const TransformerExplorerTopic: React.FC = () => {
 ### 文件路径: src/topics/transformer-explorer/types.ts
 ================================================================================
 
-// FILE: src/types.ts
+// FILE: src/topics/transformer-explorer/types.ts
 export type Matrix = number[][];
 export type Vector = number[];
 
@@ -3350,6 +4284,7 @@ export interface ElementIdentifier {
   tokenId?: number; // e.g., 10 for "I"
   tokenStr?: string; // e.g., "I"
   probValue?: number; // For decoding, the probability of the chosen token
+  symbol?: string; // The mathematical symbol for the tooltip title
 }
 
 export interface HighlightSource extends ElementIdentifier {
@@ -3372,21 +4307,22 @@ export interface CalculationComponent {
 }
 
 export interface CalculationStep {
+    title?: string; // Optional title for multi-step calculations
     a: Vector;
     b: Vector;
     op: string; // e.g., '·', '+', '...'
     result: number;
     aSymbol: string;
     bSymbol: string;
-    components?: CalculationComponent[]; // [NEW] For detailed breakdown of calculations
+    components?: CalculationComponent[];
 }
 
 export interface TooltipState {
     target: ElementIdentifier;
-    opType: 'matmul' | 'add' | 'info';
+    opType: 'matmul' | 'add' | 'info' | 'softmax' | 'relu';
     steps: CalculationStep[];
     title: string;
-    initialPosition: { x: number, y: number }; // [NEW] For positioning the tooltip
+    initialPosition: { x: number, y: number };
 }
 
 export interface AttentionHeadData {
@@ -3474,7 +4410,7 @@ export interface TransformerData {
     decodedTokens: number[];
     outputText: string[];
 }
-// END OF FILE: src/types.ts
+// END OF FILE: src/topics/transformer-explorer/types.ts
 
 
 ================================================================================
@@ -3554,95 +4490,158 @@ export const AddNorm: React.FC<AddNormProps> = ({
 ### 文件路径: src/topics/transformer-explorer/components/CalculationTooltip.tsx
 ================================================================================
 
-// FILE: src/components/CalculationTooltip.tsx
-import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { TooltipState, CalculationComponent } from '../types';
+// FILE: src/topics/transformer-explorer/components/CalculationTooltip.tsx
+import React, { useState, useEffect, useRef } from 'react';
+import { TooltipState } from '../types';
+import { useDraggableAndResizable } from '../../../hooks/useDraggableAndResizable';
 
 interface CalculationTooltipProps {
   tooltip: TooltipState;
   onClose: () => void;
 }
 
-const renderVector = (vec: number[], type: 'source' | 'target' | 'none') => {
-    return (
-        <div className="tooltip-vector">
-            {vec.map((val, i) => (
-                <span key={i} className={`tooltip-element ${type}`}>{val.toFixed(4)}</span>
-            ))}
-        </div>
-    );
-};
-
-const renderCalculationDetail = (opType: 'matmul' | 'add' | 'info', components: CalculationComponent[], result: number) => {
-    if (!components || components.length === 0) return null;
-
-    let equation: React.ReactNode;
-    let title: string;
-
-    if (opType === 'matmul') {
-        title = "点积计算分解 (Dot Product Breakdown):";
-        const MAX_TERMS = 4;
-        const terms = components.map((comp, i) => (
-            <span key={i}>
-                {i > 0 && <span className="op"> + </span>}
-                <span>({comp.a.toFixed(4)} <span className="op">×</span> {comp.b.toFixed(4)})</span>
-            </span>
-        ));
-
-        let displayedTerms;
-        if (terms.length > (MAX_TERMS * 2)) {
-            displayedTerms = [
-                ...terms.slice(0, MAX_TERMS),
-                <span key="ellipsis" className="ellipsis"> ... </span>,
-                ...terms.slice(terms.length - MAX_TERMS)
-            ];
-        } else {
-            displayedTerms = terms;
-        }
-
-        equation = (
-            <>
-                {displayedTerms}
-                <span> = <span className="result">{result.toFixed(2)}</span></span>
-            </>
-        );
-
-    } else if (opType === 'add') {
-        title = "逐元素加法 (Element-wise Addition):";
-        const comp = components[0];
-        equation = (
-            <>
-                <span>{comp.a.toFixed(4)} <span className="op">+</span> {comp.b.toFixed(4)}</span>
-                <span> = <span className="result">{result.toFixed(2)}</span></span>
-            </>
-        );
-    } else {
-        return null;
-    }
-
-
-    return (
-        <div className="tooltip-calculation-detail">
-            <div className="tooltip-calc-title">{title}</div>
-            <div className="tooltip-calc-equation">{equation}</div>
-        </div>
-    );
+const formatNumber = (num: number, precision = 4) => {
+    if (num === -Infinity) return '-∞';
+    if (num === Infinity) return '+∞';
+    const fixed = num.toFixed(precision);
+    return parseFloat(fixed).toString();
 };
 
 export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip, onClose }) => {
-    const tooltipRef = useRef<HTMLDivElement>(null);
-    const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(true);
+    const [hoveredComponentIndex, setHoveredComponentIndex] = useState<number | null>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
+
+    const { position, size, dragHandleProps, resizeHandleProps } = useDraggableAndResizable({
+        x: 20,
+        y: 20,
+        width: 500,
+        height: 'auto',
+    }, panelRef);
 
     useEffect(() => {
-        setIsCollapsed(false); // Expand tooltip whenever it changes
+        setIsCollapsed(false);
     }, [tooltip]);
 
+    const renderVector = (vec: number[], symbol: string, direction: 'row' | 'column' = 'row') => (
+        <div className="tooltip-vector-group">
+            <span className="tooltip-symbol">{symbol} =</span>
+            <div className={`tooltip-vector ${direction}`}>
+                {vec.map((val, i) => (
+                    <span
+                        key={i}
+                        className={`tooltip-element source ${hoveredComponentIndex === i ? 'highlight' : ''}`}
+                    >
+                        {formatNumber(val, 2)}
+                    </span>
+                ))}
+            </div>
+        </div>
+    );
+
+    const renderBody = () => {
+        if (!tooltip.steps || tooltip.steps.length === 0) return null;
+
+        return tooltip.steps.map((step, stepIndex) => {
+            let content = <></>;
+            switch(step.op) {
+                case '·': // Matmul
+                    content = (
+                         <div className="tooltip-matmul-container">
+                            {renderVector(step.a, step.aSymbol, 'row')}
+                            <div className="tooltip-op-symbol">·</div>
+                            {renderVector(step.b, step.bSymbol, 'column')}
+                            <div className="tooltip-result-line">
+                                <span className="tooltip-op">=</span>
+                                <span className="tooltip-result">{formatNumber(step.result, 4)}</span>
+                            </div>
+                            {step.components && (
+                                <div className="tooltip-calculation-detail">
+                                    <div className="tooltip-calc-title">点积计算分解:</div>
+                                    <div className="tooltip-calc-equation">
+                                        {step.components.map((comp, i) => (
+                                            <span key={i} onMouseEnter={() => setHoveredComponentIndex(i)} onMouseLeave={() => setHoveredComponentIndex(null)}>
+                                                {i > 0 && <span className="op"> + </span>}
+                                                <span className={`tooltip-calc-term ${hoveredComponentIndex === i ? 'highlight' : ''}`}>
+                                                    ({formatNumber(comp.a, 2)} <span className="op">×</span> {formatNumber(comp.b, 2)})
+                                                </span>
+                                            </span>
+                                        ))}
+                                        <span> = <span className="result">{formatNumber(step.result, 4)}</span></span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                    break;
+                case '+': // Add
+                    content = (
+                        <div className="tooltip-calculation-detail" style={{borderTop: stepIndex > 0 ? '1px solid #eee' : 'none', paddingTop: stepIndex > 0 ? '12px' : '0'}}>
+                            <div className="tooltip-calc-title">逐元素加法:</div>
+                            <div className="tooltip-calc-equation">
+                                <span>{formatNumber(step.a[0], 2)} ({step.aSymbol})</span>
+                                <span className="op"> + </span>
+                                <span>{formatNumber(step.b[0], 2)} ({step.bSymbol})</span>
+                                <span> = <span className="result">{formatNumber(step.result, 2)}</span></span>
+                            </div>
+                        </div>
+                    );
+                    break;
+                case 'softmax':
+                    const maxVal = Math.max(...step.a.filter(isFinite));
+                    const exps = step.a.map(v => isFinite(v) ? Math.exp(v - maxVal) : 0);
+                    const sumExps = exps.reduce((a, b) => a + b, 0);
+                    content = (
+                        <>
+                            {renderVector(step.a, step.aSymbol, 'row')}
+                            <div className="tooltip-calculation-detail">
+                                <div className="tooltip-calc-title">Softmax 计算分解 (for {tooltip.target.symbol}[{tooltip.target.row}, {tooltip.target.col}]):</div>
+                                <div className="tooltip-calc-equation-multi">
+                                    <div>1. 减去最大值: <span>max(...) = {formatNumber(maxVal, 2)}</span></div>
+                                    <div>2. 计算指数: <span>e^({formatNumber(step.a[tooltip.target.col], 2)} - {formatNumber(maxVal, 2)}) = {formatNumber(exps[tooltip.target.col], 4)}</span></div>
+                                    <div>3. 计算所有指数之和: <span>Σ e^(...) = {formatNumber(sumExps, 4)}</span></div>
+                                    <div>4. 归一化: <span>{formatNumber(exps[tooltip.target.col], 4)} / {formatNumber(sumExps, 4)} = <span className="result">{formatNumber(step.result, 4)}</span></span></div>
+                                </div>
+                            </div>
+                        </>
+                    );
+                    break;
+                case 'relu':
+                    content = (
+                        <>
+                            {renderVector(step.a, step.aSymbol, 'row')}
+                            <div className="tooltip-calculation-detail">
+                                <div className="tooltip-calc-title">ReLU 计算:</div>
+                                <div className="tooltip-calc-equation">
+                                    <span>max(0, {formatNumber(step.a[tooltip.target.col], 2)}) = <span className="result">{formatNumber(step.result, 2)}</span></span>
+                                </div>
+                            </div>
+                        </>
+                    );
+                    break;
+            }
+            return (
+                <div className="tooltip-step-container" key={stepIndex}>
+                    {step.title && <h4 className="tooltip-step-title">{step.title}</h4>}
+                    {content}
+                </div>
+            )
+        });
+    };
+
+    const panelStyle: React.CSSProperties = {
+        top: position.y,
+        left: position.x,
+        width: size.width,
+        height: typeof size.height === 'number' && !isCollapsed ? size.height : 'auto',
+    };
+
     return (
-        <div className={`calculation-tooltip ${isCollapsed ? 'collapsed' : ''}`} ref={tooltipRef}>
-            <div className="tooltip-header">
+        <div ref={panelRef} style={panelStyle} className={`calculation-tooltip ${isCollapsed ? 'collapsed' : ''} resizable-panel`}>
+            <div className="panel-header" {...dragHandleProps}>
                 <span className="tooltip-title">{tooltip.title}</span>
                 <div className="tooltip-controls">
-                     <button onClick={() => setIsCollapsed(!isCollapsed)} className="tooltip-toggle-btn">
+                    <button onClick={() => setIsCollapsed(!isCollapsed)} className="tooltip-toggle-btn">
                         {isCollapsed ? '⊕' : '⊖'}
                     </button>
                     <button onClick={onClose} className="tooltip-close-btn">&times;</button>
@@ -3650,42 +4649,27 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
             </div>
             <div className="tooltip-content-wrapper">
                 <div className="tooltip-body">
-                    {tooltip.steps.map((step, index) => (
-                        <div key={index}>
-                            <div className="tooltip-step">
-                                {renderVector(step.a, 'source')}
-                                <span className="tooltip-op">{step.op}</span>
-                                {renderVector(step.b, 'source')}
-                                <span className="tooltip-op">=</span>
-                                <span className="tooltip-result">{step.result.toFixed(2)}</span>
-                            </div>
-                            {renderCalculationDetail(tooltip.opType, step.components || [], step.result)}
-                        </div>
-                    ))}
-                    {tooltip.opType === 'matmul' &&
-                        <p className="tooltip-explanation">
-                            Showing dot product of row {tooltip.target.row} from the first matrix and column {tooltip.target.col} from the second.
-                        </p>
-                    }
-                    {tooltip.opType === 'add' &&
-                        <p className="tooltip-explanation">
-                            Showing element-wise addition for position ({tooltip.target.row}, {tooltip.target.col}).
-                        </p>
-                    }
+                    {renderBody()}
                 </div>
             </div>
+            <div className="resize-handle br" {...resizeHandleProps.br}></div>
+            <div className="resize-handle t" {...resizeHandleProps.t}></div>
+            <div className="resize-handle r" {...resizeHandleProps.r}></div>
+            <div className="resize-handle b" {...resizeHandleProps.b}></div>
+            <div className="resize-handle l" {...resizeHandleProps.l}></div>
         </div>
     );
 };
-// END OF FILE: src/components/CalculationTooltip.tsx
+// END OF FILE: src/topics/transformer-explorer/components/CalculationTooltip.tsx
 
 
 ================================================================================
 ### 文件路径: src/topics/transformer-explorer/components/Controls.tsx
 ================================================================================
 
-// FILE: src/components/Controls.tsx
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+// FILE: src/topics/transformer-explorer/components/Controls.tsx
+import React, { useState, useRef } from 'react';
+import { useDraggableAndResizable } from '../../../hooks/useDraggableAndResizable';
 
 interface ControlsProps {
   dims: { d_model: number; h: number, seq_len: number, n_layers: number, d_ff: number };
@@ -3695,22 +4679,20 @@ interface ControlsProps {
 }
 
 export const Controls: React.FC<ControlsProps> = ({ dims, setDims, inputText, setInputText }) => {
-  const [isControlsVisible, setIsControlsVisible] = useState(true);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  const panelRef = useRef<HTMLDivElement>(null); // Create a ref
+  const { position, size, dragHandleProps, resizeHandleProps } = useDraggableAndResizable({
+    x: window.innerWidth - 450, // Initial position top-right
+    y: 90,
+    width: 420,
+    height: 300,
+  }, panelRef); // Pass the ref to the hook
 
-  // [REMOVED] Dragging logic is no longer needed
-  // const [position, setPosition] = useState(...);
-  // const dragData = useRef(...);
-  // const handleMouseDown = useCallback(...);
-  // const handleMouseMove = useCallback(...);
-  // const handleMouseUp = useCallback(...);
-  // useEffect for mouse events...
 
   const handleDimChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     let newDims = { ...dims, [id]: parseInt(value, 10) || 1 };
 
-    // Ensure d_model is divisible by h
     if (id === 'h') {
         if (newDims.d_model % newDims.h !== 0) {
              newDims.d_model = Math.max(newDims.h, Math.ceil(newDims.d_model / newDims.h) * newDims.h);
@@ -3743,47 +4725,59 @@ export const Controls: React.FC<ControlsProps> = ({ dims, setDims, inputText, se
 
   const d_k = dims.d_model % dims.h === 0 ? dims.d_model / dims.h : 'N/A';
 
-  // [REMOVED] Inline style for positioning is now handled by CSS
-  // const panelStyle: React.CSSProperties = { ... };
+  const panelStyle: React.CSSProperties = {
+    position: 'absolute', // Changed from fixed to absolute
+    top: position.y,
+    left: position.x,
+    width: isCollapsed ? 50 : size.width,
+    height: isCollapsed ? 50 : size.height,
+  };
 
   return (
-    <div ref={panelRef} className={`controls-panel ${!isControlsVisible ? 'collapsed' : ''}`}>
-      {/* [REMOVED] onMouseDown handler for dragging */}
-      <div className="controls-panel-header">
-        <button className="controls-toggle-btn" onClick={() => setIsControlsVisible(!isControlsVisible)}>
-          {isControlsVisible ? '×' : '⚙️'}
+    <div ref={panelRef} style={panelStyle} className={`controls-panel ${isCollapsed ? 'collapsed' : ''} resizable-panel`}>
+      <div className="panel-header" {...dragHandleProps}>
+        <button className="panel-toggle-btn" onClick={() => setIsCollapsed(!isCollapsed)}>
+          {isCollapsed ? '⚙️' : '×'}
         </button>
+        {!isCollapsed && <span className="panel-title">Controls</span>}
       </div>
-      <div className="controls-container">
-        <div className="control-group">
-          <label htmlFor="inputText">输入文本 (Encoder Input)</label>
-          <input type="text" id="inputText" value={inputText} onChange={handleInputChange} />
-        </div>
-        <div className="control-group">
-          <label htmlFor="seq_len">解码器长度 (Decoder Len)</label>
-          <input type="number" id="seq_len" value={dims.seq_len} onChange={handleDimChange} min="1" max="4" />
-        </div>
-        <div className="control-group">
-          <label htmlFor="d_model">模型维度 (d_model)</label>
-          <input type="number" id="d_model" value={dims.d_model} onChange={handleDimChange} step={1} min={2} max="16"/>
-        </div>
-        <div className="control-group">
-          <label htmlFor="h">注意力头数 (h)</label>
-          <input type="number" id="h" value={dims.h} onChange={handleDimChange} min="1" max={dims.d_model}/>
-        </div>
-        <div className="control-group">
-          <label htmlFor="n_layers">层数 (N)</label>
-          <input type="number" id="n_layers" value={dims.n_layers} onChange={handleDimChange} min="1" max="3"/>
-        </div>
-        <div className="control-group">
-          <label>键/查询维度 (d_k)</label>
-          <div className="d_k-value">{d_k}</div>
-        </div>
-      </div>
+      {!isCollapsed && (
+          <div className="controls-container">
+            <div className="control-group">
+              <label htmlFor="inputText">输入文本 (Encoder Input)</label>
+              <input type="text" id="inputText" value={inputText} onChange={handleInputChange} />
+            </div>
+            <div className="control-group">
+              <label htmlFor="seq_len">解码器长度 (Decoder Len)</label>
+              <input type="number" id="seq_len" value={dims.seq_len} onChange={handleDimChange} min="1" max="4" />
+            </div>
+            <div className="control-group">
+              <label htmlFor="d_model">模型维度 (d_model)</label>
+              <input type="number" id="d_model" value={dims.d_model} onChange={handleDimChange} step={1} min={2} max="16"/>
+            </div>
+            <div className="control-group">
+              <label htmlFor="h">注意力头数 (h)</label>
+              <input type="number" id="h" value={dims.h} onChange={handleDimChange} min="1" max={dims.d_model}/>
+            </div>
+            <div className="control-group">
+              <label htmlFor="n_layers">层数 (N)</label>
+              <input type="number" id="n_layers" value={dims.n_layers} onChange={handleDimChange} min="1" max="3"/>
+            </div>
+            <div className="control-group">
+              <label>键/查询维度 (d_k)</label>
+              <div className="d_k-value">{d_k}</div>
+            </div>
+          </div>
+      )}
+        <div className="resize-handle br" {...resizeHandleProps.br}></div>
+        <div className="resize-handle t" {...resizeHandleProps.t}></div>
+        <div className="resize-handle r" {...resizeHandleProps.r}></div>
+        <div className="resize-handle b" {...resizeHandleProps.b}></div>
+        <div className="resize-handle l" {...resizeHandleProps.l}></div>
     </div>
   );
 };
-// END OF FILE: src/components/Controls.tsx
+// END OF FILE: src/topics/transformer-explorer/components/Controls.tsx
 
 
 ================================================================================
@@ -4758,8 +5752,7 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 <p>此机制的核心目的是计算句子中每个词与其他所有词的“关注度”或“相关性”,并根据这个关注度重新计算每个词的向量表示,从而让每个词的向量都融入其上下文信息。例如，在句子 "The animal didn't cross the street because it was too tired" 中，自注意力能帮助模型理解 "it" 指的是 "animal" 而不是 "street"。</p>
                 <h5>输入矩阵 (Input Matrix)</h5>
                 <div className="formula-display">
-                    <InlineMath math="\text{Input} = " />
-                    <InteractiveSymbolicMatrix name={LNe.encoder_input} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} truncate={false} />
+                    <InteractiveSymbolicMatrix name={LNe.encoder_input} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} truncate={false} sideLabel={true} />
                 </div>
                 <h5>计算流程 (以单个注意力头为例)</h5>
                  <p>输入矩阵 <InlineMath math="Z"/> 被并行地送入 {dims.h} 个独立的注意力头. 每个头都拥有三块自己专属、可学习的权重矩阵. 通过矩阵乘法,将输入 <InlineMath math="Z"/> 投影到三个新的矩阵:查询 (Query, <InlineMath math="Q"/>), 键 (Key, <InlineMath math="K"/>), 和 值 (Value, <InlineMath math="V"/>)。这可以类比于一个信息检索系统：</p>
@@ -4818,9 +5811,9 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 </div>
                  <div className="formula-display vertical">
                     <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.Intermediate} rows={dims.encoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.Intermediate} rows={dims.encoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick} sideLabel={true}/></div>
                     <BlockMath math="\xrightarrow{ReLU}"/>
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.Activated} rows={dims.encoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.Activated} rows={dims.encoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick} sideLabel={true}/></div>
                 </div>
                 <h5>第二次线性变换</h5>
                 <div className={`formula-display ${shouldBreakFFN2 ? 'vertical' : ''}`}>
@@ -4896,11 +5889,11 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                  <div className="formula-display vertical">
                     <div>
                         <p style={{textAlign: 'center', marginBottom: '5px'}}>Query Input (from Decoder):</p>
-                        <InteractiveSymbolicMatrix name={LNd.add_norm_1_output} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} truncate={false}/>
+                        <InteractiveSymbolicMatrix name={LNd.add_norm_1_output} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} truncate={false} sideLabel={true}/>
                     </div>
                      <div style={{marginTop: '15px'}}>
                         <p style={{textAlign: 'center', marginBottom: '5px'}}>Key/Value Input (from Encoder):</p>
-                        <InteractiveSymbolicMatrix name={FinalLNe.add_norm_2_output} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} truncate={false}/>
+                        <InteractiveSymbolicMatrix name={FinalLNe.add_norm_2_output} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} truncate={false} sideLabel={true}/>
                     </div>
                  </div>
                  <h5>计算流程 (以单个注意力头为例)</h5>
@@ -4952,13 +5945,13 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 <p>与编码器中的 FFN 类似,解码器中的前馈网络 (FFN) 也对每个位置的向量 (<InlineMath math="Y''"/>) 独立地进行一次复杂的非线性变换,进一步增强模型的表达能力,为最终的输出预测做准备。在这一步，模型对融合了自身历史信息和编码器上下文信息的新向量进行深入的、非线性的“思考”。</p>
                 <BlockMath math={`F = \\text{ReLU}(Y'' W_1 + b_1) W_2 + b_2`} />
                  <div className="formula-display vertical">
-                     <div className="viz-formula-row"><InteractiveSymbolicMatrix name={LNd.add_norm_2_output} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                     <div className="viz-formula-row"><InteractiveSymbolicMatrix name={LNd.add_norm_2_output} rows={dims.decoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} sideLabel={true}/></div>
                     <BlockMath math="\times"/>
                     <div className="viz-formula-row"><InteractiveSymbolicMatrix name={LNd.W1} rows={dims.d_model} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math="+"/>
                     <div className="viz-formula-row"><InteractiveSymbolicVector name={LNd.b1} data={Array(dims.d_ff).fill(0)} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math="\xrightarrow{ReLU}"/>
-                    <div className="viz-formula-row"><InteractiveSymbolicMatrix name={LNd.Activated} rows={dims.decoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <div className="viz-formula-row"><InteractiveSymbolicMatrix name={LNd.Activated} rows={dims.decoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick} sideLabel={true}/></div>
                 </div>
             </MathBlock>
             <MathBlock id="add_norm_3_dec" title="解码器组件:残差连接与层归一化 (3)" highlight={highlight}>
@@ -4987,9 +5980,9 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                  </div>
                  <div className="formula-display">
                     <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.logits} rows={dims.decoder_seq_len} cols={dims.vocab_size} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.logits} rows={dims.decoder_seq_len} cols={dims.vocab_size} highlight={highlight} onSymbolClick={onSymbolClick} sideLabel={true}/></div>
                     <BlockMath math="\xrightarrow{\text{Softmax}}" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.outputProbabilities} rows={dims.decoder_seq_len} cols={dims.vocab_size} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={MATRIX_NAMES.outputProbabilities} rows={dims.decoder_seq_len} cols={dims.vocab_size} highlight={highlight} onSymbolClick={onSymbolClick} sideLabel={true}/></div>
                 </div>
                  <p>现在,矩阵 <InlineMath math="P"/> 中的每一行都是一个概率分布,代表了在那个位置上生成词汇表中任何一个单词的可能性. </p>
             </MathBlock>
@@ -5157,7 +6150,7 @@ export const InteractiveSymbolicElement: React.FC<InteractiveSymbolicElementProp
 ### 文件路径: src/topics/transformer-explorer/components/InteractiveSymbolicMatrix.tsx
 ================================================================================
 
-// FILE: src/components/InteractiveSymbolicMatrix.tsx
+// FILE: src/topics/transformer-explorer/components/InteractiveSymbolicMatrix.tsx
 import React from 'react';
 import { HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
@@ -5171,11 +6164,12 @@ interface InteractiveSymbolicMatrixProps {
   cols: number;
   highlight: HighlightState;
   transpose?: boolean;
-  truncate?: boolean; // [ADDED] New prop to control truncation
+  truncate?: boolean;
   onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+  sideLabel?: boolean; // For explicit override
 }
 
-export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps> = React.memo(({ name, rows, cols, highlight, transpose = false, truncate = true, onSymbolClick }) => {
+export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps> = React.memo(({ name, rows, cols, highlight, transpose = false, truncate = true, onSymbolClick, sideLabel = false }) => {
   const displayRows = transpose ? cols : rows;
   const displayCols = transpose ? rows : cols;
   const symbol = getSymbolParts(name);
@@ -5210,65 +6204,59 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
   if (symbol.subscript) {
     subscriptParts.push(symbol.subscript);
   }
-  subscriptParts.push(`${rows} \times ${cols}`);
+  subscriptParts.push(`${rows} \\times ${cols}`);
   mathSymbol += `_{${subscriptParts.join(',')}}`;
 
-  return (
-    <div className="symbolic-matrix-container">
-      <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+  const matrixGrid = (
       <div className="symbolic-matrix-grid" style={gridStyle}>
-        {/* Top-left corner, column headers */}
         {isTargetMatrix && <div key="corner" />}
         {isTargetMatrix && visibleColIndices.map((c, cIdx) => (
             <div key={`ch-${cIdx}`} className="symbolic-header-item">{c}</div>
         ))}
-
-        {/* Row headers and matrix elements */}
-        {visibleRowIndices.map((r, rIdx) => {
-            const rowContent = visibleColIndices.map((c, cIdx) => {
-                 if (r === ELLIPSIS) {
-                    return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="symbolic-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
-                }
-                if (c === ELLIPSIS) {
-                    return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="symbolic-ellipsis">…</div>;
-                }
-
-                const originalRow = transpose ? c : r;
-                const originalCol = transpose ? r : c;
-
-                return (
-                    <InteractiveSymbolicElement
-                        key={`elem-r${r}-c${c}`}
-                        name={name}
-                        base={symbol.base}
-                        subscript={symbol.subscript}
-                        row={originalRow}
-                        col={originalCol}
-                        highlight={highlight}
-                        onClick={(event) => onSymbolClick({ name, row: originalRow, col: originalCol }, event)}
-                    />
-                );
-            });
-
-            return (
-                <React.Fragment key={`row-frag-${rIdx}`}>
-                    {isTargetMatrix && <div className="symbolic-header-item">{r}</div>}
-                    {rowContent}
-                </React.Fragment>
-            );
-        })}
+        {visibleRowIndices.map((r, rIdx) => (
+            <React.Fragment key={`row-frag-${rIdx}`}>
+                {isTargetMatrix && <div className="symbolic-header-item">{r}</div>}
+                {visibleColIndices.map((c, cIdx) => {
+                     if (r === ELLIPSIS) return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="symbolic-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
+                     if (c === ELLIPSIS) return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="symbolic-ellipsis">…</div>;
+                    const originalRow = transpose ? c : r;
+                    const originalCol = transpose ? r : c;
+                    return (
+                        <InteractiveSymbolicElement
+                            key={`elem-r${r}-c${c}`}
+                            name={name}
+                            base={symbol.base}
+                            subscript={symbol.subscript}
+                            row={originalRow}
+                            col={originalCol}
+                            highlight={highlight}
+                            onClick={(event) => onSymbolClick({ name, row: originalRow, col: originalCol }, event)}
+                        />
+                    );
+                })}
+            </React.Fragment>
+        ))}
       </div>
+  );
+
+  return (
+    <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`}>
+        <div className="matrix-label-side"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+        <div className="symbolic-matrix-container">
+            {matrixGrid}
+        </div>
+        <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
     </div>
   );
 });
-// END OF FILE: src/components/InteractiveSymbolicMatrix.tsx
+// END OF FILE: src/topics/transformer-explorer/components/InteractiveSymbolicMatrix.tsx
 
 
 ================================================================================
 ### 文件路径: src/topics/transformer-explorer/components/InteractiveSymbolicVector.tsx
 ================================================================================
 
-// FILE: src/components/InteractiveSymbolicVector.tsx
+// FILE: src/topics/transformer-explorer/components/InteractiveSymbolicVector.tsx
 import React from 'react';
 import { HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
@@ -5282,9 +6270,10 @@ interface InteractiveSymbolicVectorProps {
   data: VectorType;
   highlight: HighlightState;
   onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+  sideLabel?: boolean; // For explicit override
 }
 
-export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps> = React.memo(({ name, data, highlight, onSymbolClick }) => {
+export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps> = React.memo(({ name, data, highlight, onSymbolClick, sideLabel = false }) => {
   const displayCols = data.length;
   const symbol = getSymbolParts(name);
 
@@ -5319,20 +6308,26 @@ export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps>
   if (symbol.subscript) {
     subscriptParts.push(symbol.subscript);
   }
-  subscriptParts.push(`1 \times ${displayCols}`);
+  subscriptParts.push(`1 \\times ${displayCols}`);
   mathSymbol += `_{${subscriptParts.join(',')}}`;
 
-
-  return (
-    <div className="symbolic-matrix-container">
-      <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+  const matrixGrid = (
       <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: `repeat(${gridElements.length}, auto)` }}>
         {gridElements}
       </div>
+  );
+
+  return (
+    <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`}>
+        <div className="matrix-label-side"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+        <div className="symbolic-matrix-container">
+            {matrixGrid}
+        </div>
+        <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
     </div>
   );
 });
-// END OF FILE: src/components/InteractiveSymbolicVector.tsx
+// END OF FILE: src/topics/transformer-explorer/components/InteractiveSymbolicVector.tsx
 
 
 ================================================================================
@@ -5466,7 +6461,7 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
 ### 文件路径: src/topics/transformer-explorer/components/Matrix.tsx
 ================================================================================
 
-// FILE: src/components/Matrix.tsx
+// FILE: src/topics/transformer-explorer/components/Matrix.tsx
 import React from 'react';
 import { Element } from './Element';
 import { Matrix as MatrixType, HighlightState, ElementIdentifier } from '../types';
@@ -5480,14 +6475,14 @@ interface MatrixProps {
   highlight: HighlightState;
   onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
   isTransposed?: boolean;
+  sideLabel?: boolean; // For explicit override
 }
 
-export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick, isTransposed = false }) => {
+export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick, isTransposed = false, sideLabel = false }) => {
 
-  // [FIXED] Hook is now at the top level, before any returns.
   const maxProbCols = React.useMemo(() => {
     const maxCols: { [key: number]: number } = {};
-    if (!data) return maxCols; // Handle invalid data gracefully
+    if (!data) return maxCols;
 
     const probSources = highlight.sources.filter(s => s.name === name && s.highlightProbCol);
     for (const source of probSources) {
@@ -5547,60 +6542,53 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
           : `repeat(${visibleColIndices.length}, auto)`,
   };
 
-  return (
-    <div className="matrix-wrapper" data-name={name}>
+  const matrixGrid = (
       <div className="matrix-container">
         <div className="matrix-grid" data-name={name} style={gridContainerStyle}>
-            {/* Top-left corner & Column Headers */}
             {isTargetMatrix && <div key="corner" />}
             {isTargetMatrix && visibleColIndices.map((c, cIdx) => (
                 <div key={`ch-${cIdx}`} className="matrix-header-item">{c}</div>
             ))}
-
-            {/* Row Headers & Matrix Elements */}
-            {visibleRowIndices.map((r, rIdx) => {
-                const rowContent = visibleColIndices.map((c, cIdx) => {
-                    if (r === ELLIPSIS) {
-                        return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
-                    }
-                    if (c === ELLIPSIS) {
-                        return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
-                    }
-                    const displayRow = r;
-                    const displayCol = c;
-                    const originalRow = isTransposed ? displayCol : displayRow;
-                    const originalCol = isTransposed ? displayRow : displayCol;
-                    const value = data[originalRow][originalCol];
-                    return (
-                        <Element
-                            key={`${name}-${originalRow}-${originalCol}`}
-                            name={name}
-                            row={originalRow}
-                            col={originalCol}
-                            value={value}
-                            highlight={highlight}
-                            onElementClick={onElementClick}
-                            isProbMax={maxProbCols[originalRow] === originalCol}
-                        />
-                    );
-                });
-
-                return (
-                    <React.Fragment key={`row-frag-${rIdx}`}>
-                        {isTargetMatrix && <div className="matrix-header-item">{r}</div>}
-                        {rowContent}
-                    </React.Fragment>
-                );
-            })}
+            {visibleRowIndices.map((r, rIdx) => (
+                <React.Fragment key={`row-frag-${rIdx}`}>
+                    {isTargetMatrix && <div className="matrix-header-item">{r}</div>}
+                    {visibleColIndices.map((c, cIdx) => {
+                        if (r === ELLIPSIS) return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
+                        if (c === ELLIPSIS) return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
+                        const originalRow = isTransposed ? c : r;
+                        const originalCol = isTransposed ? r : c;
+                        return (
+                            <Element
+                                key={`${name}-${originalRow}-${originalCol}`}
+                                name={name}
+                                row={originalRow}
+                                col={originalCol}
+                                value={data[originalRow][originalCol]}
+                                highlight={highlight}
+                                onElementClick={onElementClick}
+                                isProbMax={maxProbCols[originalRow] === originalCol}
+                            />
+                        );
+                    })}
+                </React.Fragment>
+            ))}
         </div>
       </div>
-      <div className="matrix-label-container">
-        <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
-      </div>
+  );
+
+  return (
+    <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`} data-name={name}>
+        <div className="matrix-label-side">
+            <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
+        </div>
+        {matrixGrid}
+        <div className="matrix-label-container">
+            <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
+        </div>
     </div>
   );
 };
-// END OF FILE: src/components/Matrix.tsx
+// END OF FILE: src/topics/transformer-explorer/components/Matrix.tsx
 
 
 ================================================================================

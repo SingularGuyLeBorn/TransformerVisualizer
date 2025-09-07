@@ -1,4 +1,4 @@
-// FILE: src/components/Matrix.tsx
+// FILE: src/topics/transformer-explorer/components/Matrix.tsx
 import React from 'react';
 import { Element } from './Element';
 import { Matrix as MatrixType, HighlightState, ElementIdentifier } from '../types';
@@ -12,14 +12,14 @@ interface MatrixProps {
   highlight: HighlightState;
   onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
   isTransposed?: boolean;
+  sideLabel?: boolean; // For explicit override
 }
 
-export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick, isTransposed = false }) => {
+export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick, isTransposed = false, sideLabel = false }) => {
 
-  // [FIXED] Hook is now at the top level, before any returns.
   const maxProbCols = React.useMemo(() => {
     const maxCols: { [key: number]: number } = {};
-    if (!data) return maxCols; // Handle invalid data gracefully
+    if (!data) return maxCols;
 
     const probSources = highlight.sources.filter(s => s.name === name && s.highlightProbCol);
     for (const source of probSources) {
@@ -79,57 +79,50 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
           : `repeat(${visibleColIndices.length}, auto)`,
   };
 
-  return (
-    <div className="matrix-wrapper" data-name={name}>
+  const matrixGrid = (
       <div className="matrix-container">
         <div className="matrix-grid" data-name={name} style={gridContainerStyle}>
-            {/* Top-left corner & Column Headers */}
             {isTargetMatrix && <div key="corner" />}
             {isTargetMatrix && visibleColIndices.map((c, cIdx) => (
                 <div key={`ch-${cIdx}`} className="matrix-header-item">{c}</div>
             ))}
-
-            {/* Row Headers & Matrix Elements */}
-            {visibleRowIndices.map((r, rIdx) => {
-                const rowContent = visibleColIndices.map((c, cIdx) => {
-                    if (r === ELLIPSIS) {
-                        return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
-                    }
-                    if (c === ELLIPSIS) {
-                        return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
-                    }
-                    const displayRow = r;
-                    const displayCol = c;
-                    const originalRow = isTransposed ? displayCol : displayRow;
-                    const originalCol = isTransposed ? displayRow : displayCol;
-                    const value = data[originalRow][originalCol];
-                    return (
-                        <Element
-                            key={`${name}-${originalRow}-${originalCol}`}
-                            name={name}
-                            row={originalRow}
-                            col={originalCol}
-                            value={value}
-                            highlight={highlight}
-                            onElementClick={onElementClick}
-                            isProbMax={maxProbCols[originalRow] === originalCol}
-                        />
-                    );
-                });
-
-                return (
-                    <React.Fragment key={`row-frag-${rIdx}`}>
-                        {isTargetMatrix && <div className="matrix-header-item">{r}</div>}
-                        {rowContent}
-                    </React.Fragment>
-                );
-            })}
+            {visibleRowIndices.map((r, rIdx) => (
+                <React.Fragment key={`row-frag-${rIdx}`}>
+                    {isTargetMatrix && <div className="matrix-header-item">{r}</div>}
+                    {visibleColIndices.map((c, cIdx) => {
+                        if (r === ELLIPSIS) return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
+                        if (c === ELLIPSIS) return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
+                        const originalRow = isTransposed ? c : r;
+                        const originalCol = isTransposed ? r : c;
+                        return (
+                            <Element
+                                key={`${name}-${originalRow}-${originalCol}`}
+                                name={name}
+                                row={originalRow}
+                                col={originalCol}
+                                value={data[originalRow][originalCol]}
+                                highlight={highlight}
+                                onElementClick={onElementClick}
+                                isProbMax={maxProbCols[originalRow] === originalCol}
+                            />
+                        );
+                    })}
+                </React.Fragment>
+            ))}
         </div>
       </div>
-      <div className="matrix-label-container">
-        <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
-      </div>
+  );
+
+  return (
+    <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`} data-name={name}>
+        <div className="matrix-label-side">
+            <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
+        </div>
+        {matrixGrid}
+        <div className="matrix-label-container">
+            <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
+        </div>
     </div>
   );
 };
-// END OF FILE: src/components/Matrix.tsx
+// END OF FILE: src/topics/transformer-explorer/components/Matrix.tsx
