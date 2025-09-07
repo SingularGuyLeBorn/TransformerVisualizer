@@ -2,7 +2,7 @@
 import React from 'react';
 import { InlineMath } from 'react-katex';
 import { ElementIdentifier, HighlightState } from '../types';
-import { getVisibleIndices, ELLIPSIS } from '../../../utils/matrixView';
+import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 
 interface ElementwiseCalculationProps {
   opType: 'softmax' | 'relu';

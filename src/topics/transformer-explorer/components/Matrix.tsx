@@ -4,7 +4,7 @@ import { Element } from './Element';
 import { Matrix as MatrixType, HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
 import { getSymbolParts } from '../config/symbolMapping';
-import { getVisibleIndices, ELLIPSIS } from '../../../utils/matrixView';
+import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 
 interface MatrixProps {
   name: string;

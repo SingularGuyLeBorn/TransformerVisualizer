@@ -1,0 +1,56 @@
+/* FILE: src/pages/TopicPage/components/TopicSidebar.css */
+.topic-sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    background-color: var(--component-bg);
+    border-right: 1px solid var(--border-color);
+    padding: 20px;
+    overflow-y: auto;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.sidebar-title {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: var(--text-color);
+    padding-bottom: 10px;
+    margin: 0 0 15px 0;
+    border-bottom: 2px solid var(--highlight-color);
+}
+
+.sidebar-topic-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-topic-item {
+    margin-bottom: 5px;
+}
+
+.sidebar-topic-link {
+    display: block;
+    padding: 12px 15px;
+    text-decoration: none;
+    color: #606266;
+    border-radius: 6px;
+    font-size: 0.95em;
+    font-weight: 500;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.sidebar-topic-link:hover {
+    background-color: var(--highlight-bg);
+    color: var(--highlight-color);
+}
+
+.sidebar-topic-link.active {
+    background-color: var(--highlight-bg);
+    color: var(--highlight-color);
+    font-weight: 700;
+    border-color: var(--highlight-color);
+}
+
+/* END OF FILE: src/pages/TopicPage/components/TopicSidebar.css */

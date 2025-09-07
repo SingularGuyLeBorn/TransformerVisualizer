@@ -7,74 +7,61 @@
 
 .homepage-intro {
     text-align: center;
-    margin-bottom: 40px;
+    margin-bottom: 50px;
 }
 
 .homepage-intro h2 {
-    font-size: 2.5em;
+    font-size: 2.8em;
     color: #303133;
+    font-weight: 700;
 }
 
 .homepage-intro p {
-    font-size: 1.2em;
+    font-size: 1.25em;
     color: #606266;
+    max-width: 700px;
+    margin: 10px auto 0;
 }
 
 .topic-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 25px;
+    gap: 30px;
 }
 
 .topic-card-link {
     text-decoration: none;
     color: inherit;
+    display: flex; /* Ensure link takes up full grid cell height */
 }
 
+/* --- [REWRITTEN] New Topic Card Styles --- */
 .topic-card {
-    background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-    padding: 25px;
-    border: 1px solid #dcdfe6;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+  position: relative;
+  color: #2e2e2f;
+  background-color: #fff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: rgba(99, 99, 99, 0.1) 0px 2px 8px 0px;
+  border: 2px solid transparent;
+  transition: all 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 .topic-card:hover {
-    transform: translateY(-8px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+  box-shadow: rgba(99, 99, 99, 0.2) 0px 4px 12px 0px;
+  transform: translateY(-5px);
+  border-color: rgba(64, 158, 255, 0.3);
 }
 
 .topic-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    border-bottom: 1px solid #e4e7ed;
-    padding-bottom: 10px;
-    margin-bottom: 15px;
-}
-
-.topic-card-title {
-    font-size: 1.5em;
-    margin: 0;
-    color: #000;
-}
-
-.topic-card-date {
-    font-size: 0.85em;
-    color: #909399;
-    flex-shrink: 0;
-    margin-left: 10px;
-}
-
-.topic-card-description {
-    font-size: 1em;
-    line-height: 1.6;
-    flex-grow: 1;
-    margin-bottom: 20px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
 }
 
 .topic-card-tags {
@@ -84,11 +71,62 @@
 }
 
 .topic-card-tag {
-    background-color: #f0f2f5;
+    border-radius: 100px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+/* Define a few colors for tags */
+.topic-card-tag.color-1 { background-color: #409EFF; }
+.topic-card-tag.color-2 { background-color: #67C23A; }
+.topic-card-tag.color-3 { background-color: #E6A23C; }
+.topic-card-tag.color-4 { background-color: #F56C6C; }
+.topic-card-tag.color-5 { background-color: #909399; }
+
+.topic-card-content {
+    flex-grow: 1;
+}
+
+.topic-card-title {
+    font-size: 1.6em;
+    margin: 0 0 0.8rem 0;
+    color: #303133;
+    font-weight: 600;
+}
+
+.topic-card-description {
+    font-size: 1em;
+    line-height: 1.6;
     color: #606266;
-    padding: 4px 10px;
-    border-radius: 15px;
-    font-size: 0.8em;
+    margin: 0;
+}
+
+.topic-card-footer {
+  position: relative;
+  width: 100%;
+  color: #9fa4aa;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* Align date to the left */
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f0f2f5;
+}
+
+.topic-card-date {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.topic-card-date svg {
+  margin-right: 8px;
+  height: 20px;
+  width: 20px;
+  stroke: #9fa4aa;
 }
 
 /*// END OF FILE: src/pages/HomePage/HomePage.css*/

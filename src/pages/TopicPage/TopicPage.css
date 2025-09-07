@@ -1,3 +1,28 @@
 /* FILE: src/pages/TopicPage/TopicPage.css */
+.topic-page-layout {
+    display: flex;
+    height: 100%;
+    overflow: hidden; /* Important: this container does not scroll */
+}
 
-/*// END OF FILE: src/pages/TopicPage/TopicPage.css*/
+.topic-content-area {
+    flex-grow: 1;
+    height: 100%;
+    min-width: 0; /* Crucial for flexbox children overflow */
+    display: flex;
+    flex-direction: column; /* Allows child components to manage their own layout */
+}
+
+/* This is the wrapper for the actual topic component, e.g., TransformerExplorer or an article */
+.topic-component-wrapper {
+    flex-grow: 1;
+    overflow-y: auto; /* Standard articles will scroll here */
+    min-height: 0;
+}
+
+/* Specific override for components like TransformerExplorer that manage their own scrolling */
+.topic-component-wrapper.no-scroll {
+    overflow-y: hidden;
+}
+
+/* END OF FILE: src/pages/TopicPage/TopicPage.css */

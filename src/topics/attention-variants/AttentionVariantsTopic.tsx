@@ -76,7 +76,15 @@ const generateTooltipData = (element: ElementIdentifier, data: AttentionData, so
                  const vecA = matrixA[source1.row];
                  const vecB = matrixB.map(r => r[source2.col]);
                  const components: CalculationComponent[] = vecA.map((val, i) => ({ a: val, b: vecB[i] }));
-                 steps.push({ a: vecA, b: vecB, op: '·', result: targetValue, aSymbol: getSymbolParts(source1.name).base, bSymbol: getSymbolParts(source2.name).base, components });
+                 steps.push({
+                     a: vecA,
+                     b: vecB,
+                     op: '·',
+                     result: targetValue,
+                     aSymbolInfo: getSymbolParts(source1.name),
+                     bSymbolInfo: getSymbolParts(source2.name),
+                     components
+                 });
              }
         }
     } else if (conceptualName === 'Weights' && element.isInternal) {
@@ -86,7 +94,14 @@ const generateTooltipData = (element: ElementIdentifier, data: AttentionData, so
             const matrixA = getMatrixByName(scoresName, data);
             if(matrixA) {
                 const vecA = matrixA[row];
-                steps.push({a: vecA, b: [], op: 'softmax', result: targetValue, aSymbol: getSymbolParts(scoresName).base, bSymbol: ''});
+                steps.push({
+                    a: vecA,
+                    b: [],
+                    op: 'softmax',
+                    result: targetValue,
+                    aSymbolInfo: getSymbolParts(scoresName),
+                    bSymbolInfo: { base: '' }
+                });
             }
         }
     }

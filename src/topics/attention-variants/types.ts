@@ -1,6 +1,8 @@
 // FILE: src/topics/attention-variants/types.ts
-// 该文件为注意力变体专题定义了所有必要的类型
+import { SymbolInfo as GenericSymbolInfo } from '../../components/visualizers/types';
 
+// 该文件为注意力变体专题定义了所有必要的类型
+export type SymbolInfo = GenericSymbolInfo;
 export type Matrix = number[][];
 export type Vector = number[];
 
@@ -24,6 +26,7 @@ export interface HighlightSource extends ElementIdentifier {
 export interface HighlightState {
   target: ElementIdentifier | null;
   sources: HighlightSource[];
+  activeComponent?: string | null; // e.g., "mha", "gqa"
 }
 
 // 单个注意力头的计算结果
@@ -79,8 +82,8 @@ export interface CalculationStep {
     b: Vector;
     op: string;
     result: number;
-    aSymbol: string;
-    bSymbol: string;
+    aSymbolInfo: SymbolInfo;
+    bSymbolInfo: SymbolInfo;
     components?: CalculationComponent[];
 }
 

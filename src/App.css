@@ -139,9 +139,28 @@ h1 {
     overflow-y: auto;
 }
 
-/* Specific overrides for Calculation Tooltip */
+/* [REVISED] Specific overrides for Calculation Tooltip */
+.calculation-tooltip {
+    /* [MODIFIED] max-width is intentionally NOT set to allow the tooltip to become very wide if needed. */
+}
 .calculation-tooltip .panel-header {
     cursor: move;
+}
+.calculation-tooltip .panel-header .tooltip-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.calculation-tooltip .panel-header .view-toggle-btn {
+    font-size: 0.8em;
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #f0f0f0;
+}
+.calculation-tooltip .panel-header .view-toggle-btn:hover {
+    background-color: #e0e0e0;
 }
 .calculation-tooltip.collapsed {
     height: auto !important;
@@ -152,15 +171,34 @@ h1 {
 }
 .tooltip-content-wrapper {
     flex-grow: 1;
+    min-height: 0;
     overflow-y: auto;
     transition: max-height 0.3s ease-in-out;
     max-height: 1000px;
 }
 .tooltip-body {
     padding: 15px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%; /* Ensure it can fill the space */
+    box-sizing: border-box;
+}
+/* [NEW] This is the new container that will hold the visualizer and grow to fill space */
+.calculation-content-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.calculation-content-container > div { /* Target the visualizer's root div */
+    flex-grow: 1;
+    display: flex; /* Ensure visualizer itself can be a flex container */
+    flex-direction: column;
 }
 
-/* [NEW] Styles for upgraded tooltip content */
+
+/* [NEW & REFINED] Styles for upgraded tooltip content (used by InteractiveMatMulVisualizer) */
 .tooltip-step-container {
     padding: 10px 0;
     border-bottom: 1px dashed #eee;
@@ -217,15 +255,135 @@ h1 {
     transform: scale(1.1);
 }
 .tooltip-op-symbol {
-    font-size: 1.5em;
+    font-size: 1.4em; /* [MODIFIED] Reduced size */
     font-weight: bold;
-    padding: 0 10px;
+    padding: 0 8px; /* [MODIFIED] Reduced padding */
 }
 .tooltip-matmul-container {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 10px;
+    justify-content: center;
+}
+.tooltip-result-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.1em;
+}
+.tooltip-result {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: var(--highlight-target-bg);
+    border: 1px solid var(--highlight-target-border);
+    color: var(--highlight-target-color);
+    font-weight: bold;
+}
+.tooltip-calculation-detail {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+    width: 100%;
+}
+.tooltip-calc-title {
+    font-weight: bold;
+    font-size: 0.9em;
+    color: #333;
+    margin-bottom: 8px;
+    font-family: sans-serif;
+}
+/* [MODIFIED] Revised for flex-wrap to prevent overflow */
+.tooltip-calc-equation {
+    font-family: monospace;
+    font-size: 0.95em;
+    color: #555;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    overflow-x: auto; /* Fallback for very long single words */
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 5px; /* Space between wrapped lines */
+}
+.tooltip-calc-equation-multi {
+    font-family: monospace;
+    font-size: 0.95em;
+    color: #555;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+.tooltip-calc-equation > * { /* Add spacing between direct children */
+    margin-right: 5px;
+}
+.tooltip-calc-equation .op {
+    color: #c0392b;
+    font-weight: bold;
+}
+.tooltip-calc-equation .result {
+    font-weight: bold;
+    color: var(--highlight-target-color);
+}
+.tooltip-calc-term {
+    transition: background-color 0.2s ease;
+    border-radius: 3px;
+    padding: 1px 3px;
+    cursor: default;
+    white-space: nowrap; /* Prevent individual terms from breaking */
+}
+.tooltip-calc-term.highlight {
+    background-color: var(--highlight-formula-bg);
+}
+.tooltip-calc-equation-multi {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+/* [NEW] Styles for braced calculation breakdown */
+.tooltip-braced-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.tooltip-curly-brace {
+    font-size: 2.5em;
+    color: #555;
+    font-family: serif;
+    align-self: center;
+}
+.tooltip-calc-terms-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 5px;
+}
+.tooltip-calc-terms-wrapper > * {
+    margin-right: 5px;
+}
+
+/* [NEW] Generic styles for matrix symbolic display in tooltips */
+.matrix-wrapper {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+}
+.matrix-wrapper.side-label {
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+}
+.matrix-wrapper .matrix-label-side {
+    font-size: 1.1em;
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 3px 7px;
+    border-radius: 5px;
+    border: 1px solid #ced4da;
+    line-height: 1;
 }
 
 /* [NEW] Split pane separator style */

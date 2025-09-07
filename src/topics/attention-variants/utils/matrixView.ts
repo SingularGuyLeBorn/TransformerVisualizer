@@ -22,6 +22,11 @@ export const getVisibleIndices = (
     visible.add(totalSize - 1 - i);
   }
 
+  // [NEW] Also include the middle index when there's no specific focus
+  if (focusIndex === -1 && totalSize >= MIN_SIZE_FOR_TRUNCATION) {
+    visible.add(Math.floor((totalSize - 1) / 2));
+  }
+
   if (focusIndex !== -1) {
     const windowStart = Math.max(0, focusIndex - Math.floor(windowSize / 2));
     const windowEnd = Math.min(totalSize - 1, focusIndex + Math.floor(windowSize / 2));

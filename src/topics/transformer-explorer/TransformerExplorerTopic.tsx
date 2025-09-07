@@ -144,11 +144,11 @@ const generateTooltipData = (element: ElementIdentifier, transformerData: Transf
             const vecB = matmulMatrixB.map(r => r[matmulSourceCol.col]);
             const matmulResult = vecA.reduce((sum, val, i) => sum + val * vecB[i], 0);
             const components: CalculationComponent[] = vecA.map((val, i) => ({ a: val, b: vecB[i] }));
-            steps.push({ title: "Step 1: Matmul", a: vecA, b: vecB, op: '·', result: matmulResult, aSymbol: getSymbolParts(matmulSourceRow.name).base, bSymbol: getSymbolParts(matmulSourceCol.name).base, components });
+            steps.push({ title: "Step 1: Matmul", a: vecA, b: vecB, op: '·', result: matmulResult, aSymbolInfo: getSymbolParts(matmulSourceRow.name), bSymbolInfo: getSymbolParts(matmulSourceCol.name), components });
 
             // Step 2: Add bias
             const biasValue = biasMatrix[biasSource.row][biasSource.col];
-            steps.push({ title: "Step 2: Add Bias", a: [matmulResult], b: [biasValue], op: '+', result: targetValue, aSymbol: "Matmul Result", bSymbol: getSymbolParts(biasSource.name).base });
+            steps.push({ title: "Step 2: Add Bias", a: [matmulResult], b: [biasValue], op: '+', result: targetValue, aSymbolInfo: {base:"Matmul Result"}, bSymbolInfo: getSymbolParts(biasSource.name) });
         }
     // Pure Matmul Check
     } else if (matmulSourceRow && matmulSourceCol) {
@@ -159,14 +159,14 @@ const generateTooltipData = (element: ElementIdentifier, transformerData: Transf
             const vecA = matrixA[matmulSourceRow.row];
             const vecB = matrixB.map(r => r[matmulSourceCol.col]);
             const components: CalculationComponent[] = vecA.map((val, i) => ({ a: val, b: vecB[i] }));
-            steps.push({ a: vecA, b: vecB, op: '·', result: targetValue, aSymbol: getSymbolParts(matmulSourceRow.name).base, bSymbol: getSymbolParts(matmulSourceCol.name).base, components });
+            steps.push({ a: vecA, b: vecB, op: '·', result: targetValue, aSymbolInfo: getSymbolParts(matmulSourceRow.name), bSymbolInfo: getSymbolParts(matmulSourceCol.name), components });
         }
     // Pure Element-wise Add Check (e.g., Residual connections)
     } else if (addSources.length >= 2) {
         opType = 'add';
         const vals = addSources.map(s => getMatrixByName(s.name, transformerData, layerIdx, headIdx)?.[s.row]?.[s.col] ?? 0);
         if(vals.length >= 2) {
-             steps.push({ a: [vals[0]], b: [vals[1]], op: '+', result: targetValue, aSymbol: getSymbolParts(addSources[0].name).base, bSymbol: getSymbolParts(addSources[1].name).base });
+             steps.push({ a: [vals[0]], b: [vals[1]], op: '+', result: targetValue, aSymbolInfo: getSymbolParts(addSources[0].name), bSymbolInfo: getSymbolParts(addSources[1].name) });
         }
     // Internal Element-wise Op Check (Softmax/ReLU)
     } else if (isInternal) {
@@ -176,10 +176,10 @@ const generateTooltipData = (element: ElementIdentifier, transformerData: Transf
             const vecA = sourceMatrix[row];
             if (baseName.includes('AttentionWeights')) {
                 opType = 'softmax';
-                steps.push({ a: vecA, b: [], op: 'softmax', result: targetValue, aSymbol: getSymbolParts(sourceName).base, bSymbol: '' });
+                steps.push({ a: vecA, b: [], op: 'softmax', result: targetValue, aSymbolInfo: getSymbolParts(sourceName), bSymbolInfo: { base: '' } });
             } else if (baseName.includes('Activated')) {
                 opType = 'relu';
-                steps.push({ a: vecA, b: [], op: 'relu', result: targetValue, aSymbol: getSymbolParts(sourceName).base, bSymbol: '' });
+                steps.push({ a: vecA, b: [], op: 'relu', result: targetValue, aSymbolInfo: getSymbolParts(sourceName), bSymbolInfo: { base: '' } });
             }
          }
     }

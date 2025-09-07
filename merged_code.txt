@@ -143,9 +143,28 @@ h1 {
     overflow-y: auto;
 }
 
-/* Specific overrides for Calculation Tooltip */
+/* [REVISED] Specific overrides for Calculation Tooltip */
+.calculation-tooltip {
+    /* [MODIFIED] max-width is intentionally NOT set to allow the tooltip to become very wide if needed. */
+}
 .calculation-tooltip .panel-header {
     cursor: move;
+}
+.calculation-tooltip .panel-header .tooltip-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.calculation-tooltip .panel-header .view-toggle-btn {
+    font-size: 0.8em;
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #f0f0f0;
+}
+.calculation-tooltip .panel-header .view-toggle-btn:hover {
+    background-color: #e0e0e0;
 }
 .calculation-tooltip.collapsed {
     height: auto !important;
@@ -156,15 +175,32 @@ h1 {
 }
 .tooltip-content-wrapper {
     flex-grow: 1;
+    min-height: 0;
     overflow-y: auto;
     transition: max-height 0.3s ease-in-out;
     max-height: 1000px;
 }
 .tooltip-body {
     padding: 15px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%; /* Ensure it can fill the space */
+    box-sizing: border-box;
+}
+/* [NEW] This is the new container that will hold the visualizer and grow to fill space */
+.calculation-content-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+.calculation-content-container > div { /* Target the visualizer's root div */
+    flex-grow: 1;
+    display: flex; /* Ensure visualizer itself can be a flex container */
+    flex-direction: column;
 }
 
-/* [NEW] Styles for upgraded tooltip content */
+
+/* [NEW & REFINED] Styles for upgraded tooltip content (used by InteractiveMatMulVisualizer) */
 .tooltip-step-container {
     padding: 10px 0;
     border-bottom: 1px dashed #eee;
@@ -221,15 +257,112 @@ h1 {
     transform: scale(1.1);
 }
 .tooltip-op-symbol {
-    font-size: 1.5em;
+    font-size: 1.4em; /* [MODIFIED] Reduced size */
     font-weight: bold;
-    padding: 0 10px;
+    padding: 0 8px; /* [MODIFIED] Reduced padding */
 }
 .tooltip-matmul-container {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 10px;
+}
+.tooltip-result-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1.1em;
+}
+.tooltip-result {
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: var(--highlight-target-bg);
+    border: 1px solid var(--highlight-target-border);
+    color: var(--highlight-target-color);
+    font-weight: bold;
+}
+.tooltip-calculation-detail {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #eee;
+    width: 100%;
+}
+.tooltip-calc-title {
+    font-weight: bold;
+    font-size: 0.9em;
+    color: #333;
+    margin-bottom: 8px;
+    font-family: sans-serif;
+}
+/* [MODIFIED] Revised for flex-wrap to prevent overflow */
+.tooltip-calc-equation {
+    font-family: monospace;
+    font-size: 0.95em;
+    color: #555;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    overflow-x: auto; /* Fallback for very long single words */
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 5px; /* Space between wrapped lines */
+}
+.tooltip-calc-equation-multi {
+    font-family: monospace;
+    font-size: 0.95em;
+    color: #555;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 6px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+.tooltip-calc-equation > * { /* Add spacing between direct children */
+    margin-right: 5px;
+}
+.tooltip-calc-equation .op {
+    color: #c0392b;
+    font-weight: bold;
+}
+.tooltip-calc-equation .result {
+    font-weight: bold;
+    color: var(--highlight-target-color);
+}
+.tooltip-calc-term {
+    transition: background-color 0.2s ease;
+    border-radius: 3px;
+    padding: 1px 3px;
+    cursor: default;
+    white-space: nowrap; /* Prevent individual terms from breaking */
+}
+.tooltip-calc-term.highlight {
+    background-color: var(--highlight-formula-bg);
+}
+.tooltip-calc-equation-multi {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+/* [NEW] Generic styles for matrix symbolic display in tooltips */
+.matrix-wrapper {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+}
+.matrix-wrapper.side-label {
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+}
+.matrix-wrapper .matrix-label-side {
+    font-size: 1.1em;
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 3px 7px;
+    border-radius: 5px;
+    border: 1px solid #ced4da;
+    line-height: 1;
 }
 
 /* [NEW] Split pane separator style */
@@ -367,6 +500,1182 @@ export default MarkdownRenderer;
 
 
 ================================================================================
+### 文件路径: src/components/visualizers/ActivationFunctionVisualizer.tsx
+================================================================================
+
+// FILE: src/components/visualizers/ActivationFunctionVisualizer.tsx
+import React, { useState, useMemo } from 'react';
+import { Vector, ActivationFunctionType } from './types';
+import { formatNumber } from './utils';
+
+interface ActivationFunctionVisualizerProps {
+  inputVector: Vector;
+  functionType: ActivationFunctionType;
+}
+
+export const ActivationFunctionVisualizer: React.FC<ActivationFunctionVisualizerProps> = ({ inputVector, functionType }) => {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  const functions = {
+    relu: (x: number) => Math.max(0, x),
+    gelu: (x: number) => 0.5 * x * (1 + Math.tanh(Math.sqrt(2 / Math.PI) * (x + 0.044715 * Math.pow(x, 3)))),
+    silu: (x: number) => x / (1 + Math.exp(-x)), // Swish/SiLU
+  };
+
+  const outputVector = useMemo(() => inputVector.map(functions[functionType]), [inputVector, functionType]);
+
+  const viewBox = { minX: -5, maxX: 5, minY: -2, maxY: 5 };
+  const width = 300;
+  const height = 200;
+
+  const toSvgX = (x: number) => (x - viewBox.minX) / (viewBox.maxX - viewBox.minX) * width;
+  const toSvgY = (y: number) => height - (y - viewBox.minY) / (viewBox.maxY - viewBox.minY) * height;
+
+  const pathData = useMemo(() => {
+    let d = '';
+    for (let i = 0; i <= width; i++) {
+      const x = viewBox.minX + (i / width) * (viewBox.maxX - viewBox.minX);
+      const y = functions[functionType](x);
+      const svgX = toSvgX(x);
+      const svgY = toSvgY(y);
+      if (i === 0) {
+        d += `M ${svgX} ${svgY}`;
+      } else {
+        d += ` L ${svgX} ${svgY}`;
+      }
+    }
+    return d;
+  }, [functionType, viewBox, width, height]);
+
+  // Inline Styles
+  const styles: { [key: string]: React.CSSProperties } = {
+    container: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6' },
+    title: { margin: '0 0 10px 0', fontSize: '1.2em', fontWeight: 'bold', textTransform: 'uppercase' },
+    mainArea: { display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' },
+    vectorGroup: { display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'center' },
+    vectorLabel: { fontWeight: 'bold', color: '#6c757d' },
+    vector: { display: 'flex', flexDirection: 'column', gap: '5px' },
+    element: { width: '60px', padding: '5px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease', cursor: 'pointer' },
+    highlight: { transform: 'scale(1.1)', borderColor: '#e63946', backgroundColor: 'rgba(230, 57, 70, 0.1)' },
+    chartContainer: { position: 'relative', width: width, height: height, border: '1px solid #ccc', backgroundColor: 'white' },
+    svg: { width: '100%', height: '100%' },
+    axis: { stroke: '#adb5bd', strokeWidth: 1 },
+    gridLine: { stroke: '#e9ecef', strokeWidth: 0.5 },
+    path: { fill: 'none', stroke: '#007bff', strokeWidth: 2 },
+    point: { transition: 'all 0.2s ease' },
+  };
+
+  const hoveredPoint = hoveredIndex !== null ? { x: inputVector[hoveredIndex], y: outputVector[hoveredIndex] } : null;
+
+  return (
+    <div style={styles.container}>
+      <h3 style={styles.title}>{functionType} Activation</h3>
+      <div style={styles.mainArea}>
+        <div style={styles.vectorGroup}>
+          <div style={styles.vectorLabel}>Input</div>
+          <div style={styles.vector}>
+            {inputVector.map((val, i) => (
+              <div key={`in-${i}`} onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)} style={{ ...styles.element, ...(hoveredIndex === i ? styles.highlight : {}) }}>
+                {formatNumber(val, 2)}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={styles.chartContainer}>
+          <svg viewBox={`0 0 ${width} ${height}`} style={styles.svg}>
+            <path d={`M 0 ${toSvgY(0)} L ${width} ${toSvgY(0)}`} style={styles.axis} />
+            <path d={`M ${toSvgX(0)} 0 L ${toSvgX(0)} ${height}`} style={styles.axis} />
+            <path d={pathData} style={styles.path} />
+            {hoveredPoint && (
+              <g>
+                <line x1={toSvgX(hoveredPoint.x)} y1={toSvgY(0)} x2={toSvgX(hoveredPoint.x)} y2={toSvgY(hoveredPoint.y)} strokeDasharray="3 3" stroke="#e63946" />
+                <line x1={toSvgX(0)} y1={toSvgY(hoveredPoint.y)} x2={toSvgX(hoveredPoint.x)} y2={toSvgY(hoveredPoint.y)} strokeDasharray="3 3" stroke="#e63946" />
+                <circle cx={toSvgX(hoveredPoint.x)} cy={toSvgY(hoveredPoint.y)} r="4" fill="#e63946" style={styles.point} />
+              </g>
+            )}
+          </svg>
+        </div>
+        <div style={styles.vectorGroup}>
+          <div style={styles.vectorLabel}>Output</div>
+          <div style={styles.vector}>
+            {outputVector.map((val, i) => (
+              <div key={`out-${i}`} onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)} style={{ ...styles.element, ...(hoveredIndex === i ? styles.highlight : {}) }}>
+                {formatNumber(val, 2)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// END OF FILE: src/components/visualizers/ActivationFunctionVisualizer.tsx
+
+
+================================================================================
+### 文件路径: src/components/visualizers/ElementWiseOpVisualizer.tsx
+================================================================================
+
+// FILE: src/components/visualizers/ElementWiseOpVisualizer.tsx
+import React, { useState, useRef } from 'react';
+import { Matrix } from './types';
+import { formatNumber, getCurvePath } from './utils';
+
+interface ElementWiseOpVisualizerProps {
+  matrixA: Matrix;
+  matrixB: Matrix;
+  operation: '+' | '-' | '×' | '÷';
+}
+
+export const ElementWiseOpVisualizer: React.FC<ElementWiseOpVisualizerProps> = ({ matrixA, matrixB, operation }) => {
+  const [hoveredCell, setHoveredCell] = useState<{ row: number; col: number } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const elementsARef = useRef<(HTMLDivElement | null)[][]>([]);
+  const elementsBRef = useRef<(HTMLDivElement | null)[][]>([]);
+  const elementsCRef = useRef<(HTMLDivElement | null)[][]>([]);
+
+  const resultMatrix = matrixA.map((row, r) =>
+    row.map((val, c) => {
+      switch (operation) {
+        case '+': return val + matrixB[r][c];
+        case '-': return val - matrixB[r][c];
+        case '×': return val * matrixB[r][c];
+        case '÷': return val / matrixB[r][c];
+        default: return NaN;
+      }
+    })
+  );
+
+  const numRows = matrixA.length;
+  const numCols = matrixA[0].length;
+
+  // Initialize refs arrays
+  elementsARef.current = Array(numRows).fill(null).map(() => Array(numCols).fill(null));
+  elementsBRef.current = Array(numRows).fill(null).map(() => Array(numCols).fill(null));
+  elementsCRef.current = Array(numRows).fill(null).map(() => Array(numCols).fill(null));
+
+  // Inline Styles
+  const styles: { [key: string]: React.CSSProperties } = {
+    container: { position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '25px', padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6', flexWrap: 'wrap' },
+    matrixContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' },
+    matrixLabel: { fontSize: '1.2em', fontWeight: 'bold', fontFamily: 'monospace' },
+    grid: { display: 'grid', gap: '5px', gridTemplateColumns: `repeat(${numCols}, 1fr)` },
+    element: { width: '50px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
+    sourceHighlight: { transform: 'scale(1.1)', borderColor: '#007bff', backgroundColor: 'rgba(0, 123, 255, 0.1)' },
+    targetHighlight: { transform: 'scale(1.1)', borderColor: '#28a745', backgroundColor: 'rgba(40, 167, 69, 0.1)' },
+    opSymbol: { fontSize: '2em', fontWeight: 'bold' },
+    svg: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' },
+    path: { fill: 'none', strokeWidth: '2px', stroke: '#e63946', transition: 'opacity 0.2s ease', opacity: 0 },
+    pathVisible: { opacity: 1 },
+  };
+
+  const pathA = hoveredCell ? getCurvePath(elementsARef.current[hoveredCell.row][hoveredCell.col], elementsCRef.current[hoveredCell.row][hoveredCell.col], containerRef.current) : '';
+  const pathB = hoveredCell ? getCurvePath(elementsBRef.current[hoveredCell.row][hoveredCell.col], elementsCRef.current[hoveredCell.row][hoveredCell.col], containerRef.current) : '';
+
+  const renderMatrix = (matrix: Matrix, label: string, refArray: React.MutableRefObject<(HTMLDivElement | null)[][]>, highlightType: 'source' | 'target') => (
+    <div style={styles.matrixContainer}>
+      <div style={styles.matrixLabel}>{label}</div>
+      <div style={styles.grid}>
+        {matrix.map((row, r) => row.map((val, c) => (
+          <div
+            key={`${label}-${r}-${c}`}
+            ref={el => refArray.current[r][c] = el}
+            style={{ ...styles.element, ...(hoveredCell && hoveredCell.row === r && hoveredCell.col === c ? (highlightType === 'source' ? styles.sourceHighlight : styles.targetHighlight) : {}) }}
+            onMouseEnter={() => setHoveredCell({ row: r, col: c })}
+            onMouseLeave={() => setHoveredCell(null)}
+          >
+            {formatNumber(val, 2)}
+          </div>
+        )))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={styles.container} ref={containerRef}>
+      <svg style={styles.svg}>
+        <path d={pathA} style={{ ...styles.path, ...(hoveredCell ? styles.pathVisible : {}) }} />
+        <path d={pathB} style={{ ...styles.path, ...(hoveredCell ? styles.pathVisible : {}) }} />
+      </svg>
+      {renderMatrix(matrixA, 'A', elementsARef, 'source')}
+      <div style={styles.opSymbol}>{operation}</div>
+      {renderMatrix(matrixB, 'B', elementsBRef, 'source')}
+      <div style={styles.opSymbol}>=</div>
+      {renderMatrix(resultMatrix, 'C', elementsCRef, 'target')}
+    </div>
+  );
+};
+
+// END OF FILE: src/components/visualizers/ElementWiseOpVisualizer.tsx
+
+
+================================================================================
+### 文件路径: src/components/visualizers/InteractiveMatMulVisualizer.tsx
+================================================================================
+
+// FILE: src/components/visualizers/InteractiveMatMulVisualizer.tsx
+import React, { useState } from 'react';
+import { Vector, CalculationComponent, SymbolInfo } from './types';
+import 'katex/dist/katex.min.css';
+import { InlineMath } from 'react-katex';
+
+interface InteractiveMatMulVisualizerProps {
+    vectorA: Vector;
+    vectorB: Vector;
+    symbolAInfo: SymbolInfo;
+    symbolBInfo: SymbolInfo;
+    result: number;
+    components: CalculationComponent[];
+}
+
+const formatNumber = (num: number, precision = 4) => {
+    if (num === -Infinity) return '-∞';
+    if (num === Infinity) return '+∞';
+    const fixed = num.toFixed(precision);
+    return parseFloat(fixed).toString();
+};
+
+// [COPIED & MODIFIED] from matrixView.ts to avoid complex relative imports in a generic component
+const ELLIPSIS = '...';
+const MIN_SIZE_FOR_TRUNCATION = 12;
+const getVisibleIndices = (
+  totalSize: number,
+  focusIndex: number = -1,
+  alwaysShowCount: number = 1,
+  windowSize: number = 5
+): (number | typeof ELLIPSIS)[] => {
+  if (totalSize < MIN_SIZE_FOR_TRUNCATION) {
+    return Array.from({ length: totalSize }, (_, i) => i);
+  }
+  const visible = new Set<number>();
+  for (let i = 0; i < Math.min(alwaysShowCount, totalSize); i++) {
+    visible.add(i);
+  }
+  for (let i = 0; i < Math.min(alwaysShowCount, totalSize); i++) {
+    visible.add(totalSize - 1 - i);
+  }
+  if (focusIndex === -1 && totalSize >= MIN_SIZE_FOR_TRUNCATION) {
+    visible.add(Math.floor((totalSize - 1) / 2));
+  }
+  if (focusIndex !== -1) {
+    const windowStart = Math.max(0, focusIndex - Math.floor(windowSize / 2));
+    const windowEnd = Math.min(totalSize - 1, focusIndex + Math.floor(windowSize / 2));
+    for (let i = windowStart; i <= windowEnd; i++) {
+      visible.add(i);
+    }
+  }
+  const sorted = Array.from(visible).sort((a, b) => a - b);
+  const result: (number | typeof ELLIPSIS)[] = [];
+  if (sorted.length > 0) {
+    result.push(sorted[0]);
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i] > sorted[i - 1] + 1) {
+        result.push(ELLIPSIS);
+      }
+      result.push(sorted[i]);
+    }
+  }
+  return result;
+};
+
+
+export const InteractiveMatMulVisualizer: React.FC<InteractiveMatMulVisualizerProps> = ({
+    vectorA,
+    vectorB,
+    symbolAInfo,
+    symbolBInfo,
+    result,
+    components,
+}) => {
+    const [hoveredComponentIndex, setHoveredComponentIndex] = useState<number | null>(null);
+
+    const renderVector = (vec: number[], symbolInfo: SymbolInfo, direction: 'row' | 'column' = 'row') => {
+        let mathSymbol = symbolInfo.base;
+        if (symbolInfo.subscript) mathSymbol += `_{${symbolInfo.subscript}}`;
+        if (symbolInfo.superscript) mathSymbol += `^{${symbolInfo.superscript}}`;
+        const dims = direction === 'row' ? `1 \\times ${vec.length}` : `${vec.length} \\times 1`;
+        mathSymbol += `_{${dims}}`;
+
+        return (
+            <div className="tooltip-vector-group">
+                <div className="matrix-wrapper side-label">
+                    <div className="matrix-label-side"><InlineMath math={mathSymbol} /></div>
+                </div>
+                <span className="tooltip-symbol">=</span>
+                <div className={`tooltip-vector ${direction}`}>
+                    {vec.map((val, i) => (
+                        <span
+                            key={i}
+                            className={`tooltip-element source ${hoveredComponentIndex === i ? 'highlight' : ''}`}
+                        >
+                            {formatNumber(val, 2)}
+                        </span>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+    const visibleTermIndices = getVisibleIndices(components.length, hoveredComponentIndex ?? -1, 1, 5);
+
+    return (
+        <div className="tooltip-matmul-container">
+            {renderVector(vectorA, symbolAInfo, 'row')}
+            <div className="tooltip-op-symbol">·</div>
+            {renderVector(vectorB, symbolBInfo, 'column')}
+            <div className="tooltip-result-line">
+                <span className="tooltip-op-symbol">=</span>
+                <span className="tooltip-result">{formatNumber(result, 4)}</span>
+            </div>
+            {components && (
+                <div className="tooltip-calculation-detail">
+                    <div className="tooltip-calc-title">点积计算分解 (Dot Product Breakdown):</div>
+                    <div className="tooltip-calc-equation">
+                        {visibleTermIndices.map((idx, i) => {
+                            if (idx === ELLIPSIS) {
+                                return <span key={`ellipsis-${i}`} className="op">...</span>;
+                            }
+                            const comp = components[idx];
+                            return (
+                                <React.Fragment key={idx}>
+                                    {i > 0 && visibleTermIndices[i-1] !== ELLIPSIS && <span className="op">+</span>}
+                                    <span onMouseEnter={() => setHoveredComponentIndex(idx)} onMouseLeave={() => setHoveredComponentIndex(null)}>
+                                        <span className={`tooltip-calc-term ${hoveredComponentIndex === idx ? 'highlight' : ''}`}>
+                                            ({formatNumber(comp.a, 2)} <span className="op">×</span> {formatNumber(comp.b, 2)})
+                                        </span>
+                                    </span>
+                                </React.Fragment>
+                            );
+                        })}
+                        <span>=</span>
+                        <span className="result">{formatNumber(result, 4)}</span>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+// END OF FILE: src/components/visualizers/InteractiveMatMulVisualizer.tsx
+
+
+================================================================================
+### 文件路径: src/components/visualizers/LayerNormVisualizer.tsx
+================================================================================
+
+// FILE: src/components/visualizers/LayerNormVisualizer.tsx
+import React, { useState, useMemo } from 'react';
+import { Vector, ProcessingStep } from './types';
+import { formatNumber } from './utils';
+
+interface LayerNormVisualizerProps {
+  inputVector: Vector;
+  epsilon?: number;
+}
+
+export const LayerNormVisualizer: React.FC<LayerNormVisualizerProps> = ({ inputVector, epsilon = 1e-5 }) => {
+  const [step, setStep] = useState<ProcessingStep>('start');
+
+  const calculations = useMemo(() => {
+    const mean = inputVector.reduce((a, b) => a + b, 0) / inputVector.length;
+    const variance = inputVector.map(x => (x - mean) ** 2).reduce((a, b) => a + b, 0) / inputVector.length;
+    const stdDev = Math.sqrt(variance + epsilon);
+    const normalized = inputVector.map(x => (x - mean) / stdDev);
+    return { mean, variance, stdDev, normalized };
+  }, [inputVector, epsilon]);
+
+  const stepsOrder: ProcessingStep[] = ['start', 'calculate-mean', 'calculate-variance', 'apply-norm', 'done'];
+  const currentStepIndex = stepsOrder.indexOf(step);
+
+  const handleNext = () => setStep(stepsOrder[Math.min(stepsOrder.length - 1, currentStepIndex + 1)]);
+  const handlePrev = () => setStep(stepsOrder[Math.max(0, currentStepIndex - 1)]);
+  const handleReset = () => setStep('start');
+
+  // Inline Styles (reusing some from SoftmaxVisualizer for consistency)
+  const styles: { [key: string]: React.CSSProperties } = {
+    container: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6' },
+    stepContainer: { width: '100%', padding: '15px', border: '1px solid #e9ecef', borderRadius: '8px', backgroundColor: '#fff', textAlign: 'center' },
+    title: { margin: '0 0 10px 0', fontSize: '1.2em', fontWeight: 'bold' },
+    description: { margin: '0 0 15px 0', color: '#6c757d', minHeight: '40px' },
+    vector: { display: 'flex', justifyContent: 'center', gap: '5px', flexWrap: 'wrap' },
+    element: { minWidth: '60px', padding: '5px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
+    highlight: { borderColor: '#17a2b8', backgroundColor: 'rgba(23, 162, 184, 0.1)' },
+    connector: { fontSize: '2em', color: '#6c757d', margin: '5px 0' },
+    scalarContainer: { display: 'flex', gap: '20px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' },
+    scalar: { padding: '8px 15px', fontSize: '1.1em', fontWeight: 'bold', border: '1px solid #ced4da', borderRadius: '8px', backgroundColor: '#e9ecef' },
+    controls: { display: 'flex', gap: '10px', marginTop: '10px' },
+    button: { padding: '8px 16px', fontSize: '1em', cursor: 'pointer', border: '1px solid #6c757d', borderRadius: '4px', backgroundColor: '#fff' },
+  };
+
+  const descriptions: Record<ProcessingStep, string> = {
+    start: '初始输入向量。点击 "下一步" 开始计算。',
+    'calculate-mean': `首先，计算向量所有元素的平均值。`,
+    'calculate-variance': `然后，计算方差 (variance)，衡量数据点的离散程度。`,
+    'apply-norm': `最后，使用均值和标准差对每个元素进行归一化。公式: (x - μ) / √(σ² + ε)`,
+    done: '计算完成！输出向量的均值接近0，方差接近1。',
+    // [FIXED] Add unused keys to satisfy the Record type
+    'subtract-max': '', 'exponentiate': '', 'sum-exps': '', 'normalize': '',
+    'calculate-squared-sum': '', 'calculate-rms': '', 'apply-rms-norm': ''
+  };
+
+  const renderVector = (vec: Vector, isHighlighted: boolean = false) => (
+    <div style={styles.vector}>
+      {vec.map((val, i) => (
+        <div key={i} style={{ ...styles.element, ...(isHighlighted ? styles.highlight : {}) }}>
+          {formatNumber(val)}
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.stepContainer}>
+        <h3 style={styles.title}>LayerNorm(x)</h3>
+        <p style={styles.description}>{descriptions[step]}</p>
+
+        {renderVector(inputVector, currentStepIndex >= 0)}
+
+        {currentStepIndex >= 1 && <div style={styles.connector}>↓</div>}
+
+        {currentStepIndex >= 1 && (
+          <div style={styles.scalarContainer}>
+            <div style={{ ...styles.scalar, ...(currentStepIndex === 1 ? styles.highlight : {}) }}>
+              μ = {formatNumber(calculations.mean)}
+            </div>
+            {currentStepIndex >= 2 && (
+              <div style={{ ...styles.scalar, ...(currentStepIndex === 2 ? styles.highlight : {}) }}>
+                σ² = {formatNumber(calculations.variance)}
+              </div>
+            )}
+          </div>
+        )}
+
+        {currentStepIndex >= 3 && <div style={styles.connector}>↓</div>}
+        {currentStepIndex >= 3 && renderVector(calculations.normalized, currentStepIndex >= 3)}
+      </div>
+      <div style={styles.controls}>
+        <button onClick={handlePrev} disabled={currentStepIndex <= 0} style={styles.button}>上一步</button>
+        <button onClick={handleNext} disabled={currentStepIndex >= stepsOrder.length - 1} style={styles.button}>下一步</button>
+        <button onClick={handleReset} style={styles.button}>重置</button>
+      </div>
+    </div>
+  );
+};
+
+// END OF FILE: src/components/visualizers/LayerNormVisualizer.tsx
+
+
+================================================================================
+### 文件路径: src/components/visualizers/MatMulVisualizer.tsx
+================================================================================
+
+// FILE: src/components/visualizers/MatMulVisualizer.tsx
+import React, { useRef, useMemo, useState, useEffect, useCallback } from 'react';
+import { Vector, MatMulStep } from './types';
+import { useAnimationController, formatNumber, getCurvePath } from './utils';
+
+interface MatMulVisualizerProps {
+  vectorA: Vector;
+  vectorB: Vector;
+}
+
+export const MatMulVisualizer: React.FC<MatMulVisualizerProps> = ({ vectorA, vectorB }) => {
+  const [svgPaths, setSvgPaths] = useState<any[]>([]);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollWrapperARef = useRef<HTMLDivElement>(null);
+  const scrollWrapperBRef = useRef<HTMLDivElement>(null);
+  const scrollWrapperProdRef = useRef<HTMLDivElement>(null);
+
+  const elementsARef = useRef<(HTMLDivElement | null)[]>([]);
+  const elementsBRef = useRef<(HTMLDivElement | null)[]>([]);
+  const productRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const sumRef = useRef<HTMLDivElement>(null);
+
+  const steps: MatMulStep[] = useMemo(() => {
+    const generatedSteps: MatMulStep[] = [];
+    let cumulativeSum = 0;
+    for (let i = 0; i < vectorA.length; i++) {
+      generatedSteps.push({ type: 'highlight-pair', index: i });
+      const product = vectorA[i] * vectorB[i];
+      generatedSteps.push({ type: 'multiply', index: i, product });
+      cumulativeSum += product;
+      generatedSteps.push({ type: 'accumulate', index: i, product, cumulativeSum });
+    }
+    generatedSteps.push({ type: 'finish', index: -1, cumulativeSum });
+    return generatedSteps;
+  }, [vectorA, vectorB]);
+
+  const { currentStep, isPlaying, play, pause, reset, setStepManually } = useAnimationController(steps.length, 800);
+
+  const result = useMemo(() => vectorA.reduce((sum, val, i) => sum + val * vectorB[i], 0), [vectorA, vectorB]);
+  const currentAnimState: MatMulStep = steps[currentStep] || { type: 'idle', index: -1 };
+
+  const recalculatePaths = useCallback(() => {
+    if (!containerRef.current) return;
+    const newPaths = vectorA.map((_, i) => ({
+      id: `paths-${i}`,
+      path1: getCurvePath(elementsARef.current[i], productRefs.current[i], containerRef.current),
+      path2: getCurvePath(elementsBRef.current[i], productRefs.current[i], containerRef.current),
+      // [REMOVED] Path 3 is no longer needed as we are not connecting each term to the sum.
+    }));
+    setSvgPaths(newPaths);
+  }, [vectorA]);
+
+  useEffect(() => {
+    const observer = new ResizeObserver(recalculatePaths);
+    const elementsToObserve = [
+        containerRef.current,
+        scrollWrapperARef.current,
+        scrollWrapperBRef.current,
+        scrollWrapperProdRef.current,
+    ].filter(Boolean);
+
+    elementsToObserve.forEach(el => observer.observe(el!));
+
+    const scrollableElements = [scrollWrapperARef.current, scrollWrapperBRef.current, scrollWrapperProdRef.current].filter(Boolean);
+    scrollableElements.forEach(el => el!.addEventListener('scroll', recalculatePaths, { passive: true }));
+
+    const tooltipContent = containerRef.current?.closest('.tooltip-content-wrapper');
+    if (tooltipContent) {
+        tooltipContent.addEventListener('scroll', recalculatePaths, { passive: true });
+    }
+
+    const timeoutId = setTimeout(recalculatePaths, 50);
+
+    return () => {
+        clearTimeout(timeoutId);
+        observer.disconnect();
+        scrollableElements.forEach(el => el!.removeEventListener('scroll', recalculatePaths));
+        if (tooltipContent) {
+            tooltipContent.removeEventListener('scroll', recalculatePaths);
+        }
+    };
+  }, [recalculatePaths, currentStep]);
+
+  const handlePrevStep = () => {
+    if (currentStep > -1) {
+        setStepManually(currentStep - 1);
+    }
+  };
+
+  const handleNextStep = () => {
+    if (currentStep < steps.length - 1) {
+        setStepManually(currentStep + 1);
+    }
+  };
+
+  // Inline Styles
+  const styles: { [key: string]: React.CSSProperties } = {
+    container: { position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', padding: '15px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6', overflow: 'hidden' },
+    vectorContainer: { display: 'flex', gap: '8px', alignItems: 'center', width: '100%' },
+    vectorLabel: { fontSize: '1.2em', fontWeight: 'bold', fontFamily: 'monospace' },
+    vectorScrollWrapper: { flexGrow: 1, minWidth: 0, overflowX: 'auto', paddingBottom: '10px' },
+    vector: { display: 'flex', gap: '5px', padding: '5px', border: '1px solid #ccc', borderRadius: '4px', backgroundColor: 'white', width: 'max-content' },
+    element: { display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease', flex: '1 1 0', minWidth: '60px', height: '30px', padding: '0 5px', cursor: 'pointer' },
+    highlight: { transform: 'scale(1.15)', borderColor: '#e63946', backgroundColor: 'rgba(230, 57, 70, 0.1)', fontWeight: 'bold' },
+    productContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', minHeight: '60px', width: '100%' },
+    productsRow: { display: 'flex', gap: '10px', alignItems: 'center', width: 'max-content' },
+    productTerm: { display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '5px 8px', border: '1px dashed #adb5bd', borderRadius: '4px', opacity: 0, transition: 'opacity 0.3s ease', whiteSpace: 'nowrap', flex: '1 1 0', minWidth: '120px' },
+    plusSymbol: { opacity: 0, transition: 'opacity 0.3s ease', fontWeight: 'bold', fontSize: '1.2em' },
+    visible: { opacity: 1 },
+    sumContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' },
+    sumLabel: { fontWeight: 'bold' },
+    sumValue: { padding: '8px 15px', fontSize: '1.2em', fontWeight: 'bold', border: '2px solid #28a745', borderRadius: '8px', backgroundColor: 'rgba(40, 167, 69, 0.1)', color: '#155724' },
+    svg: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 },
+    path: { fill: 'none', strokeWidth: '2px', stroke: '#adb5bd', strokeDasharray: '4 4', transition: 'stroke 0.3s ease, d 0.1s linear' },
+    pathHighlight: { stroke: '#e63946', strokeWidth: '2.5px', strokeDasharray: 'none' },
+    controls: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' },
+    button: { padding: '8px 16px', fontSize: '1em', cursor: 'pointer', border: '1px solid #6c757d', borderRadius: '4px', backgroundColor: '#fff' },
+    playingButton: { backgroundColor: '#6c757d', color: '#fff' },
+    opSymbol: { fontSize: '1.8em', fontWeight: 'bold', margin: '5px 0' },
+  };
+
+  return (
+    <div style={styles.container} ref={containerRef}>
+      <svg style={styles.svg}>
+        {/* [MODIFIED] New SVG rendering logic for correct animation flow */}
+        {svgPaths.map((pathData, i) => {
+          // Find the first step related to this index
+          const firstStepForIndex = steps.findIndex(s => s.index === i);
+          // Don't render anything for future steps
+          if (currentStep < firstStepForIndex || !pathData.id) {
+            return null;
+          }
+          // Determine if the current animation step is actively processing this index
+          const isCurrent = currentAnimState.index === i && (currentAnimState.type === 'highlight-pair' || currentAnimState.type === 'multiply');
+          // Apply highlight style if current, otherwise default path style
+          const pathStyle = isCurrent ? { ...styles.path, ...styles.pathHighlight } : styles.path;
+
+          return (
+            <React.Fragment key={pathData.id}>
+              <path d={pathData.path1} style={pathStyle} />
+              <path d={pathData.path2} style={pathStyle} />
+            </React.Fragment>
+          );
+        })}
+      </svg>
+
+      <div style={styles.vectorContainer}>
+        <div style={styles.vectorLabel}>A =</div>
+        <div style={styles.vectorScrollWrapper} ref={scrollWrapperARef}>
+          <div style={styles.vector}>
+            {vectorA.map((val, i) => (
+              <div key={i} ref={el => elementsARef.current[i] = el} style={{...styles.element, ...(currentAnimState.type !== 'idle' && currentAnimState.index === i ? styles.highlight : {})}}>
+                {formatNumber(val, 2)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={styles.opSymbol}>&times;</div>
+
+      <div style={styles.vectorContainer}>
+        <div style={styles.vectorLabel}>B =</div>
+        <div style={styles.vectorScrollWrapper} ref={scrollWrapperBRef}>
+          <div style={styles.vector}>
+            {vectorB.map((val, i) => (
+              <div key={i} ref={el => elementsBRef.current[i] = el} style={{...styles.element, ...(currentAnimState.type !== 'idle' && currentAnimState.index === i ? styles.highlight : {})}}>
+                {formatNumber(val, 2)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={styles.productContainer}>
+        <div style={{fontWeight: 'bold'}}>Intermediate Products</div>
+        {/* [FIXED] Added scroll wrapper to fix overflow */}
+        <div style={styles.vectorScrollWrapper} ref={scrollWrapperProdRef}>
+            <div style={styles.productsRow}>
+            {vectorA.map((_, i) => (
+                <React.Fragment key={`prod-frag-${i}`}>
+                <div ref={el => productRefs.current[i] = el} style={{ ...styles.productTerm, ...(currentStep >= steps.findIndex(s => s.type === 'multiply' && s.index === i) ? styles.visible : {}) }}>
+                    ({formatNumber(vectorA[i], 2)} &times; {formatNumber(vectorB[i], 2)})
+                </div>
+                {i < vectorA.length - 1 && <span style={{...styles.plusSymbol, ...(currentStep > steps.findIndex(s => s.type === 'multiply' && s.index === i) ? styles.visible : {})}}>+</span>}
+                </React.Fragment>
+            ))}
+            </div>
+        </div>
+      </div>
+
+      {/* [NEW] Added logical separator */}
+      <div style={styles.opSymbol}>=</div>
+
+      <div style={styles.sumContainer}>
+        <div style={styles.sumLabel}>Final Result</div>
+        <div ref={sumRef} style={styles.sumValue}>
+          {currentAnimState.type === 'accumulate' ? formatNumber(currentAnimState.cumulativeSum ?? 0, 3) : currentAnimState.type === 'finish' ? formatNumber(result, 3) : '?'}
+        </div>
+      </div>
+
+      <div style={styles.controls}>
+        <button onClick={handlePrevStep} disabled={currentStep <= -1} style={styles.button}>上一步</button>
+        <button onClick={play} style={{ ...styles.button, ...(isPlaying ? styles.playingButton : {}) }}>Play</button>
+        <button onClick={pause} style={styles.button}>Pause</button>
+        <button onClick={handleNextStep} disabled={currentStep >= steps.length - 1} style={styles.button}>下一步</button>
+        <button onClick={reset} style={styles.button}>Reset</button>
+      </div>
+      <input
+        type="range"
+        min={-1}
+        max={steps.length - 1}
+        value={currentStep}
+        onChange={e => setStepManually(parseInt(e.target.value))}
+        style={{width: '80%', cursor: 'pointer', marginTop: '10px'}}
+      />
+    </div>
+  );
+};
+// END OF FILE: src/components/visualizers/MatMulVisualizer.tsx
+
+
+================================================================================
+### 文件路径: src/components/visualizers/RMSNormVisualizer.tsx
+================================================================================
+
+// FILE: src/components/visualizers/RMSNormVisualizer.tsx
+import React, { useState, useMemo } from 'react';
+import { Vector, ProcessingStep } from './types';
+import { formatNumber } from './utils';
+
+interface RMSNormVisualizerProps {
+  inputVector: Vector;
+  epsilon?: number;
+}
+
+export const RMSNormVisualizer: React.FC<RMSNormVisualizerProps> = ({ inputVector, epsilon = 1e-5 }) => {
+  const [step, setStep] = useState<ProcessingStep>('start');
+
+  const calculations = useMemo(() => {
+    const n = inputVector.length;
+    const squaredSum = inputVector.map(x => x * x).reduce((a, b) => a + b, 0);
+    const meanSquare = squaredSum / n;
+    const rms = Math.sqrt(meanSquare + epsilon);
+    const normalized = inputVector.map(x => x / rms);
+    return { squaredSum, rms, normalized };
+  }, [inputVector, epsilon]);
+
+  const stepsOrder: ProcessingStep[] = ['start', 'calculate-squared-sum', 'calculate-rms', 'apply-rms-norm', 'done'];
+  const currentStepIndex = stepsOrder.indexOf(step);
+
+  const handleNext = () => setStep(stepsOrder[Math.min(stepsOrder.length - 1, currentStepIndex + 1)]);
+  const handlePrev = () => setStep(stepsOrder[Math.max(0, currentStepIndex - 1)]);
+  const handleReset = () => setStep('start');
+
+  // Inline Styles
+  const styles: { [key: string]: React.CSSProperties } = {
+    container: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6' },
+    stepContainer: { width: '100%', padding: '15px', border: '1px solid #e9ecef', borderRadius: '8px', backgroundColor: '#fff', textAlign: 'center' },
+    title: { margin: '0 0 10px 0', fontSize: '1.2em', fontWeight: 'bold' },
+    description: { margin: '0 0 15px 0', color: '#6c757d', minHeight: '40px' },
+    vector: { display: 'flex', justifyContent: 'center', gap: '5px', flexWrap: 'wrap' },
+    element: { minWidth: '60px', padding: '5px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
+    highlight: { borderColor: '#fd7e14', backgroundColor: 'rgba(253, 126, 20, 0.1)' },
+    connector: { fontSize: '2em', color: '#6c757d', margin: '5px 0' },
+    scalar: { padding: '8px 15px', fontSize: '1.1em', fontWeight: 'bold', border: '1px solid #ced4da', borderRadius: '8px', backgroundColor: '#e9ecef' },
+    controls: { display: 'flex', gap: '10px', marginTop: '10px' },
+    button: { padding: '8px 16px', fontSize: '1em', cursor: 'pointer', border: '1px solid #6c757d', borderRadius: '4px', backgroundColor: '#fff' },
+  };
+
+  const descriptions: Record<ProcessingStep, string> = {
+    start: '初始输入向量。RMSNorm 是一种简化的 LayerNorm。',
+    'calculate-squared-sum': `首先，计算向量所有元素的平方和。`,
+    'calculate-rms': `然后，计算均方根 (Root Mean Square)。公式: √ (Σ(x²) / n + ε)`,
+    'apply-rms-norm': `最后，将每个原始元素除以 RMS 值进行归一化。公式: x / RMS(x)`,
+    done: '计算完成！(注意：这里省略了可学习的 gamma 缩放步骤)',
+    'subtract-max': '', 'exponentiate': '', 'sum-exps': '', 'normalize': '', 'calculate-mean': '', 'calculate-variance': '', 'apply-norm': ''
+  };
+
+  const renderVector = (vec: Vector, isHighlighted: boolean = false) => (
+    <div style={styles.vector}>
+      {vec.map((val, i) => (
+        <div key={i} style={{ ...styles.element, ...(isHighlighted ? styles.highlight : {}) }}>
+          {formatNumber(val)}
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.stepContainer}>
+        <h3 style={styles.title}>RMSNorm(x)</h3>
+        <p style={styles.description}>{descriptions[step]}</p>
+
+        {renderVector(inputVector, currentStepIndex >= 0)}
+
+        {currentStepIndex >= 1 && <div style={styles.connector}>↓</div>}
+
+        {currentStepIndex >= 1 && (
+            <div style={{ ...styles.scalar, ...(currentStepIndex === 1 ? styles.highlight : {}) }}>
+              Σ(x²) = {formatNumber(calculations.squaredSum)}
+            </div>
+        )}
+
+        {currentStepIndex >= 2 && <div style={styles.connector}>↓</div>}
+
+        {currentStepIndex >= 2 && (
+            <div style={{ ...styles.scalar, ...(currentStepIndex === 2 ? styles.highlight : {}) }}>
+              RMS = {formatNumber(calculations.rms)}
+            </div>
+        )}
+
+        {currentStepIndex >= 3 && <div style={styles.connector}>↓</div>}
+        {currentStepIndex >= 3 && renderVector(calculations.normalized, currentStepIndex >= 3)}
+      </div>
+      <div style={styles.controls}>
+        <button onClick={handlePrev} disabled={currentStepIndex <= 0} style={styles.button}>上一步</button>
+        <button onClick={handleNext} disabled={currentStepIndex >= stepsOrder.length - 1} style={styles.button}>下一步</button>
+        <button onClick={handleReset} style={styles.button}>重置</button>
+      </div>
+    </div>
+  );
+};
+
+// END OF FILE: src/components/visualizers/RMSNormVisualizer.tsx
+
+
+================================================================================
+### 文件路径: src/components/visualizers/SoftmaxVisualizer.tsx
+================================================================================
+
+// FILE: src/components/visualizers/SoftmaxVisualizer.tsx
+import React, { useState, useMemo } from 'react';
+import { Vector, ProcessingStep } from './types';
+import { formatNumber } from './utils';
+
+interface SoftmaxVisualizerProps {
+  inputVector: Vector;
+}
+
+export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVector }) => {
+  const [step, setStep] = useState<ProcessingStep>('start');
+
+  const calculations = useMemo(() => {
+    const maxVal = Math.max(...inputVector);
+    const shifted = inputVector.map(v => v - maxVal);
+    const exps = shifted.map(v => Math.exp(v));
+    const sumExps = exps.reduce((a, b) => a + b, 0);
+    const result = exps.map(v => v / sumExps);
+    return { maxVal, shifted, exps, sumExps, result };
+  }, [inputVector]);
+
+  const stepsOrder: ProcessingStep[] = ['start', 'subtract-max', 'exponentiate', 'sum-exps', 'normalize', 'done'];
+  const currentStepIndex = stepsOrder.indexOf(step);
+
+  const handleNext = () => setStep(stepsOrder[Math.min(stepsOrder.length - 1, currentStepIndex + 1)]);
+  const handlePrev = () => setStep(stepsOrder[Math.max(0, currentStepIndex - 1)]);
+  const handleReset = () => setStep('start');
+
+  // Inline Styles
+  const styles: { [key: string]: React.CSSProperties } = {
+    container: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6' },
+    stepContainer: { width: '100%', padding: '15px', border: '1px solid #e9ecef', borderRadius: '8px', backgroundColor: '#fff', textAlign: 'center' },
+    title: { margin: '0 0 10px 0', fontSize: '1.2em', fontWeight: 'bold' },
+    description: { margin: '0 0 15px 0', color: '#6c757d', minHeight: '40px' },
+    vector: { display: 'flex', justifyContent: 'center', gap: '5px', flexWrap: 'wrap' },
+    element: { minWidth: '60px', padding: '5px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
+    highlight: { borderColor: '#e63946', backgroundColor: 'rgba(230, 57, 70, 0.1)' },
+    connector: { fontSize: '2em', color: '#6c757d', margin: '5px 0' },
+    scalar: { padding: '8px 15px', fontSize: '1.1em', fontWeight: 'bold', border: '1px solid #ced4da', borderRadius: '8px', backgroundColor: '#e9ecef' },
+    controls: { display: 'flex', gap: '10px', marginTop: '10px' },
+    button: { padding: '8px 16px', fontSize: '1em', cursor: 'pointer', border: '1px solid #6c757d', borderRadius: '4px', backgroundColor: '#fff' },
+  };
+
+  const descriptions: Record<ProcessingStep, string> = {
+    start: '初始输入向量 (Logits)。点击 "下一步" 开始计算。',
+    'subtract-max': `为了数值稳定性，首先从每个元素中减去最大值 (${formatNumber(calculations.maxVal, 2)})。`,
+    exponentiate: '对每个新元素应用指数函数 e^x。',
+    'sum-exps': `将所有指数结果相加，得到归一化因子。`,
+    normalize: `将每个指数结果除以总和，得到最终的概率分布。`,
+    done: '计算完成！这是一个有效的概率分布，所有元素之和为1。',
+    // [FIXED] Add unused keys to satisfy the Record type
+    'calculate-mean': '', 'calculate-variance': '', 'apply-norm': '',
+    'calculate-squared-sum': '', 'calculate-rms': '', 'apply-rms-norm': ''
+  };
+
+  const renderVector = (vec: Vector, isHighlighted: boolean = false) => (
+    <div style={styles.vector}>
+      {vec.map((val, i) => (
+        <div key={i} style={{ ...styles.element, ...(isHighlighted ? styles.highlight : {}) }}>
+          {formatNumber(val)}
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.stepContainer}>
+        <h3 style={styles.title}>Softmax(x)</h3>
+        <p style={styles.description}>{descriptions[step]}</p>
+
+        {/* Step 1: Input */}
+        {renderVector(inputVector, currentStepIndex >= 0)}
+
+        {/* Step 2: Subtract Max */}
+        {currentStepIndex >= 1 && <div style={styles.connector}>↓</div>}
+        {currentStepIndex >= 1 && renderVector(calculations.shifted, currentStepIndex === 1)}
+
+        {/* Step 3: Exponentiate */}
+        {currentStepIndex >= 2 && <div style={styles.connector}>↓</div>}
+        {currentStepIndex >= 2 && renderVector(calculations.exps, currentStepIndex === 2)}
+
+        {/* Step 4: Sum */}
+        {currentStepIndex >= 3 && <div style={styles.connector}>↓</div>}
+        {currentStepIndex >= 3 && <div style={{...styles.scalar, ...(currentStepIndex === 3 ? styles.highlight : {})}}>{formatNumber(calculations.sumExps)}</div>}
+
+        {/* Step 5: Normalize */}
+        {currentStepIndex >= 4 && <div style={styles.connector}>↓</div>}
+        {currentStepIndex >= 4 && renderVector(calculations.result, currentStepIndex >= 4)}
+
+      </div>
+      <div style={styles.controls}>
+        <button onClick={handlePrev} disabled={currentStepIndex <= 0} style={styles.button}>上一步</button>
+        <button onClick={handleNext} disabled={currentStepIndex >= stepsOrder.length - 1} style={styles.button}>下一步</button>
+        <button onClick={handleReset} style={styles.button}>重置</button>
+      </div>
+    </div>
+  );
+};
+// END OF FILE: src/components/visualizers/SoftmaxVisualizer.tsx
+
+
+================================================================================
+### 文件路径: src/components/visualizers/SwiGLUVisualizer.tsx
+================================================================================
+
+// FILE: src/components/visualizers/SwiGLUVisualizer.tsx
+import React, { useRef } from 'react';
+import { Vector } from './types';
+import { formatNumber, getCurvePath } from './utils';
+
+interface SwiGLUVisualizerProps {
+  inputVector: Vector; // This would be x
+  gateActivation: Vector; // This would be SiLU(xW)
+  dataVector: Vector; // This would be xV
+}
+
+export const SwiGLUVisualizer: React.FC<SwiGLUVisualizerProps> = ({ inputVector, gateActivation, dataVector }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const gateRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const dataRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const outputRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const outputVector = gateActivation.map((val, i) => val * dataVector[i]);
+
+  // Inline Styles
+  const styles: { [key: string]: React.CSSProperties } = {
+    container: { position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6' },
+    title: { margin: '0 0 10px 0', fontSize: '1.2em', fontWeight: 'bold' },
+    mainArea: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '30px', flexWrap: 'wrap' },
+    pathContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' },
+    label: { fontWeight: 'bold', color: '#6c757d', padding: '4px 8px', backgroundColor: '#e9ecef', borderRadius: '4px' },
+    vector: { display: 'flex', flexDirection: 'column', gap: '5px' },
+    element: { width: '60px', padding: '5px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
+    opSymbol: { fontSize: '2em', fontWeight: 'bold', alignSelf: 'center' },
+    svg: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' },
+    path: { fill: 'none', strokeWidth: '2px', stroke: '#adb5bd', strokeDasharray: '4 4' },
+  };
+
+  const renderVector = (vec: Vector, refs: React.MutableRefObject<(HTMLDivElement | null)[]>) => (
+    <div style={styles.vector}>
+      {vec.map((val, i) => (
+        <div key={i} ref={el => refs.current[i] = el} style={styles.element}>
+          {formatNumber(val, 2)}
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div style={styles.container} ref={containerRef}>
+      <svg style={styles.svg}>
+        {inputVector.map((_, i) => (
+          <React.Fragment key={`path-${i}`}>
+            <path d={getCurvePath(inputRefs.current[i], gateRefs.current[i], containerRef.current)} style={styles.path} />
+            <path d={getCurvePath(inputRefs.current[i], dataRefs.current[i], containerRef.current)} style={styles.path} />
+            <path d={getCurvePath(gateRefs.current[i], outputRefs.current[i], containerRef.current)} style={styles.path} />
+            <path d={getCurvePath(dataRefs.current[i], outputRefs.current[i], containerRef.current)} style={styles.path} />
+          </React.Fragment>
+        ))}
+      </svg>
+      <h3 style={styles.title}>SwiGLU(x) = SiLU(xW) ⊙ xV</h3>
+      <div style={styles.mainArea}>
+        <div style={styles.pathContainer}>
+          <div style={styles.label}>Input (x)</div>
+          {renderVector(inputVector, inputRefs)}
+        </div>
+
+        <div style={styles.opSymbol}>→</div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={styles.pathContainer}>
+            <div style={styles.label}>Gate Path: SiLU(xW)</div>
+            {renderVector(gateActivation, gateRefs)}
+          </div>
+          <div style={styles.pathContainer}>
+            <div style={styles.label}>Data Path: xV</div>
+            {renderVector(dataVector, dataRefs)}
+          </div>
+        </div>
+
+        <div style={styles.opSymbol}>⊙</div>
+
+        <div style={styles.pathContainer}>
+          <div style={styles.label}>Output</div>
+          {renderVector(outputVector, outputRefs)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// END OF FILE: src/components/visualizers/SwiGLUVisualizer.tsx
+
+
+================================================================================
+### 文件路径: src/components/visualizers/types.ts
+================================================================================
+
+// FILE: src/components/visualizers/types.ts
+
+/**
+ * 定义可视化组件库共享的类型
+ */
+
+export type Vector = number[];
+export type Matrix = number[][];
+
+// 动画步骤的状态，用于控制分步可视化
+export type AnimationStatus = 'idle' | 'running' | 'paused' | 'finished';
+
+// 点积动画的详细步骤
+export interface MatMulStep {
+  type: 'highlight-pair' | 'multiply' | 'accumulate' | 'finish' | 'idle'; // [FIXED] Added 'idle'
+  index: number; // 当前处理的元素索引
+  product?: number; // 乘积结果
+  cumulativeSum?: number; // 累加和
+}
+
+// Softmax/LayerNorm/RMSNorm 动画的步骤名称
+export type ProcessingStep =
+  | 'start'
+  | 'subtract-max'
+  | 'exponentiate'
+  | 'sum-exps'
+  | 'normalize'
+  | 'calculate-mean'
+  | 'calculate-variance'
+  | 'apply-norm'
+  | 'calculate-squared-sum' // For RMSNorm
+  | 'calculate-rms'         // For RMSNorm
+  | 'apply-rms-norm'      // For RMSNorm
+  | 'done';
+
+// 支持的激活函数类型
+export type ActivationFunctionType = 'relu' | 'gelu' | 'silu';
+
+// [NEW] For InteractiveMatMulVisualizer
+export interface CalculationComponent {
+    a: number;
+    b: number;
+}
+
+// [NEW] Generic Symbol Information for tooltips
+export interface SymbolInfo {
+    base: string;
+    superscript?: string;
+    subscript?: string;
+}
+// END OF FILE: src/components/visualizers/types.ts
+
+
+================================================================================
+### 文件路径: src/components/visualizers/utils.ts
+================================================================================
+
+// FILE: src/components/visualizers/utils.ts
+
+import { useState, useEffect, useCallback } from 'react';
+
+/**
+ * 格式化数字以便显示
+ * @param num 要格式化的数字
+ * @param precision 小数位数，默认为3
+ * @returns 格式化后的字符串
+ */
+export const formatNumber = (num: number, precision: number = 3): string => {
+    if (num === -Infinity) return '-∞';
+    if (num === Infinity) return '∞';
+    const fixed = num.toFixed(precision);
+    // 移除末尾多余的0和可能存在的小数点
+    return parseFloat(fixed).toString();
+};
+
+
+/**
+ * 一个用于控制分步动画的 React Hook
+ * @param totalSteps 动画总步数
+ * @param delay 动画每一步之间的延迟（毫秒）
+ * @returns [currentStep, play, pause, reset]
+ */
+export const useAnimationController = (totalSteps: number, delay: number = 500) => {
+    const [step, setStep] = useState<number>(-1); // -1表示未开始
+    const [isPlaying, setIsPlaying] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (!isPlaying || step >= totalSteps - 1) {
+            if (step >= totalSteps - 1) {
+                setIsPlaying(false);
+            }
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            setStep(prev => prev + 1);
+        }, delay);
+
+        return () => clearTimeout(timer);
+    }, [isPlaying, step, totalSteps, delay]);
+
+    const play = useCallback(() => {
+        if (step >= totalSteps - 1) {
+            setStep(0); // 如果已完成，则从头播放
+        } else if (step === -1) {
+            setStep(0); // 首次播放
+        }
+        setIsPlaying(true);
+    }, [step, totalSteps]);
+
+    const pause = useCallback(() => {
+        setIsPlaying(false);
+    }, []);
+
+    const reset = useCallback(() => {
+        setIsPlaying(false);
+        setStep(-1);
+    }, []);
+
+    const setStepManually = useCallback((newStep: number) => {
+        setIsPlaying(false);
+        if (newStep >= -1 && newStep < totalSteps) {
+            setStep(newStep);
+        }
+    }, [totalSteps]);
+
+
+    return {
+        currentStep: step,
+        isPlaying,
+        play,
+        pause,
+        reset,
+        setStepManually
+    };
+};
+
+/**
+ * 计算两个 DOM 元素中心点之间的 SVG 曲线路径
+ * @param startEl 起始 DOM 元素
+ * @param endEl 结束 DOM 元素
+ * @param containerEl 容器 DOM 元素，用于计算相对坐标
+ * @returns SVG 'd' 属性字符串
+ */
+export const getCurvePath = (startEl: Element | null, endEl: Element | null, containerEl: Element | null): string => {
+    if (!startEl || !endEl || !containerEl) return '';
+
+    const containerRect = containerEl.getBoundingClientRect();
+    const startRect = startEl.getBoundingClientRect();
+    const endRect = endEl.getBoundingClientRect();
+
+    const startX = startRect.left + startRect.width / 2 - containerRect.left;
+    const startY = startRect.top + startRect.height / 2 - containerRect.top;
+    const endX = endRect.left + endRect.width / 2 - containerRect.left;
+    const endY = endRect.top + endRect.height / 2 - containerRect.top;
+
+    const dx = endX - startX;
+    const dy = endY - startY;
+
+    // 控制点，用于创建曲线效果
+    const cp1x = startX + dx * 0.25;
+    const cp1y = startY + dy * 0.1;
+    const cp2x = startX + dx * 0.75;
+    const cp2y = startY + dy * 0.9;
+
+    return `M ${startX} ${startY} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${endX},${endY}`;
+};
+
+
+// END OF FILE: src/components/visualizers/utils.ts
+
+
+================================================================================
 ### 文件路径: src/hooks/useDraggableAndResizable.tsx
 ================================================================================
 
@@ -397,6 +1706,29 @@ export const useDraggableAndResizable = (initialState: {
 
   const dragState = useRef<DragState | null>(null);
 
+  // --- [NEW] Effect to clamp initial position and size to be within the viewport ---
+  useEffect(() => {
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
+
+    let initialWidth = initialState.width;
+    let initialHeight = typeof initialState.height === 'number' ? initialState.height : 500; // Use a default for 'auto'
+
+    let clampedWidth = clamp(initialWidth, 200, window.innerWidth);
+    let clampedHeight = clamp(initialHeight, 100, window.innerHeight);
+
+    let clampedX = clamp(initialState.x, 0, window.innerWidth - clampedWidth);
+    let clampedY = clamp(initialState.y, 0, window.innerHeight - clampedHeight);
+
+    // If the window is smaller than the component, adjust position to 0
+    if (clampedWidth >= window.innerWidth) clampedX = 0;
+    if (clampedHeight >= window.innerHeight) clampedY = 0;
+
+    setSize({ width: clampedWidth, height: initialState.height === 'auto' ? 'auto' : clampedHeight });
+    setPosition({ x: clampedX, y: clampedY });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
+
+
   const disconnectObserver = useCallback(() => {
     if (observerRef.current) {
         observerRef.current.disconnect();
@@ -411,7 +1743,9 @@ export const useDraggableAndResizable = (initialState: {
             const entry = entries[0];
             if (entry) {
                 const contentHeight = entry.contentRect.height;
-                setSize(s => ({...s, height: Math.min(contentHeight + 40, 600)}));
+                // Add panel header/padding height to content height
+                const totalHeight = contentHeight + 80; // Approximate extra height
+                setSize(s => ({...s, height: Math.min(totalHeight, window.innerHeight - 40)}));
             }
         });
         observerRef.current.observe(contentRef.current);
@@ -426,9 +1760,7 @@ export const useDraggableAndResizable = (initialState: {
 
     if (!contentRef.current) return;
 
-    // Switch to numeric height for resizing calculations
     const currentHeight = typeof size.height === 'number' ? size.height : contentRef.current.offsetHeight;
-    // [FIXED] Correctly check the value, not the typeof
     if (size.height === 'auto') {
         setSize(s => ({...s, height: currentHeight}));
     }
@@ -477,25 +1809,32 @@ export const useDraggableAndResizable = (initialState: {
         }
     }
 
-    if (newWidth < 200) {
-        if(type.includes('l')) newX = position.x;
-        newWidth = 200;
-    }
-    if (newHeight < 100) {
-        if(type.includes('t')) newY = position.y;
-        newHeight = 100;
-    }
+    // --- [MODIFIED] Add boundary constraints ---
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
+
+    // Minimum dimensions
+    newWidth = Math.max(200, newWidth);
+    newHeight = Math.max(100, newHeight);
+
+    // Clamp size to viewport
+    newWidth = Math.min(newWidth, window.innerWidth);
+    newHeight = Math.min(newHeight, window.innerHeight);
+
+    // Clamp position to viewport
+    newX = clamp(newX, 0, window.innerWidth - newWidth);
+    newY = clamp(newY, 0, window.innerHeight - newHeight);
+    // --- End of boundary constraints ---
 
     setSize({ width: newWidth, height: newHeight });
     setPosition({ x: newX, y: newY });
 
-  }, [position.x, position.y]);
+  }, []);
 
   const handleMouseUp = useCallback(() => {
     dragState.current = null;
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
-  }, []);
+  }, [handleMouseMove]);
 
   return {
     size,
@@ -510,7 +1849,6 @@ export const useDraggableAndResizable = (initialState: {
     },
   };
 };
-
 // END OF FILE: src/hooks/useDraggableAndResizable.ts
 
 
@@ -821,6 +2159,35 @@ export {};
    ensuring it is fully self-contained. Many styles are adapted from the
    transformer-explorer topic to maintain visual consistency. */
 
+/* [ADDED] Layout styles for independent scrolling columns */
+.main-layout {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+.column {
+  height: 100%;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.column-content {
+    padding: 20px;
+}
+.column.left-column {
+    border-right: 1px solid var(--border-color);
+}
+.column h2 {
+  text-align: center;
+  margin-top: 0;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: -20px;
+  background-color: var(--bg-color);
+  z-index: 10;
+}
+
 .attention-variant-section {
     border: 3px solid var(--border-color);
     border-radius: 12px;
@@ -829,6 +2196,12 @@ export {};
     transition: all 0.3s ease;
     overflow: hidden;
 }
+
+.attention-variant-section.active-component {
+    border-color: var(--highlight-formula-border);
+    box-shadow: 0 0 20px var(--highlight-formula-bg);
+}
+
 
 .attention-variant-section .component-header {
     background-color: var(--component-header-bg);
@@ -943,7 +2316,8 @@ export {};
 /* Side-label state: triggered by prop OR parent class */
 .matrix-wrapper.side-label,
 .viz-row.vertical .matrix-wrapper,
-.explanation-row.vertical .matrix-wrapper {
+.explanation-row.vertical .matrix-wrapper,
+.explanation-row > .matrix-wrapper:only-child {
     flex-direction: row;
     align-items: center;
     gap: 12px;
@@ -951,7 +2325,8 @@ export {};
 
 .matrix-wrapper.side-label .matrix-label-side,
 .viz-row.vertical .matrix-wrapper .matrix-label-side,
-.explanation-row.vertical .matrix-wrapper .matrix-label-side {
+.explanation-row.vertical .matrix-wrapper .matrix-label-side,
+.explanation-row > .matrix-wrapper:only-child .matrix-label-side {
     display: flex; /* Show side label */
 }
 
@@ -960,7 +2335,9 @@ export {};
 .explanation-row.vertical .matrix-wrapper .matrix-label-container,
 .matrix-wrapper.side-label > .matrix-label, /* Target symbolic matrix bottom label */
 .viz-row.vertical .matrix-wrapper > .matrix-label,
-.explanation-row.vertical .matrix-wrapper > .matrix-label {
+.explanation-row.vertical .matrix-wrapper > .matrix-label,
+.explanation-row > .matrix-wrapper:only-child .matrix-label-container,
+.explanation-row > .matrix-wrapper:only-child > .matrix-label {
     display: none; /* Hide bottom label */
 }
 
@@ -1138,6 +2515,45 @@ export {};
     border-color: #e4e7ed;
 }
 
+
+/* [NEW] Styles for introduction blocks and other typography */
+.math-block {
+  margin-bottom: 25px;
+  padding: 20px;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  background: #fff;
+  transition: all 0.3s ease;
+}
+.math-block h3 {
+  margin: -20px -20px 15px -20px;
+  padding: 15px 20px;
+  font-size: 1.25em;
+  color: #000;
+  border-bottom: 1px solid #eee;
+  border-radius: 12px 12px 0 0;
+  background-color: var(--component-header-bg);
+}
+.math-block p, .math-block li {
+    line-height: 1.7;
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+.math-block code {
+   background-color: #e9ecef;
+   padding: 2px 5px;
+   border-radius: 4px;
+   font-family: monospace;
+}
+
+/* [ADDED] For matrix overflow */
+.matrix-scroll-wrapper {
+    overflow-x: auto;
+    padding-bottom: 10px;
+    width: 100%;
+}
+
+
 /* END OF FILE: src/topics/attention-variants/AttentionVariantsTopic.css */
 
 
@@ -1223,7 +2639,15 @@ const generateTooltipData = (element: ElementIdentifier, data: AttentionData, so
                  const vecA = matrixA[source1.row];
                  const vecB = matrixB.map(r => r[source2.col]);
                  const components: CalculationComponent[] = vecA.map((val, i) => ({ a: val, b: vecB[i] }));
-                 steps.push({ a: vecA, b: vecB, op: '·', result: targetValue, aSymbol: getSymbolParts(source1.name).base, bSymbol: getSymbolParts(source2.name).base, components });
+                 steps.push({
+                     a: vecA,
+                     b: vecB,
+                     op: '·',
+                     result: targetValue,
+                     aSymbolInfo: getSymbolParts(source1.name),
+                     bSymbolInfo: getSymbolParts(source2.name),
+                     components
+                 });
              }
         }
     } else if (conceptualName === 'Weights' && element.isInternal) {
@@ -1233,7 +2657,14 @@ const generateTooltipData = (element: ElementIdentifier, data: AttentionData, so
             const matrixA = getMatrixByName(scoresName, data);
             if(matrixA) {
                 const vecA = matrixA[row];
-                steps.push({a: vecA, b: [], op: 'softmax', result: targetValue, aSymbol: getSymbolParts(scoresName).base, bSymbol: ''});
+                steps.push({
+                    a: vecA,
+                    b: [],
+                    op: 'softmax',
+                    result: targetValue,
+                    aSymbolInfo: getSymbolParts(scoresName),
+                    bSymbolInfo: { base: '' }
+                });
             }
         }
     }
@@ -1382,8 +2813,10 @@ export const AttentionVariantsTopic: React.FC = () => {
 ================================================================================
 
 // FILE: src/topics/attention-variants/types.ts
-// 该文件为注意力变体专题定义了所有必要的类型
+import { SymbolInfo as GenericSymbolInfo } from '../../components/visualizers/types';
 
+// 该文件为注意力变体专题定义了所有必要的类型
+export type SymbolInfo = GenericSymbolInfo;
 export type Matrix = number[][];
 export type Vector = number[];
 
@@ -1407,6 +2840,7 @@ export interface HighlightSource extends ElementIdentifier {
 export interface HighlightState {
   target: ElementIdentifier | null;
   sources: HighlightSource[];
+  activeComponent?: string | null; // e.g., "mha", "gqa"
 }
 
 // 单个注意力头的计算结果
@@ -1462,8 +2896,8 @@ export interface CalculationStep {
     b: Vector;
     op: string;
     result: number;
-    aSymbol: string;
-    bSymbol: string;
+    aSymbolInfo: SymbolInfo;
+    bSymbolInfo: SymbolInfo;
     components?: CalculationComponent[];
 }
 
@@ -1486,6 +2920,10 @@ export interface TooltipState {
 import React, { useState, useEffect, useRef } from 'react';
 import { TooltipState } from '../types';
 import { useDraggableAndResizable } from '../../../hooks/useDraggableAndResizable';
+import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
+import { MatMulVisualizer } from '../../../components/visualizers/MatMulVisualizer';
+import { InteractiveMatMulVisualizer } from '../../../components/visualizers/InteractiveMatMulVisualizer';
+
 
 interface CalculationTooltipProps {
   tooltip: TooltipState;
@@ -1501,69 +2939,68 @@ const formatNumber = (num: number, precision = 4) => {
 
 export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip, onClose }) => {
     const [isCollapsed, setIsCollapsed] = useState(true);
-    const [hoveredComponentIndex, setHoveredComponentIndex] = useState<number | null>(null);
+    const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact');
     const panelRef = useRef<HTMLDivElement>(null);
 
     const { position, size, dragHandleProps, resizeHandleProps } = useDraggableAndResizable({
         x: 20,
         y: 20,
-        width: 500,
-        height: 'auto',
+        width: 650,
+        height: 500,
     }, panelRef);
 
     useEffect(() => {
         setIsCollapsed(false);
+        setViewMode('compact');
     }, [tooltip]);
 
-    const renderVector = (vec: number[], symbol: string, direction: 'row' | 'column' = 'row') => (
-        <div className="tooltip-vector-group">
-            <span className="tooltip-symbol">{symbol} =</span>
-            <div className={`tooltip-vector ${direction}`}>
-                {vec.map((val, i) => (
-                    <span
-                        key={i}
-                        className={`tooltip-element source ${hoveredComponentIndex === i ? 'highlight' : ''}`}
-                    >
-                        {formatNumber(val, 2)}
-                    </span>
-                ))}
+    const renderVector = (vec: number[], symbol: string, direction: 'row' | 'column' = 'row', focusIndex: number = -1) => {
+        const visibleIndices = getVisibleIndices(vec.length, focusIndex, 1, 4);
+
+        return (
+            <div className="tooltip-vector-group">
+                <span className="tooltip-symbol">{symbol} =</span>
+                <div className={`tooltip-vector ${direction}`}>
+                    {visibleIndices.map((idx, i) => {
+                        if (idx === ELLIPSIS) {
+                            return <span key={`ellipsis-${i}`} className="tooltip-element">...</span>;
+                        }
+                        return (
+                            <span
+                                key={idx}
+                                className={`tooltip-element source`}
+                            >
+                                {formatNumber(vec[idx], 2)}
+                            </span>
+                        );
+                    })}
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderBody = () => {
         if (!tooltip.steps || tooltip.steps.length === 0) return null;
         const step = tooltip.steps[0];
+        const focusIndex = tooltip.target.col;
 
         switch (tooltip.opType) {
             case 'matmul':
-                 return (
-                     <div className="tooltip-matmul-container">
-                        {renderVector(step.a, step.aSymbol, 'row')}
-                        <div className="tooltip-op-symbol">·</div>
-                        {renderVector(step.b, step.bSymbol, 'column')}
-                        <div className="tooltip-result-line">
-                            <span className="tooltip-op">=</span>
-                            <span className="tooltip-result">{formatNumber(step.result, 4)}</span>
-                        </div>
-                        {step.components && (
-                            <div className="tooltip-calculation-detail">
-                                <div className="tooltip-calc-title">点积计算分解:</div>
-                                <div className="tooltip-calc-equation">
-                                    {step.components.map((comp, i) => (
-                                        <span key={i} onMouseEnter={() => setHoveredComponentIndex(i)} onMouseLeave={() => setHoveredComponentIndex(null)}>
-                                            {i > 0 && <span className="op"> + </span>}
-                                            <span className={`tooltip-calc-term ${hoveredComponentIndex === i ? 'highlight' : ''}`}>
-                                                ({formatNumber(comp.a, 2)} <span className="op">×</span> {formatNumber(comp.b, 2)})
-                                            </span>
-                                        </span>
-                                    ))}
-                                    <span> = <span className="result">{formatNumber(step.result, 4)}</span></span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                );
+                 if (step.components) {
+                    return viewMode === 'compact' ? (
+                        <InteractiveMatMulVisualizer
+                            vectorA={step.a}
+                            vectorB={step.b}
+                            symbolAInfo={step.aSymbolInfo}
+                            symbolBInfo={step.bSymbolInfo}
+                            result={step.result}
+                            components={step.components}
+                        />
+                    ) : (
+                        <MatMulVisualizer vectorA={step.a} vectorB={step.b} />
+                    );
+                 }
+                 return <div>Matmul visualization requires components data.</div>;
              case 'add':
                  return (
                     <div className="tooltip-calculation-detail">
@@ -1581,7 +3018,7 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
                 const sumExps = exps.reduce((a, b) => a + b, 0);
                  return (
                     <>
-                        {renderVector(step.a, step.aSymbol, 'row')}
+                        {renderVector(step.a, step.aSymbolInfo.base, 'row', focusIndex)}
                          <div className="tooltip-calculation-detail">
                             <div className="tooltip-calc-title">Softmax 计算分解 (for {tooltip.target.symbol}[{tooltip.target.row}, {tooltip.target.col}]):</div>
                             <div className="tooltip-calc-equation-multi">
@@ -1605,11 +3042,23 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
         height: typeof size.height === 'number' && !isCollapsed ? size.height : 'auto',
     };
 
+    const showViewToggle = tooltip.opType === 'matmul' && tooltip.steps[0]?.components;
+
     return (
         <div ref={panelRef} style={panelStyle} className={`calculation-tooltip ${isCollapsed ? 'collapsed' : ''} resizable-panel`}>
             <div className="panel-header" {...dragHandleProps}>
-                <span className="tooltip-title">{tooltip.title}</span>
+                <span className="panel-title">{tooltip.title}</span>
                 <div className="tooltip-controls">
+                    {showViewToggle && (
+                        <button
+                            className="view-toggle-btn"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setViewMode(prev => prev === 'compact' ? 'detailed' : 'compact');
+                            }}>
+                            {viewMode === 'compact' ? '动画视图' : '交互视图'}
+                        </button>
+                    )}
                     <button onClick={() => setIsCollapsed(!isCollapsed)} className="tooltip-toggle-btn">
                         {isCollapsed ? '⊕' : '⊖'}
                     </button>
@@ -1618,7 +3067,9 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
             </div>
              <div className="tooltip-content-wrapper">
                 <div className="tooltip-body">
-                    {renderBody()}
+                   <div className="calculation-content-container">
+                        {renderBody()}
+                    </div>
                 </div>
             </div>
             <div className="resize-handle br" {...resizeHandleProps.br}></div>
@@ -2175,7 +3626,7 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 </div>
                 <div className="explanation-subsection">
                      <h5>KV Cache: 变化与牺牲</h5>
-                    <p><strong>显存占用:</strong> 在GQA中，查询头被分成 {n_kv_heads} 组，每组共享一个K/V头 (<InlineMath math={`N_q=${n_q_heads}, N_{kv}=${n_kv_heads}`}/>)。KV Cache只存储 <InlineMath math="N_{kv\_heads}"/> 份Key和Value，大小减少为MHA的 <InlineMath math={`${n_kv_heads}/${n_q_heads}`}/> 倍。</p>
+                    <p><strong>显存占用:</strong> 在GQA中，查询头被分成 {n_kv_heads}$ 组，每组共享一个K/V头 (<InlineMath math={`N_q=${n_q_heads}, N_{kv}=${n_kv_heads}`}/>)。KV Cache只存储 <InlineMath math="N_{kv\_heads}"/> 份Key和Value，大小减少为MHA的 <InlineMath math={`${n_kv_heads}/${n_q_heads}`}/> 倍。</p>
                     <BlockMath math={"\\text{Cache}_{\\text{GQA}} \\propto S \\times N_{kv\\_\\text{heads}} \\times d_{\\text{head}}"} />
                     <p>以Llama3 70B为例，若采用GQA并设置 <InlineMath math="N_{kv\_heads}=8"/>，KV Cache将减少8倍，从20.97 GB降至约 <strong>2.62 GB</strong>，这是一个显著的优化。</p>
                     <p><strong>牺牲:</strong> GQA的牺牲主要是设计复杂性和需要对组数 <InlineMath math="N_{kv\_heads}"/> 进行超参数调优。虽然性能显著优于MQA，但理论上仍可能略低于MHA。</p>
@@ -2991,6 +4442,11 @@ export const getVisibleIndices = (
     visible.add(totalSize - 1 - i);
   }
 
+  // [NEW] Also include the middle index when there's no specific focus
+  if (focusIndex === -1 && totalSize >= MIN_SIZE_FOR_TRUNCATION) {
+    visible.add(Math.floor((totalSize - 1) / 2));
+  }
+
   if (focusIndex !== -1) {
     const windowStart = Math.max(0, focusIndex - Math.floor(windowSize / 2));
     const windowEnd = Math.min(totalSize - 1, focusIndex + Math.floor(windowSize / 2));
@@ -3262,10 +4718,11 @@ export const getVisibleIndices = (
 }
 
 .op-symbol {
-    font-size: 2em;
+    font-size: 1.6em; /* [MODIFIED] Reduced size */
     font-weight: bold;
     color: #909399;
     align-self: center;
+    margin: 0 5px; /* [MODIFIED] Reduced margin */
 }
 
 .matrix-header-item, .symbolic-header-item {
@@ -3331,7 +4788,7 @@ export const getVisibleIndices = (
 
 .formula-display {
     display: flex;
-    justify-content: flex-start;
+    justify-content: center; /* [MODIFIED] Changed from flex-start to center */
     align-items: center;
     gap: 15px;
     overflow-x: auto;
@@ -3640,7 +5097,7 @@ export const getVisibleIndices = (
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
     z-index: 1000;
     width: auto;
-    max-width: 500px;
+    max-width: 1000px;
     font-size: 0.95em;
     transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
     overflow: hidden;
@@ -4001,11 +5458,11 @@ const generateTooltipData = (element: ElementIdentifier, transformerData: Transf
             const vecB = matmulMatrixB.map(r => r[matmulSourceCol.col]);
             const matmulResult = vecA.reduce((sum, val, i) => sum + val * vecB[i], 0);
             const components: CalculationComponent[] = vecA.map((val, i) => ({ a: val, b: vecB[i] }));
-            steps.push({ title: "Step 1: Matmul", a: vecA, b: vecB, op: '·', result: matmulResult, aSymbol: getSymbolParts(matmulSourceRow.name).base, bSymbol: getSymbolParts(matmulSourceCol.name).base, components });
+            steps.push({ title: "Step 1: Matmul", a: vecA, b: vecB, op: '·', result: matmulResult, aSymbolInfo: getSymbolParts(matmulSourceRow.name), bSymbolInfo: getSymbolParts(matmulSourceCol.name), components });
 
             // Step 2: Add bias
             const biasValue = biasMatrix[biasSource.row][biasSource.col];
-            steps.push({ title: "Step 2: Add Bias", a: [matmulResult], b: [biasValue], op: '+', result: targetValue, aSymbol: "Matmul Result", bSymbol: getSymbolParts(biasSource.name).base });
+            steps.push({ title: "Step 2: Add Bias", a: [matmulResult], b: [biasValue], op: '+', result: targetValue, aSymbolInfo: {base:"Matmul Result"}, bSymbolInfo: getSymbolParts(biasSource.name) });
         }
     // Pure Matmul Check
     } else if (matmulSourceRow && matmulSourceCol) {
@@ -4016,14 +5473,14 @@ const generateTooltipData = (element: ElementIdentifier, transformerData: Transf
             const vecA = matrixA[matmulSourceRow.row];
             const vecB = matrixB.map(r => r[matmulSourceCol.col]);
             const components: CalculationComponent[] = vecA.map((val, i) => ({ a: val, b: vecB[i] }));
-            steps.push({ a: vecA, b: vecB, op: '·', result: targetValue, aSymbol: getSymbolParts(matmulSourceRow.name).base, bSymbol: getSymbolParts(matmulSourceCol.name).base, components });
+            steps.push({ a: vecA, b: vecB, op: '·', result: targetValue, aSymbolInfo: getSymbolParts(matmulSourceRow.name), bSymbolInfo: getSymbolParts(matmulSourceCol.name), components });
         }
     // Pure Element-wise Add Check (e.g., Residual connections)
     } else if (addSources.length >= 2) {
         opType = 'add';
         const vals = addSources.map(s => getMatrixByName(s.name, transformerData, layerIdx, headIdx)?.[s.row]?.[s.col] ?? 0);
         if(vals.length >= 2) {
-             steps.push({ a: [vals[0]], b: [vals[1]], op: '+', result: targetValue, aSymbol: getSymbolParts(addSources[0].name).base, bSymbol: getSymbolParts(addSources[1].name).base });
+             steps.push({ a: [vals[0]], b: [vals[1]], op: '+', result: targetValue, aSymbolInfo: getSymbolParts(addSources[0].name), bSymbolInfo: getSymbolParts(addSources[1].name) });
         }
     // Internal Element-wise Op Check (Softmax/ReLU)
     } else if (isInternal) {
@@ -4033,10 +5490,10 @@ const generateTooltipData = (element: ElementIdentifier, transformerData: Transf
             const vecA = sourceMatrix[row];
             if (baseName.includes('AttentionWeights')) {
                 opType = 'softmax';
-                steps.push({ a: vecA, b: [], op: 'softmax', result: targetValue, aSymbol: getSymbolParts(sourceName).base, bSymbol: '' });
+                steps.push({ a: vecA, b: [], op: 'softmax', result: targetValue, aSymbolInfo: getSymbolParts(sourceName), bSymbolInfo: { base: '' } });
             } else if (baseName.includes('Activated')) {
                 opType = 'relu';
-                steps.push({ a: vecA, b: [], op: 'relu', result: targetValue, aSymbol: getSymbolParts(sourceName).base, bSymbol: '' });
+                steps.push({ a: vecA, b: [], op: 'relu', result: targetValue, aSymbolInfo: getSymbolParts(sourceName), bSymbolInfo: { base: '' } });
             }
          }
     }
@@ -4271,6 +5728,9 @@ export const TransformerExplorerTopic: React.FC = () => {
 ================================================================================
 
 // FILE: src/topics/transformer-explorer/types.ts
+import { SymbolInfo as GenericSymbolInfo } from '../../components/visualizers/types';
+
+export type SymbolInfo = GenericSymbolInfo;
 export type Matrix = number[][];
 export type Vector = number[];
 
@@ -4312,8 +5772,8 @@ export interface CalculationStep {
     b: Vector;
     op: string; // e.g., '·', '+', '...'
     result: number;
-    aSymbol: string;
-    bSymbol: string;
+    aSymbolInfo: SymbolInfo;
+    bSymbolInfo: SymbolInfo;
     components?: CalculationComponent[];
 }
 
@@ -4494,6 +5954,9 @@ export const AddNorm: React.FC<AddNormProps> = ({
 import React, { useState, useEffect, useRef } from 'react';
 import { TooltipState } from '../types';
 import { useDraggableAndResizable } from '../../../hooks/useDraggableAndResizable';
+import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
+import { MatMulVisualizer } from '../../../components/visualizers/MatMulVisualizer';
+import { InteractiveMatMulVisualizer } from '../../../components/visualizers/InteractiveMatMulVisualizer';
 
 interface CalculationTooltipProps {
   tooltip: TooltipState;
@@ -4509,79 +5972,85 @@ const formatNumber = (num: number, precision = 4) => {
 
 export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip, onClose }) => {
     const [isCollapsed, setIsCollapsed] = useState(true);
-    const [hoveredComponentIndex, setHoveredComponentIndex] = useState<number | null>(null);
+    const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('compact');
     const panelRef = useRef<HTMLDivElement>(null);
 
     const { position, size, dragHandleProps, resizeHandleProps } = useDraggableAndResizable({
         x: 20,
         y: 20,
-        width: 500,
-        height: 'auto',
+        width: 650,
+        height: 500,
     }, panelRef);
 
     useEffect(() => {
         setIsCollapsed(false);
+        // Reset to compact view whenever a new tooltip is shown
+        setViewMode('compact');
     }, [tooltip]);
 
-    const renderVector = (vec: number[], symbol: string, direction: 'row' | 'column' = 'row') => (
-        <div className="tooltip-vector-group">
-            <span className="tooltip-symbol">{symbol} =</span>
-            <div className={`tooltip-vector ${direction}`}>
-                {vec.map((val, i) => (
-                    <span
-                        key={i}
-                        className={`tooltip-element source ${hoveredComponentIndex === i ? 'highlight' : ''}`}
-                    >
-                        {formatNumber(val, 2)}
-                    </span>
-                ))}
+    const renderVector = (vec: number[], symbol: string, direction: 'row' | 'column' = 'row', focusIndex: number = -1) => {
+        const visibleIndices = getVisibleIndices(vec.length, focusIndex, 1, 4);
+
+        return (
+            <div className="tooltip-vector-group">
+                <span className="tooltip-symbol">{symbol} =</span>
+                <div className={`tooltip-vector ${direction}`}>
+                    {visibleIndices.map((idx, i) => {
+                         if (idx === ELLIPSIS) {
+                            return <span key={`ellipsis-${i}`} className="tooltip-element">...</span>;
+                        }
+                        return (
+                            <span
+                                key={idx}
+                                className={`tooltip-element source`}
+                            >
+                                {formatNumber(vec[idx], 2)}
+                            </span>
+                        );
+                    })}
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderBody = () => {
         if (!tooltip.steps || tooltip.steps.length === 0) return null;
 
         return tooltip.steps.map((step, stepIndex) => {
             let content = <></>;
-            switch(step.op) {
-                case '·': // Matmul
-                    content = (
-                         <div className="tooltip-matmul-container">
-                            {renderVector(step.a, step.aSymbol, 'row')}
-                            <div className="tooltip-op-symbol">·</div>
-                            {renderVector(step.b, step.bSymbol, 'column')}
-                            <div className="tooltip-result-line">
-                                <span className="tooltip-op">=</span>
-                                <span className="tooltip-result">{formatNumber(step.result, 4)}</span>
+            const focusIndex = tooltip.target.col;
+
+            switch(tooltip.opType) {
+                case 'matmul':
+                    if (step.components) {
+                        return (
+                             <div className="tooltip-step-container" key={stepIndex}>
+                                {step.title && <h4 className="tooltip-step-title">{step.title}</h4>}
+                                {viewMode === 'compact' ? (
+                                    <InteractiveMatMulVisualizer
+                                        vectorA={step.a}
+                                        vectorB={step.b}
+                                        symbolAInfo={step.aSymbolInfo}
+                                        symbolBInfo={step.bSymbolInfo}
+                                        result={step.result}
+                                        components={step.components}
+                                    />
+                                ) : (
+                                    <MatMulVisualizer vectorA={step.a} vectorB={step.b} />
+                                )}
                             </div>
-                            {step.components && (
-                                <div className="tooltip-calculation-detail">
-                                    <div className="tooltip-calc-title">点积计算分解:</div>
-                                    <div className="tooltip-calc-equation">
-                                        {step.components.map((comp, i) => (
-                                            <span key={i} onMouseEnter={() => setHoveredComponentIndex(i)} onMouseLeave={() => setHoveredComponentIndex(null)}>
-                                                {i > 0 && <span className="op"> + </span>}
-                                                <span className={`tooltip-calc-term ${hoveredComponentIndex === i ? 'highlight' : ''}`}>
-                                                    ({formatNumber(comp.a, 2)} <span className="op">×</span> {formatNumber(comp.b, 2)})
-                                                </span>
-                                            </span>
-                                        ))}
-                                        <span> = <span className="result">{formatNumber(step.result, 4)}</span></span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    );
+                        )
+                    }
+                    content = <div>Matmul visualization requires components data.</div>
                     break;
-                case '+': // Add
+                case 'add':
                     content = (
                         <div className="tooltip-calculation-detail" style={{borderTop: stepIndex > 0 ? '1px solid #eee' : 'none', paddingTop: stepIndex > 0 ? '12px' : '0'}}>
-                            <div className="tooltip-calc-title">逐元素加法:</div>
+                            <div className="tooltip-calc-title">逐元素加法 (Element-wise Addition):</div>
                             <div className="tooltip-calc-equation">
-                                <span>{formatNumber(step.a[0], 2)} ({step.aSymbol})</span>
+                                <span>{formatNumber(step.a[0], 2)} ({step.aSymbolInfo.base})</span>
                                 <span className="op"> + </span>
-                                <span>{formatNumber(step.b[0], 2)} ({step.bSymbol})</span>
+                                <span>{formatNumber(step.b[0], 2)} ({step.bSymbolInfo.base})</span>
                                 <span> = <span className="result">{formatNumber(step.result, 2)}</span></span>
                             </div>
                         </div>
@@ -4593,14 +6062,14 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
                     const sumExps = exps.reduce((a, b) => a + b, 0);
                     content = (
                         <>
-                            {renderVector(step.a, step.aSymbol, 'row')}
+                            {renderVector(step.a, step.aSymbolInfo.base, 'row', focusIndex)}
                             <div className="tooltip-calculation-detail">
                                 <div className="tooltip-calc-title">Softmax 计算分解 (for {tooltip.target.symbol}[{tooltip.target.row}, {tooltip.target.col}]):</div>
                                 <div className="tooltip-calc-equation-multi">
-                                    <div>1. 减去最大值: <span>max(...) = {formatNumber(maxVal, 2)}</span></div>
-                                    <div>2. 计算指数: <span>e^({formatNumber(step.a[tooltip.target.col], 2)} - {formatNumber(maxVal, 2)}) = {formatNumber(exps[tooltip.target.col], 4)}</span></div>
-                                    <div>3. 计算所有指数之和: <span>Σ e^(...) = {formatNumber(sumExps, 4)}</span></div>
-                                    <div>4. 归一化: <span>{formatNumber(exps[tooltip.target.col], 4)} / {formatNumber(sumExps, 4)} = <span className="result">{formatNumber(step.result, 4)}</span></span></div>
+                                    <div>1. 减去最大值 (Subtract Max for stability): <span>max(...) = {formatNumber(maxVal, 2)}</span></div>
+                                    <div>2. 计算指数 (Exponentiate): <span>e^({formatNumber(step.a[tooltip.target.col], 2)} - {formatNumber(maxVal, 2)}) = {formatNumber(exps[tooltip.target.col], 4)}</span></div>
+                                    <div>3. 计算所有指数之和 (Sum Exponentials): <span>Σ e^(...) = {formatNumber(sumExps, 4)}</span></div>
+                                    <div>4. 归一化 (Normalize): <span>{formatNumber(exps[tooltip.target.col], 4)} / {formatNumber(sumExps, 4)} = <span className="result">{formatNumber(step.result, 4)}</span></span></div>
                                 </div>
                             </div>
                         </>
@@ -4609,7 +6078,7 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
                 case 'relu':
                     content = (
                         <>
-                            {renderVector(step.a, step.aSymbol, 'row')}
+                            {renderVector(step.a, step.aSymbolInfo.base, 'row', focusIndex)}
                             <div className="tooltip-calculation-detail">
                                 <div className="tooltip-calc-title">ReLU 计算:</div>
                                 <div className="tooltip-calc-equation">
@@ -4619,6 +6088,8 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
                         </>
                     );
                     break;
+                default:
+                    content = <div>未知操作类型</div>
             }
             return (
                 <div className="tooltip-step-container" key={stepIndex}>
@@ -4636,11 +6107,23 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
         height: typeof size.height === 'number' && !isCollapsed ? size.height : 'auto',
     };
 
+    const showViewToggle = tooltip.opType === 'matmul' && tooltip.steps[0]?.components;
+
     return (
         <div ref={panelRef} style={panelStyle} className={`calculation-tooltip ${isCollapsed ? 'collapsed' : ''} resizable-panel`}>
             <div className="panel-header" {...dragHandleProps}>
-                <span className="tooltip-title">{tooltip.title}</span>
+                <span className="panel-title">{tooltip.title}</span>
                 <div className="tooltip-controls">
+                    {showViewToggle && (
+                        <button
+                            className="view-toggle-btn"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setViewMode(prev => prev === 'compact' ? 'detailed' : 'compact');
+                            }}>
+                            {viewMode === 'compact' ? '动画视图' : '交互视图'}
+                        </button>
+                    )}
                     <button onClick={() => setIsCollapsed(!isCollapsed)} className="tooltip-toggle-btn">
                         {isCollapsed ? '⊕' : '⊖'}
                     </button>
@@ -4649,7 +6132,9 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
             </div>
             <div className="tooltip-content-wrapper">
                 <div className="tooltip-body">
-                    {renderBody()}
+                    <div className="calculation-content-container">
+                        {renderBody()}
+                    </div>
                 </div>
             </div>
             <div className="resize-handle br" {...resizeHandleProps.br}></div>
@@ -5055,7 +6540,7 @@ export const Element: React.FC<ElementProps> = React.memo(({ name, row, col, val
 import React from 'react';
 import { InlineMath } from 'react-katex';
 import { ElementIdentifier, HighlightState } from '../types';
-import { getVisibleIndices, ELLIPSIS } from '../../../utils/matrixView';
+import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 
 interface ElementwiseCalculationProps {
   opType: 'softmax' | 'relu';
@@ -6156,7 +7641,7 @@ import { HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
 import { getSymbolParts } from '../config/symbolMapping';
 import { InteractiveSymbolicElement } from './InteractiveSymbolicElement';
-import { getVisibleIndices, ELLIPSIS } from '../../../utils/matrixView';
+import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 
 interface InteractiveSymbolicMatrixProps {
   name: string;
@@ -6263,7 +7748,7 @@ import { InlineMath } from 'react-katex';
 import { Vector as VectorType } from '../types';
 import { getSymbolParts } from '../config/symbolMapping';
 import { InteractiveSymbolicElement } from './InteractiveSymbolicElement';
-import { getVisibleIndices, ELLIPSIS } from '../../../utils/matrixView';
+import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 
 interface InteractiveSymbolicVectorProps {
   name: string;
@@ -6467,7 +7952,7 @@ import { Element } from './Element';
 import { Matrix as MatrixType, HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
 import { getSymbolParts } from '../config/symbolMapping';
-import { getVisibleIndices, ELLIPSIS } from '../../../utils/matrixView';
+import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 
 interface MatrixProps {
   name: string;
@@ -7770,10 +9255,10 @@ export const calculateTransformer = (inputText: string, dims: Dims): Transformer
 
 
 ================================================================================
-### 文件路径: src/utils/matrixView.ts
+### 文件路径: src/topics/transformer-explorer/utils/matrixView.ts
 ================================================================================
 
-// FILE: src/utils/matrixView.ts
+// FILE: src/topics/transformer-explorer/utils/matrixView.ts
 export const ELLIPSIS = '...';
 const MIN_SIZE_FOR_TRUNCATION = 12; // e.g., 4 + 3 + 4 + 1 ellipsis = 12
 
@@ -7809,6 +9294,11 @@ export const getVisibleIndices = (
     visible.add(totalSize - 1 - i);
   }
 
+  // [NEW] Also include the middle index when there's no specific focus
+  if (focusIndex === -1 && totalSize >= MIN_SIZE_FOR_TRUNCATION) {
+    visible.add(Math.floor((totalSize - 1) / 2));
+  }
+
   // 2. Add focus window indices
   if (focusIndex !== -1) {
     const windowStart = Math.max(0, focusIndex - Math.floor(windowSize / 2));
@@ -7834,7 +9324,7 @@ export const getVisibleIndices = (
 
   return result;
 };
-// END OF FILE: src/utils/matrixView.ts
+// END OF FILE: src/topics/transformer-explorer/utils/matrixView.ts
 
 
 ================================================================================

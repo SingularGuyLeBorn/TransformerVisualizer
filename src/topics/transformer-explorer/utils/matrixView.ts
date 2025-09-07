@@ -1,4 +1,4 @@
-// FILE: src/utils/matrixView.ts
+// FILE: src/topics/transformer-explorer/utils/matrixView.ts
 export const ELLIPSIS = '...';
 const MIN_SIZE_FOR_TRUNCATION = 12; // e.g., 4 + 3 + 4 + 1 ellipsis = 12
 
@@ -34,6 +34,11 @@ export const getVisibleIndices = (
     visible.add(totalSize - 1 - i);
   }
 
+  // [NEW] Also include the middle index when there's no specific focus
+  if (focusIndex === -1 && totalSize >= MIN_SIZE_FOR_TRUNCATION) {
+    visible.add(Math.floor((totalSize - 1) / 2));
+  }
+
   // 2. Add focus window indices
   if (focusIndex !== -1) {
     const windowStart = Math.max(0, focusIndex - Math.floor(windowSize / 2));
@@ -59,4 +64,4 @@ export const getVisibleIndices = (
 
   return result;
 };
-// END OF FILE: src/utils/matrixView.ts
+// END OF FILE: src/topics/transformer-explorer/utils/matrixView.ts

@@ -1,4 +1,7 @@
 // FILE: src/topics/transformer-explorer/types.ts
+import { SymbolInfo as GenericSymbolInfo } from '../../components/visualizers/types';
+
+export type SymbolInfo = GenericSymbolInfo;
 export type Matrix = number[][];
 export type Vector = number[];
 
@@ -40,8 +43,8 @@ export interface CalculationStep {
     b: Vector;
     op: string; // e.g., '·', '+', '...'
     result: number;
-    aSymbol: string;
-    bSymbol: string;
+    aSymbolInfo: SymbolInfo;
+    bSymbolInfo: SymbolInfo;
     components?: CalculationComponent[];
 }
 

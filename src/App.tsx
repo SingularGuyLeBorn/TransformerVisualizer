@@ -40,16 +40,23 @@ const globalStyles = `
     flex-grow: 1;
     overflow: hidden; /* It should NOT scroll itself */
     min-height: 0; /* Crucial for nested flex scrolling */
+    position: relative; /* Needed for absolute positioned children like controls */
   }
-  .topic-page-container {
+  /* This is now a generic container for standard pages that need scrolling */
+  .page-scroll-container {
       height: 100%;
-      overflow-y: auto; /* This container will scroll for standard articles */
+      overflow-y: auto;
   }
 `;
 
-const styleSheet = document.createElement("style");
-styleSheet.innerText = globalStyles;
-document.head.appendChild(styleSheet);
+// Use a more robust way to ensure the stylesheet is added only once.
+if (!document.getElementById('app-global-styles')) {
+    const styleSheet = document.createElement("style");
+    styleSheet.id = 'app-global-styles';
+    styleSheet.innerText = globalStyles;
+    document.head.appendChild(styleSheet);
+}
+
 
 export default App;
 

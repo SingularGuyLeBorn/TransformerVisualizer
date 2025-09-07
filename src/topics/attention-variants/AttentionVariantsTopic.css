@@ -13,8 +13,10 @@
 .column {
   height: 100%;
   overflow-y: auto;
-  padding: 20px;
   box-sizing: border-box;
+}
+.column-content {
+    padding: 20px;
 }
 .column.left-column {
     border-right: 1px solid var(--border-color);
@@ -30,7 +32,6 @@
   z-index: 10;
 }
 
-
 .attention-variant-section {
     border: 3px solid var(--border-color);
     border-radius: 12px;
@@ -39,6 +40,12 @@
     transition: all 0.3s ease;
     overflow: hidden;
 }
+
+.attention-variant-section.active-component {
+    border-color: var(--highlight-formula-border);
+    box-shadow: 0 0 20px var(--highlight-formula-bg);
+}
+
 
 .attention-variant-section .component-header {
     background-color: var(--component-header-bg);
@@ -268,6 +275,7 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 10px;
+    justify-content: center;
 }
 
 /* [NEW] Styles for Summary Table */
@@ -382,5 +390,13 @@
    border-radius: 4px;
    font-family: monospace;
 }
+
+/* [ADDED] For matrix overflow */
+.matrix-scroll-wrapper {
+    overflow-x: auto;
+    padding-bottom: 10px;
+    width: 100%;
+}
+
 
 /* END OF FILE: src/topics/attention-variants/AttentionVariantsTopic.css */

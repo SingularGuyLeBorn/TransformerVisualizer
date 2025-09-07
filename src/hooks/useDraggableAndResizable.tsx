@@ -25,6 +25,29 @@ export const useDraggableAndResizable = (initialState: {
 
   const dragState = useRef<DragState | null>(null);
 
+  // --- [NEW] Effect to clamp initial position and size to be within the viewport ---
+  useEffect(() => {
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
+
+    let initialWidth = initialState.width;
+    let initialHeight = typeof initialState.height === 'number' ? initialState.height : 500; // Use a default for 'auto'
+
+    let clampedWidth = clamp(initialWidth, 200, window.innerWidth);
+    let clampedHeight = clamp(initialHeight, 100, window.innerHeight);
+
+    let clampedX = clamp(initialState.x, 0, window.innerWidth - clampedWidth);
+    let clampedY = clamp(initialState.y, 0, window.innerHeight - clampedHeight);
+
+    // If the window is smaller than the component, adjust position to 0
+    if (clampedWidth >= window.innerWidth) clampedX = 0;
+    if (clampedHeight >= window.innerHeight) clampedY = 0;
+
+    setSize({ width: clampedWidth, height: initialState.height === 'auto' ? 'auto' : clampedHeight });
+    setPosition({ x: clampedX, y: clampedY });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount
+
+
   const disconnectObserver = useCallback(() => {
     if (observerRef.current) {
         observerRef.current.disconnect();
@@ -39,7 +62,9 @@ export const useDraggableAndResizable = (initialState: {
             const entry = entries[0];
             if (entry) {
                 const contentHeight = entry.contentRect.height;
-                setSize(s => ({...s, height: Math.min(contentHeight + 40, 600)}));
+                // Add panel header/padding height to content height
+                const totalHeight = contentHeight + 80; // Approximate extra height
+                setSize(s => ({...s, height: Math.min(totalHeight, window.innerHeight - 40)}));
             }
         });
         observerRef.current.observe(contentRef.current);
@@ -54,9 +79,7 @@ export const useDraggableAndResizable = (initialState: {
 
     if (!contentRef.current) return;
 
-    // Switch to numeric height for resizing calculations
     const currentHeight = typeof size.height === 'number' ? size.height : contentRef.current.offsetHeight;
-    // [FIXED] Correctly check the value, not the typeof
     if (size.height === 'auto') {
         setSize(s => ({...s, height: currentHeight}));
     }
@@ -105,25 +128,32 @@ export const useDraggableAndResizable = (initialState: {
         }
     }
 
-    if (newWidth < 200) {
-        if(type.includes('l')) newX = position.x;
-        newWidth = 200;
-    }
-    if (newHeight < 100) {
-        if(type.includes('t')) newY = position.y;
-        newHeight = 100;
-    }
+    // --- [MODIFIED] Add boundary constraints ---
+    const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
+
+    // Minimum dimensions
+    newWidth = Math.max(200, newWidth);
+    newHeight = Math.max(100, newHeight);
+
+    // Clamp size to viewport
+    newWidth = Math.min(newWidth, window.innerWidth);
+    newHeight = Math.min(newHeight, window.innerHeight);
+
+    // Clamp position to viewport
+    newX = clamp(newX, 0, window.innerWidth - newWidth);
+    newY = clamp(newY, 0, window.innerHeight - newHeight);
+    // --- End of boundary constraints ---
 
     setSize({ width: newWidth, height: newHeight });
     setPosition({ x: newX, y: newY });
 
-  }, [position.x, position.y]);
+  }, []);
 
   const handleMouseUp = useCallback(() => {
     dragState.current = null;
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
-  }, []);
+  }, [handleMouseMove]);
 
   return {
     size,
@@ -138,5 +168,4 @@ export const useDraggableAndResizable = (initialState: {
     },
   };
 };
-
 // END OF FILE: src/hooks/useDraggableAndResizable.ts
