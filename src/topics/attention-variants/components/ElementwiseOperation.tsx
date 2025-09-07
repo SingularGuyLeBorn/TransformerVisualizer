@@ -41,8 +41,7 @@ export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
     return (
         <div className="elementwise-op-container">
             <div className="elementwise-op-label">
-                {/* [FIXED] Used double backslashes for KaTeX commands */}
-                <InlineMath math={`\\text{Detailed Calculation: } ${opName}`} />
+                <InlineMath math={`\\text{Detailed Calculation: } \\text{${opName}}`} />
             </div>
             <p style={{margin: '0', fontSize: '0.8em', color: '#666'}}>* Showing calculation for Row {targetRowIndex}</p>
             <ElementwiseCalculation

@@ -2,8 +2,9 @@
 import React from 'react';
 import { AttentionData, HighlightState, ElementIdentifier, AttentionVariantData } from '../types';
 import { Matrix } from './Matrix';
-import { InlineMath } from 'react-katex';
+import { BlockMath } from 'react-katex';
 import { ElementwiseOperation } from './ElementwiseOperation';
+import 'katex/dist/katex.min.css'; // [FIXED] Import KaTeX CSS to fix rendering issues
 
 interface VizProps {
   data: AttentionData;
@@ -52,23 +53,23 @@ const AttentionVariantViz: React.FC<{
                     <div className="step-title">1. 生成 Q, K, V (以头 0 为例)</div>
                      <div className={`viz-row ${break_qkv_proj ? 'vertical' : ''}`}>
                         <Matrix name={`${variantName}.input`} data={commonData.input} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="\times" />
+                        <BlockMath math="\times" />
                         <Matrix name={wq_name} data={commonData.Wq[0]} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="=" />
+                        <BlockMath math="=" />
                         <Matrix name={q_head_name} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                      <div className={`viz-row ${break_qkv_proj ? 'vertical' : ''}`}>
                         <Matrix name={`${variantName}.input`} data={commonData.input} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="\times" />
+                        <BlockMath math="\times" />
                         <Matrix name={wk_name} data={commonData.Wk[0]} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="=" />
+                        <BlockMath math="=" />
                         <Matrix name={k_head_name} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                      <div className={`viz-row ${break_qkv_proj ? 'vertical' : ''}`}>
                         <Matrix name={`${variantName}.input`} data={commonData.input} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="\times" />
+                        <BlockMath math="\times" />
                         <Matrix name={wv_name} data={commonData.Wv[0]} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="=" />
+                        <BlockMath math="=" />
                         <Matrix name={v_head_name} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                 </div>
@@ -79,9 +80,9 @@ const AttentionVariantViz: React.FC<{
                     <div className="step-title">2. 计算注意力分数 (头 0)</div>
                      <div className={`viz-row ${break_scores ? 'vertical' : ''}`}>
                         <Matrix name={q_head_name} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="\times" />
+                        <BlockMath math="\times" />
                         <Matrix name={k_head_name} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="=" />
+                        <BlockMath math="=" />
                         <Matrix name={scores_name} data={headData.Scores} highlight={highlight} onElementClick={onElementClick} />
                     </div>
 
@@ -103,9 +104,9 @@ const AttentionVariantViz: React.FC<{
                     <div className="step-title">3. 加权求和 (头 0)</div>
                     <div className={`viz-row ${break_output ? 'vertical' : ''}`}>
                         <Matrix name={weights_name} data={headData.Weights} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="\times" />
+                        <BlockMath math="\times" />
                         <Matrix name={v_head_name} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="=" />
+                        <BlockMath math="=" />
                         <Matrix name={output_head_name} data={headData.Output} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                 </div>
@@ -116,9 +117,9 @@ const AttentionVariantViz: React.FC<{
                     <div className="step-title">4. 合并与最终投影</div>
                      <div className={`viz-row ${break_final ? 'vertical' : ''}`}>
                         <Matrix name={`${variantName}.combined`} data={variantData.CombinedOutput} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="\times" />
+                        <BlockMath math="\times" />
                         <Matrix name={`${variantName}.wo`} data={commonData.Wo} highlight={highlight} onElementClick={onElementClick} />
-                        <InlineMath math="=" />
+                        <BlockMath math="=" />
                         <Matrix name={`${variantName}.output`} data={variantData.FinalOutput} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                 </div>

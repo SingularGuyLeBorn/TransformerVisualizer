@@ -92,7 +92,7 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
   if (sideLabel) {
     return (
        <div className="matrix-wrapper side-label">
-        <div className="matrix-label-side"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+        <div className="matrix-label-side"><InlineMath math={`${mathSymbol}`} /></div>
         {matrixGrid}
        </div>
     );
@@ -100,7 +100,7 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
 
   return (
     <div className="matrix-wrapper">
-      <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
+      <div className="matrix-label"><InlineMath math={`${mathSymbol}`} /></div>
       {matrixGrid}
     </div>
   );

@@ -88,7 +88,7 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
     return (
        <div className="matrix-wrapper side-label" data-name={name}>
           <div className="matrix-label-side">
-              <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
+              <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
           </div>
           {matrixGrid}
        </div>
@@ -99,7 +99,7 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
     <div className="matrix-wrapper" data-name={name}>
       {matrixGrid}
       <div className="matrix-label-container">
-        <div className="matrix-symbol-tag"><InlineMath>{mathSymbol}</InlineMath></div>
+        <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
       </div>
     </div>
   );

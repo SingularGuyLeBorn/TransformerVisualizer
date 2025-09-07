@@ -69,7 +69,7 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
   };
 
   const renderSoftmax = () => {
-    // Filter out -Infinity for max calculation, as it's a masked value
+    // [FIXED] Filter out -Infinity for max calculation, as it's a masked value
     const finiteInputRow = inputRow.filter(v => isFinite(v));
     const maxVal = finiteInputRow.length > 0 ? Math.max(...finiteInputRow) : 0;
 
@@ -82,7 +82,6 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
       <>
         {/* Step 1: exp(x - max(x)) */}
         <div className="calc-step">
-          {/* [FIXED] Used double backslashes for KaTeX commands */}
           <div className="calc-label"><InlineMath math="\\text{exp}(x_i - \\text{max}(\\mathbf{x}))" /></div>
           <div className="elementwise-op-row">
             {renderVisibleElements(exps, 'exp')}
@@ -90,7 +89,6 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
         </div>
         {/* Step 2: Sum */}
         <div className="calc-step">
-           {/* [FIXED] Used double backslashes for KaTeX commands */}
           <div className="calc-label"><InlineMath math="\\sum \\text{exp}(\\dots)" /></div>
           <div className={`elementwise-op-element sum ${fullSumIsSource ? 'source' : ''}`} onClick={(e) => handleClick(e, -1)}>
             {formatNumber(sumExps)}
@@ -98,7 +96,6 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
         </div>
         {/* Step 3: Division */}
         <div className="calc-step">
-           {/* [FIXED] Used double backslashes for KaTeX commands */}
           <div className="calc-label"><InlineMath math="\\text{exp}(\\dots) / \\sum" /></div>
           <div className="elementwise-op-row">{renderVisibleElements(outputRow, 'output')}</div>
         </div>
