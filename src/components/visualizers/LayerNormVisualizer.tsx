@@ -1,5 +1,5 @@
 // FILE: src/components/visualizers/LayerNormVisualizer.tsx
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { Vector, LayerNormStep } from './types';
 import { formatNumber, useAnimationController } from './utils';
 import { InlineMath } from 'react-katex';
@@ -12,9 +12,6 @@ interface LayerNormVisualizerProps {
 }
 
 export const LayerNormVisualizer: React.FC<LayerNormVisualizerProps> = ({ inputVector, epsilon = 1e-5, inputLabel = "Input", outputLabel = "Output" }) => {
-  const [calculationString, setCalculationString] = useState<string>('');
-  const [meanFormula, setMeanFormula] = useState<string>('');
-  const [varianceFormula, setVarianceFormula] = useState<string>('');
 
   const calculations = useMemo(() => {
     const mean = inputVector.reduce((a, b) => a + b, 0) / inputVector.length;
@@ -52,38 +49,85 @@ export const LayerNormVisualizer: React.FC<LayerNormVisualizerProps> = ({ inputV
   const { currentStep, isPlaying, play, pause, reset, setStepManually } = useAnimationController(steps.length, 300);
   const currentAnimState = steps[currentStep] || { type: 'idle' };
 
-  useEffect(() => {
+  // Deriving display state directly from currentStep for robustness
+  const { meanFormula, varianceFormula, calculationString } = useMemo((): {
+    meanFormula: string;
+    varianceFormula: string;
+    calculationString: string;
+  } => {
+    let newMeanFormula = '';
+    let newVarianceFormula = '';
     let newCalcString = '';
-    const state = currentAnimState;
-    if (state.type === 'accumulate-mean' || state.type === 'calculate-mean') {
-        const history = inputVector.slice(0, (state as any).index + 1);
-        const sumStr = history.map(v => formatNumber(v, 2)).join(' + ');
-        const currentSum = history.reduce((a,b)=>a+b, 0);
-        setMeanFormula(`μ = (${sumStr}) / ${inputVector.length} = ${formatNumber(currentSum / inputVector.length, 4)}`);
-        setVarianceFormula('');
-    } else if (state.type === 'accumulate-variance' || state.type === 'calculate-variance') {
-        const history = inputVector.slice(0, (state as any).index + 1).map(v => (v - calculations.mean) ** 2);
-        const sumStr = history.map(v => formatNumber(v, 2)).join(' + ');
-        const currentSum = history.reduce((a,b)=>a+b, 0);
-        setVarianceFormula(`σ² = (${sumStr}) / ${inputVector.length} = ${formatNumber(currentSum / inputVector.length, 4)}`);
+
+    const meanStartIndex = steps.findIndex(s => s.type === 'accumulate-mean');
+    const meanEndIndex = steps.findIndex(s => s.type === 'calculate-mean');
+    const varianceStartIndex = steps.findIndex(s => s.type === 'accumulate-variance');
+    const varianceEndIndex = steps.findIndex(s => s.type === 'calculate-variance');
+    const normStartIndex = steps.findIndex(s => s.type === 'show-norm-formula');
+
+    // Logic for mean formula
+    if (currentStep >= meanStartIndex) {
+        let sumStr = '...';
+        let currentSum = 0;
+        if (currentStep >= meanEndIndex) {
+            sumStr = inputVector.map(v => formatNumber(v, 2)).join(' + ');
+            currentSum = inputVector.reduce((a,b)=>a+b, 0);
+        } else if (currentAnimState.type === 'accumulate-mean') {
+            const history = inputVector.slice(0, currentAnimState.index + 1);
+            sumStr = history.map(v => formatNumber(v, 2)).join(' + ');
+            currentSum = history.reduce((a,b)=>a+b, 0);
+        }
+        newMeanFormula = `μ = (${sumStr}) / ${inputVector.length} = ${formatNumber(currentSum / inputVector.length, 4)}`;
     }
 
-    if (state.type === 'show-norm-formula' || state.type === 'apply-norm') {
-        const x = inputVector[state.index];
-        const res = calculations.normalized[state.index];
+    // Logic for variance formula
+    if (currentStep >= varianceStartIndex) {
+         let sumStr = '...';
+         let currentSum = 0;
+         if(currentStep >= varianceEndIndex) {
+            const history = inputVector.map(v => (v - calculations.mean) ** 2);
+            sumStr = history.map(v => formatNumber(v, 2)).join(' + ');
+            currentSum = history.reduce((a,b)=>a+b, 0);
+         } else if (currentAnimState.type === 'accumulate-variance') {
+            const history = inputVector.slice(0, currentAnimState.index + 1).map(v => (v - calculations.mean) ** 2);
+            sumStr = history.map(v => formatNumber(v, 2)).join(' + ');
+            currentSum = history.reduce((a,b)=>a+b, 0);
+        }
+        newVarianceFormula = `σ² = (${sumStr}) / ${inputVector.length} = ${formatNumber(currentSum / inputVector.length, 4)}`;
+    }
+
+    // Logic for normalization calculation string
+    let displayIndex = -1;
+    if (currentAnimState.type === 'show-norm-formula' || currentAnimState.type === 'apply-norm') {
+        displayIndex = currentAnimState.index;
+    } else if (currentStep >= normStartIndex) { // If we are past the start of normalization phase
+        if (currentAnimState.type === 'finish') {
+            displayIndex = inputVector.length - 1; // Show the last one on finish
+        } else {
+             // Find the last processed normalization step
+            for (let i = currentStep; i >= normStartIndex; i--) {
+                const step = steps[i];
+                if (step.type === 'apply-norm' || step.type === 'show-norm-formula') {
+                    displayIndex = step.index;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (displayIndex !== -1) {
+        const x = inputVector[displayIndex];
+        const res = calculations.normalized[displayIndex];
         newCalcString = `(${formatNumber(x,2)} - ${formatNumber(calculations.mean,2)}) / √(${formatNumber(calculations.variance,2)} + ε) = ${formatNumber(res, 4)}`;
-    } else {
-        newCalcString = '';
     }
-    setCalculationString(newCalcString);
-  }, [currentAnimState, calculations, inputVector]);
 
-  useEffect(() => {
-      if(currentStep === -1) {
-          setMeanFormula('');
-          setVarianceFormula('');
-      }
-  }, [currentStep]);
+    return {
+        meanFormula: newMeanFormula,
+        varianceFormula: newVarianceFormula,
+        calculationString: newCalcString
+    };
+
+  }, [currentStep, currentAnimState, steps, calculations, inputVector]);
 
 
   const styles: { [key: string]: React.CSSProperties } = {
@@ -100,7 +144,7 @@ export const LayerNormVisualizer: React.FC<LayerNormVisualizerProps> = ({ inputV
     vector: { display: 'flex', gap: '5px', width: 'max-content' },
     vectorIndices: { display: 'flex', gap: '5px' },
     indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace', boxSizing: 'border-box' },
-    element: { minWidth: '60px', padding: '5px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
+    element: { width: '60px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease', boxSizing: 'border-box' },
     highlightMean: { borderColor: '#4a90e2', backgroundColor: 'rgba(74, 144, 226, 0.1)', transform: 'scale(1.1)' },
     highlightVariance: { borderColor: '#f5a623', backgroundColor: 'rgba(245, 166, 35, 0.1)', transform: 'scale(1.1)' },
     highlightNorm: { borderColor: '#28a745', backgroundColor: 'rgba(40, 167, 69, 0.1)', transform: 'scale(1.1)' },

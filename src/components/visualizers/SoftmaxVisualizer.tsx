@@ -10,7 +10,7 @@ interface SoftmaxVisualizerProps {
   outputLabel?: string;
 }
 
-export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVector, inputLabel = "L", outputLabel = "P" }) => {
+export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVector, inputLabel = "Input", outputLabel = "P" }) => {
 
   const calculations = useMemo(() => {
     const finiteInputs = inputVector.filter(isFinite);
@@ -49,7 +49,7 @@ export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVecto
     vector: { display: 'flex', gap: '5px', width: 'max-content' },
     vectorIndices: { display: 'flex', gap: '5px' },
     indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace', boxSizing: 'border-box' },
-    element: { minWidth: '60px', padding: '5px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
+    element: { width: '60px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease', boxSizing: 'border-box' },
     highlight: { borderColor: '#4a90e2', backgroundColor: 'rgba(74, 144, 226, 0.1)', transform: 'scale(1.1)' },
     connector: { fontSize: '1.5em', color: '#6c757d', margin: '5px 0', transition: 'opacity 0.3s ease' },
     scalar: { padding: '8px 15px', fontSize: '1.1em', fontWeight: 'bold', border: '1px solid #ced4da', borderRadius: '8px', backgroundColor: '#e9ecef', transition: 'all 0.3s ease' },
@@ -119,7 +119,7 @@ export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVecto
         <h3 style={styles.title}>Softmax(x)</h3>
         <p style={styles.description}>{getActiveDescription()}</p>
 
-        {renderVector(inputVector, inputLabel, 'input')}
+        {renderVector(inputVector, inputLabel!, 'input')}
         <div style={{...styles.connector, opacity: currentStep >= 1 ? 1 : 0.2 }}>↓ <InlineMath>{"- max(" + inputLabel + ") = -" + formatNumber(calculations.maxVal, 2)}</InlineMath></div>
         {renderVector(calculations.shifted, "L' = " + inputLabel + " - max(" + inputLabel + ")", 'shifted')}
         <div style={{...styles.connector, opacity: isShiftedVisible(inputVector.length - 1) ? 1 : 0.2 }}>↓ <InlineMath>e^x</InlineMath></div>

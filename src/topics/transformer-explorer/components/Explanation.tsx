@@ -211,14 +211,35 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 <p>这是解码器的第一个关键子层. 它与编码器的自注意力机制几乎完全相同,但有一个至关重要的区别:<b>前瞻遮罩 (Look-Ahead Mask)</b>. </p>
                 <h5>设计思路</h5>
                 <p>在生成任务中,模型在预测第 <code>i</code> 个词时,只能看到第 <code>i</code> 个词之前(包括第 <code>i</code> 个词)的内容,绝不能“偷看”未来的词。这模拟了人类说话或写作时，无法预知下一个要说什么词的自然过程。为了在并行的矩阵运算中实现这一点,我们在计算注意力分数后,会应用一个遮罩. 这个遮罩将分数矩阵 <InlineMath math="S"/> 的上三角部分(代表未来位置)设置为一个非常大的负数(-∞). 这样,在经过 Softmax 运算后,这些位置的注意力权重将变为0,从而确保了模型无法关注未来的信息. 这就是所谓的“自回归”(Auto-regressive)特性。</p>
-                 <div className="formula-display">
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={HNd_masked.Scores} rows={dims.decoder_seq_len} cols={dims.decoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
-                    <BlockMath math={`\\xrightarrow{\\text{Mask}}`} />
-                    <p>上三角区域被设为-∞</p>
+                <h5>计算流程 (以单个注意力头为例)</h5>
+                <div className="formula-display vertical">
+                    <div className="viz-formula-row"><InlineMath math="Y" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_masked.Wq} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_masked.Q} rows={dims.decoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <div className="viz-formula-row"><InlineMath math="Y" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_masked.Wk} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_masked.K} rows={dims.decoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <div className="viz-formula-row"><InlineMath math="Y" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_masked.Wv} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_masked.V} rows={dims.decoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
-                 <h5>计算流程</h5>
-                <p>除了应用掩码外,后续计算与编码器自注意力完全相同.</p>
-                <BlockMath math={`H = \\text{Softmax}\\left(\\text{Mask}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)\\right) V`} />
+                <p>在应用掩码后，后续计算与编码器自注意力完全相同。</p>
+                <div className="formula-display vertical">
+                    <div className="viz-formula-row">
+                        <InteractiveSymbolicMatrix name={HNd_masked.Q} rows={dims.decoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick}/>
+                        <BlockMath math="\times" />
+                        <InteractiveSymbolicMatrix name={HNd_masked.K} rows={dims.decoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} transpose={true}/>
+                        <BlockMath math="=" />
+                        <InteractiveSymbolicMatrix name={HNd_masked.Scores} rows={dims.decoder_seq_len} cols={dims.decoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/>
+                    </div>
+                </div>
+                <BlockMath math={`S' = \\text{Mask}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)`} />
+                <BlockMath math={`A = \\text{Softmax}(S')`} />
+                <BlockMath math={`H = A V`} />
+                 <div className="formula-display vertical">
+                    <div className="viz-formula-row">
+                        <InteractiveSymbolicMatrix name={HNd_masked.Scores} rows={dims.decoder_seq_len} cols={dims.decoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/>
+                        <BlockMath math={`\\xrightarrow{\\text{Mask}+\\text{Scale}}`} />
+                        <InteractiveSymbolicMatrix name={HNd_masked.ScaledScores} rows={dims.decoder_seq_len} cols={dims.decoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/>
+                        <BlockMath math="\xrightarrow{\text{Softmax}}"/>
+                        <InteractiveSymbolicMatrix name={HNd_masked.AttentionWeights} rows={dims.decoder_seq_len} cols={dims.decoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick} />
+                    </div>
+                    <div className="viz-formula-row"><InteractiveSymbolicMatrix name={HNd_masked.AttentionWeights} rows={dims.decoder_seq_len} cols={dims.decoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_masked.V} rows={dims.decoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_masked.HeadOutput} rows={dims.decoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                </div>
                  <div className={`formula-display ${shouldBreakMhaProj ? 'vertical' : ''}`}>
                     <InlineMath math="\text{Concat}(H_0, ..., H_{h-1})" />
                     <BlockMath math="\times" />
@@ -312,6 +333,8 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                     <div className="viz-formula-row"><InteractiveSymbolicMatrix name={LNd.W1} rows={dims.d_model} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
                     <BlockMath math="+"/>
                     <div className="viz-formula-row"><InteractiveSymbolicVector name={LNd.b1} data={Array(dims.d_ff).fill(0)} highlight={highlight} onSymbolClick={onSymbolClick}/></div>
+                     <BlockMath math="="/>
+                    <div className="viz-formula-row"><InteractiveSymbolicMatrix name={LNd.Intermediate} rows={dims.decoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick} sideLabel={true}/></div>
                     <BlockMath math="\xrightarrow{ReLU}"/>
                     <div className="viz-formula-row"><InteractiveSymbolicMatrix name={LNd.Activated} rows={dims.decoder_seq_len} cols={dims.d_ff} highlight={highlight} onSymbolClick={onSymbolClick} sideLabel={true}/></div>
                 </div>

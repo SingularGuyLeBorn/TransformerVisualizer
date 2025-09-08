@@ -78,7 +78,7 @@ export const ElementWiseOpVisualizer: React.FC<ElementWiseOpVisualizerProps> = (
     vectorElements: { display: 'flex', gap: '5px' },
     vectorIndices: { display: 'flex', gap: '5px' },
     indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace', boxSizing: 'border-box' },
-    element: { width: '60px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
+    element: { width: '60px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease', boxSizing: 'border-box' },
     sourceHighlight: { transform: 'scale(1.15)', borderColor: '#4a90e2', backgroundColor: 'rgba(74, 144, 226, 0.1)', fontWeight: 'bold' },
     resultHighlight: { transform: 'scale(1.15)', borderColor: '#28a745', backgroundColor: 'rgba(40, 167, 69, 0.1)', fontWeight: 'bold' },
     opSymbol: { position: 'absolute', fontSize: '2em', fontWeight: 'bold', color: '#e63946', opacity: 0, transition: 'opacity 0.3s ease, transform 0.3s ease', transform: 'translate(-50%, -50%) scale(0.8)', pointerEvents: 'none' },

@@ -86,7 +86,7 @@ export const InteractiveMatMulVisualizer: React.FC<MatMulVisualizerProps> = ({
     vector: { display: 'flex', gap: '5px', width: 'max-content', border: '1px solid #ccc', borderRadius: '4px', padding: '5px', backgroundColor: 'white' },
     vectorIndices: { display: 'flex', gap: '5px' },
     indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace', boxSizing: 'border-box' },
-    element: { width: '60px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
+    element: { width: '60px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease', boxSizing: 'border-box' },
     highlight: { transform: 'scale(1.15)', borderColor: '#4a90e2', backgroundColor: 'rgba(74, 144, 226, 0.1)', fontWeight: 'bold', zIndex: 2 },
     productRow: { display: 'flex', alignItems: 'center', position: 'relative', width: '100%' },
     productsContainer: { flex: 1, minWidth: 0, overflowX: 'auto', padding: '15px 5px' },

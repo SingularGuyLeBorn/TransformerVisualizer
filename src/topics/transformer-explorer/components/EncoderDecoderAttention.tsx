@@ -90,6 +90,9 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
                          <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Scores} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Scale by } / \sqrt{d_k}}" /></div>
+                    <div className="viz-formula-row">
+                         <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
+                    </div>
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Softmax}}" /></div>
 
                     <div className="viz-formula-row">
