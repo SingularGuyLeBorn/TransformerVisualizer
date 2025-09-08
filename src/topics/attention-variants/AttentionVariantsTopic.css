@@ -205,24 +205,33 @@
     font-size: 1.1em;
 }
 
-/* [NEW] Styles for ElementwiseCalculation */
+/* [REWRITTEN] Styles for Interactive ElementwiseCalculation */
 .elementwise-calc-container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     width: 100%;
     font-size: 0.9em;
+    padding: 10px 0;
 }
 .calc-step {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
+    width: 100%;
+    transition: opacity 0.3s ease;
+}
+.calc-step.hidden {
+    opacity: 0.3;
+    pointer-events: none;
 }
 .calc-label {
     color: #555;
-    font-size: 0.9em;
+    font-size: 1em;
+    font-weight: bold;
+    font-family: sans-serif;
 }
 .elementwise-op-row {
     display: flex;
@@ -232,10 +241,12 @@
     border-radius: 4px;
     background: #fff;
     align-items: center;
+    flex-wrap: wrap; /* Allow wrapping for small screens */
+    justify-content: center;
 }
 .elementwise-op-element {
-  width: 45px;
-  height: 25px;
+  width: 50px;
+  height: 28px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -243,9 +254,14 @@
   border: 1px solid #e0e0e0;
   border-radius: 2px;
   font-family: monospace;
-  font-size: 0.8em;
+  font-size: 0.85em;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+.elementwise-op-element.highlight-step {
+    transform: scale(1.1);
+    border-color: var(--highlight-formula-border);
+    background-color: var(--highlight-formula-bg);
 }
 .elementwise-op-element.symbolic-ellipsis {
     border: none;
@@ -267,6 +283,23 @@
     background-color: var(--highlight-target-bg) !important;
     color: var(--highlight-target-color) !important;
     border-color: var(--highlight-target-border) !important;
+}
+.elementwise-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+.elementwise-controls button {
+    padding: 6px 12px;
+    font-size: 0.9em;
+    cursor: pointer;
+    border: 1px solid #6c757d;
+    border-radius: 4px;
+    background-color: #fff;
+}
+.elementwise-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* [NEW] Styles for Calculation Tooltip - specific to this topic */

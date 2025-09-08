@@ -1,10 +1,9 @@
-// FILE: src/components/MultiHeadAttention.tsx
+// FILE: src/topics/transformer-explorer/components/MultiHeadAttention.tsx
 import React from 'react';
 import { MultiHeadAttentionData, HighlightState, ElementIdentifier } from '../types';
 import { Matrix } from './Matrix';
 import { InlineMath } from 'react-katex';
 import { MATRIX_NAMES } from '../config/matrixNames';
-import { ElementwiseOperation } from './ElementwiseOperation';
 
 interface MHAProps {
     baseName: string;
@@ -16,7 +15,6 @@ interface MHAProps {
 
 export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlight, onElementClick, onComponentClick }) => {
     const headData = data.heads[0];
-    const headBaseName = `${baseName}.h0`;
     const isActive = highlight.activeComponent === 'mha';
 
     const layerIndex = parseInt(baseName.split('.')[1], 10);
@@ -112,19 +110,8 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                     <div className="viz-formula-row">
                         <Matrix name={HNe.ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
-
-                    <ElementwiseOperation
-                        opType="softmax"
-                        inputMatrix={headData.ScaledScores}
-                        inputMatrixName={HNe.ScaledScores} // [FIXED] Pass the input matrix name
-                        outputMatrix={headData.AttentionWeights}
-                        outputMatrixName={HNe.AttentionWeights}
-                        highlight={highlight}
-                        onElementClick={onElementClick}
-                        layerIndex={layerIndex}
-                        headIndex={headIndex}
-                    />
-
+                    {/* [REMOVED] ElementwiseOperation for Softmax is now handled in tooltip */}
+                    <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Softmax}}" /></div>
                     <div className="viz-formula-row">
                         <Matrix name={HNe.AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
@@ -163,4 +150,4 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
         </div>
     );
 };
-// END OF FILE: src/components/MultiHeadAttention.tsx
+// END OF FILE: src/topics/transformer-explorer/components/MultiHeadAttention.tsx

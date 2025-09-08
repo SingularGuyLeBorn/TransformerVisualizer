@@ -3,7 +3,6 @@ import React from 'react';
 import { AttentionData, HighlightState, ElementIdentifier, AttentionVariantData } from '../types';
 import { Matrix } from './Matrix';
 import { BlockMath } from 'react-katex';
-import { ElementwiseOperation } from './ElementwiseOperation';
 import 'katex/dist/katex.min.css'; // [FIXED] Import KaTeX CSS to fix rendering issues
 
 interface VizProps {
@@ -86,17 +85,9 @@ const AttentionVariantViz: React.FC<{
                         <BlockMath math="=" />
                         <Matrix name={scores_name} data={headData.Scores} highlight={highlight} onElementClick={onElementClick} />
                     </div>
-
-                    <ElementwiseOperation
-                        opType="softmax"
-                        inputMatrix={headData.Scores}
-                        outputMatrix={headData.Weights}
-                        outputMatrixName={weights_name}
-                        highlight={highlight}
-                        onElementClick={onElementClick}
-                        variant={variantName}
-                    />
-                     <Matrix name={weights_name} data={headData.Weights} highlight={highlight} onElementClick={onElementClick} sideLabel={true}/>
+                    {/* [REMOVED] ElementwiseOperation component is removed from here. Details are now in the tooltip. */}
+                    <div className="arrow-down"><BlockMath math="\xrightarrow{\text{Softmax}}" /></div>
+                    <Matrix name={weights_name} data={headData.Weights} highlight={highlight} onElementClick={onElementClick} sideLabel={true}/>
                 </div>
 
                 <div className="arrow-down">↓</div>

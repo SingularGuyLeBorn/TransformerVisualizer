@@ -1,21 +1,19 @@
 // FILE: src/topics/transformer-explorer/types.ts
-import { SymbolInfo as GenericSymbolInfo } from '../../components/visualizers/types';
+import { SymbolInfo } from '../../components/visualizers/types';
+import { ElementIdentifier as GenericElementIdentifier, CalculationComponent as GenericCalculationComponent } from '../../components/CalculationTooltip/types';
 
-export type SymbolInfo = GenericSymbolInfo;
+// [FIXED] Define Vector and Matrix locally to avoid import conflicts, consistent with other topics.
 export type Matrix = number[][];
 export type Vector = number[];
+export type CalculationComponent = GenericCalculationComponent;
 
-export interface ElementIdentifier {
-  name: string; // e.g., "encoder.0.mha.h0.Q" or "residual.res1.start"
-  row: number;
-  col: number;
-  isInternal?: boolean; // True if it's part of an internal calculation visualization
+// Extend the generic ElementIdentifier with topic-specific fields
+export interface ElementIdentifier extends GenericElementIdentifier {
   matrixSymbol?: string; // e.g., "Z"
   matrixDims?: string; // e.g., "3x8"
   tokenId?: number; // e.g., 10 for "I"
   tokenStr?: string; // e.g., "I"
   probValue?: number; // For decoding, the probability of the chosen token
-  symbol?: string; // The mathematical symbol for the tooltip title
 }
 
 export interface HighlightSource extends ElementIdentifier {
@@ -30,30 +28,6 @@ export interface HighlightState {
   target: ElementIdentifier | null;
   sources: HighlightSource[];
   destinations?: HighlightSource[]; // For forward tracing
-}
-
-export interface CalculationComponent {
-    a: number;
-    b: number;
-}
-
-export interface CalculationStep {
-    title?: string; // Optional title for multi-step calculations
-    a: Vector;
-    b: Vector;
-    op: string; // e.g., '·', '+', '...'
-    result: number;
-    aSymbolInfo: SymbolInfo;
-    bSymbolInfo: SymbolInfo;
-    components?: CalculationComponent[];
-}
-
-export interface TooltipState {
-    target: ElementIdentifier;
-    opType: 'matmul' | 'add' | 'info' | 'softmax' | 'relu';
-    steps: CalculationStep[];
-    title: string;
-    initialPosition: { x: number, y: number };
 }
 
 export interface AttentionHeadData {

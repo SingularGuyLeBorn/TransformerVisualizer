@@ -1,9 +1,9 @@
-// FILE: src/components/FeedForward.tsx
+// FILE: src/topics/transformer-explorer/components/FeedForward.tsx
 import React from 'react';
 import { FFNData, HighlightState, ElementIdentifier, Matrix as MatrixType } from '../types';
 import { Matrix } from './Matrix';
 import { MATRIX_NAMES } from '../config/matrixNames';
-import { ElementwiseOperation } from './ElementwiseOperation';
+import { InlineMath } from 'react-katex';
 
 interface FFNProps {
     baseName: string;
@@ -50,18 +50,8 @@ export const FeedForward: React.FC<FFNProps> = ({ baseName, input, inputName, da
                     <div className="viz-formula-row">
                          <Matrix name={LN.Intermediate} data={data.Intermediate} highlight={highlight} onElementClick={onElementClick} />
                     </div>
-
-                    <ElementwiseOperation
-                        opType="relu"
-                        inputMatrix={data.Intermediate}
-                        inputMatrixName={LN.Intermediate} // [FIXED] Pass the input matrix name
-                        outputMatrix={data.Activated}
-                        outputMatrixName={LN.Activated}
-                        highlight={highlight}
-                        onElementClick={onElementClick}
-                        layerIndex={layerIndex}
-                    />
-
+                    {/* [REMOVED] ElementwiseOperation for ReLU is now handled in tooltip */}
+                    <div className="arrow-down"><InlineMath math="\xrightarrow{\text{ReLU}}" /></div>
                     <div className="viz-formula-row">
                          <Matrix name={LN.Activated} data={data.Activated} highlight={highlight} onElementClick={onElementClick} />
                     </div>
@@ -89,4 +79,4 @@ export const FeedForward: React.FC<FFNProps> = ({ baseName, input, inputName, da
         </div>
     );
 };
-// END OF FILE: src/components/FeedForward.tsx
+// END OF FILE: src/topics/transformer-explorer/components/FeedForward.tsx

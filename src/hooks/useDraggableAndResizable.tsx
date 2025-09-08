@@ -168,4 +168,4 @@ export const useDraggableAndResizable = (initialState: {
     },
   };
 };
-// END OF FILE: src/hooks/useDraggableAndResizable.ts
+// END OF FILE: src/hooks/useDraggableAndResizable.tsx

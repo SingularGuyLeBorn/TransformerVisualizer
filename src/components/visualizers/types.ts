@@ -11,14 +11,52 @@ export type Matrix = number[][];
 export type AnimationStatus = 'idle' | 'running' | 'paused' | 'finished';
 
 // 点积动画的详细步骤
-export interface MatMulStep {
-  type: 'highlight-pair' | 'multiply' | 'accumulate' | 'finish' | 'idle'; // [FIXED] Added 'idle'
-  index: number; // 当前处理的元素索引
-  product?: number; // 乘积结果
-  cumulativeSum?: number; // 累加和
-}
+export type MatMulStep =
+  | { type: 'start' | 'finish' | 'idle', index: -1, cumulativeSum?: number }
+  | { type: 'highlight-pair' | 'show-op', index: number }
+  | { type: 'multiply', index: number, product: number }
+  | { type: 'accumulate', index: number, product: number, cumulativeSum: number };
 
-// Softmax/LayerNorm/RMSNorm 动画的步骤名称
+// [NEW] Element-wise operation animation steps
+export type ElementWiseOpStep =
+  | { type: 'idle' | 'start' | 'finish' }
+  | { type: 'highlight', row: number, col: number }
+  | { type: 'show-op', row: number, col: number }
+  | { type: 'calculate', row: number, col: number };
+
+// [NEW] Activation function animation steps
+export type ActivationStep =
+  | { type: 'idle' | 'start' | 'finish' }
+  | { type: 'process', index: number };
+
+// [NEW] Softmax animation steps
+export type SoftmaxStep =
+  | { type: 'idle' | 'start' | 'finish' }
+  | { type: 'highlight-max', value: number }
+  | { type: 'subtract-max', index: number }
+  | { type: 'exponentiate', index: number }
+  | { type: 'sum-exps', value: number }
+  | { type: 'normalize', index: number };
+
+// [NEW] LayerNorm animation steps
+export type LayerNormStep =
+  | { type: 'idle' | 'start' | 'finish' }
+  | { type: 'highlight-for-mean', index: number }
+  | { type: 'calculate-mean', value: number }
+  | { type: 'highlight-for-variance', index: number }
+  | { type: 'calculate-variance', value: number }
+  | { type: 'apply-norm', index: number };
+
+// [NEW] RMSNorm animation steps
+export type RMSNormStep =
+  | { type: 'idle' | 'start' | 'finish' }
+  | { type: 'square', index: number }
+  | { type: 'sum-squares', value: number }
+  | { type: 'calculate-rms', value: number }
+  | { type: 'normalize', index: number };
+
+
+// Softmax/LayerNorm/RMSNorm 动画的步骤名称 (DEPRECATED FOR ANIMATED VISUALIZERS, kept for compatibility if needed)
 export type ProcessingStep =
   | 'start'
   | 'subtract-max'

@@ -1,4 +1,4 @@
-// FILE: src/components/Viz.tsx
+// FILE: src/topics/transformer-explorer/components/Viz.tsx
 import React from 'react';
 import { TransformerData, HighlightState, ElementIdentifier } from '../types';
 import { EncoderLayer } from './EncoderLayer';
@@ -28,7 +28,7 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick, onCom
 
     return (
         <div style={{ position: 'relative' }}>
-            {/* Tooltip is now managed in App.tsx to sit on top of the entire layout */}
+            {/* Tooltip and AnimationPanel are now managed in TransformerExplorerTopic.tsx */}
 
             {/* --- Input Stage --- */}
             <TokenizationEmbedding
@@ -142,4 +142,4 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick, onCom
         </div>
     );
 };
-// END OF FILE: src/components/Viz.tsx
+// END OF FILE: src/topics/transformer-explorer/components/Viz.tsx

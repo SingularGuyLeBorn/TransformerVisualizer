@@ -1,19 +1,17 @@
 // FILE: src/topics/attention-variants/types.ts
 import { SymbolInfo as GenericSymbolInfo } from '../../components/visualizers/types';
+import { ElementIdentifier as GenericElementIdentifier, CalculationComponent as GenericCalculationComponent } from '../../components/CalculationTooltip/types';
 
 // 该文件为注意力变体专题定义了所有必要的类型
 export type SymbolInfo = GenericSymbolInfo;
 export type Matrix = number[][];
 export type Vector = number[];
+export type CalculationComponent = GenericCalculationComponent;
 
-// 用于标识被点击的元素
-export interface ElementIdentifier {
+
+// 用于标识被点击的元素, 继承自通用的 ElementIdentifier
+export interface ElementIdentifier extends GenericElementIdentifier {
   variant: 'mha' | 'mqa' | 'gqa' | 'mla'; // 所属的注意力变体
-  name: string; // 矩阵或向量的唯一名称, e.g., "mha.heads.0.Q" or "gqa.wk.1"
-  row: number;
-  col: number;
-  isInternal?: boolean; // True if it's part of an internal calculation visualization
-  symbol?: string; // e.g., "Z_GQA"
 }
 
 // 用于定义高亮的来源
@@ -70,29 +68,5 @@ export interface AttentionData {
   gqa: AttentionVariantData;
   mla: MLAData; // MLA结构不同，单独定义
 }
-
-// Types for CalculationTooltip
-export interface CalculationComponent {
-    a: number;
-    b: number;
-}
-
-export interface CalculationStep {
-    a: Vector;
-    b: Vector;
-    op: string;
-    result: number;
-    aSymbolInfo: SymbolInfo;
-    bSymbolInfo: SymbolInfo;
-    components?: CalculationComponent[];
-}
-
-export interface TooltipState {
-    target: ElementIdentifier;
-    opType: 'matmul' | 'softmax' | 'info' | 'add';
-    steps: CalculationStep[];
-    title: string;
-}
-
 
 // END OF FILE: src/topics/attention-variants/types.ts

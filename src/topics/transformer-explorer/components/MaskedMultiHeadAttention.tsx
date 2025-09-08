@@ -1,10 +1,9 @@
-// FILE: src/components/MaskedMultiHeadAttention.tsx
+// FILE: src/topics/transformer-explorer/components/MaskedMultiHeadAttention.tsx
 import React from 'react';
 import { MultiHeadAttentionData, HighlightState, ElementIdentifier } from '../types';
 import { Matrix } from './Matrix';
 import { InlineMath } from 'react-katex';
 import { MATRIX_NAMES } from '../config/matrixNames';
-import { ElementwiseOperation } from './ElementwiseOperation';
 
 interface MHAProps {
     baseName: string; // e.g., decoder.0.masked_mha
@@ -69,17 +68,8 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
                          <Matrix name={HNd_masked.ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
 
-                    <ElementwiseOperation
-                        opType="softmax"
-                        inputMatrix={headData.ScaledScores}
-                        inputMatrixName={HNd_masked.ScaledScores} // [FIXED] Pass the input matrix name
-                        outputMatrix={headData.AttentionWeights}
-                        outputMatrixName={HNd_masked.AttentionWeights}
-                        highlight={highlight}
-                        onElementClick={onElementClick}
-                        layerIndex={layerIndex}
-                        headIndex={headIndex}
-                    />
+                    {/* [REMOVED] ElementwiseOperation for Softmax is now handled in tooltip */}
+                    <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Softmax}}" /></div>
 
                     <div className="viz-formula-row">
                          <Matrix name={HNd_masked.AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
@@ -118,4 +108,4 @@ export const MaskedMultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, h
         </div>
     );
 };
-// END OF FILE: src/components/MaskedMultiHeadAttention.tsx
+// END OF FILE: src/topics/transformer-explorer/components/MaskedMultiHeadAttention.tsx

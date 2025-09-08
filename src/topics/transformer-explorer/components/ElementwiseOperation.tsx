@@ -1,4 +1,4 @@
-// FILE: src/components/ElementwiseOperation.tsx
+// FILE: src/topics/transformer-explorer/components/ElementwiseOperation.tsx
 import React from 'react';
 import { Matrix, HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
@@ -7,7 +7,7 @@ import { ElementwiseCalculation } from './ElementwiseCalculation';
 interface ElementwiseOperationProps {
     opType: 'softmax' | 'relu';
     inputMatrix: Matrix;
-    inputMatrixName: string; // [FIXED] Added required prop
+    inputMatrixName: string;
     outputMatrix: Matrix;
     outputMatrixName: string;
     highlight: HighlightState;
@@ -19,7 +19,7 @@ interface ElementwiseOperationProps {
 export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
     opType,
     inputMatrix,
-    inputMatrixName, // [FIXED] Destructure prop
+    inputMatrixName,
     outputMatrix,
     outputMatrixName,
     highlight,
@@ -29,7 +29,6 @@ export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
 }) => {
     let targetRowIndex = 0;
 
-    // [FIXED] Use the passed inputMatrixName for correct highlight detection
     if (highlight.target) {
         if (highlight.target.name === inputMatrixName || highlight.target.name === outputMatrixName) {
             targetRowIndex = highlight.target.row;
@@ -62,4 +61,4 @@ export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
         </div>
     );
 };
-// END OF FILE: src/components/ElementwiseOperation.tsx
+// END OF FILE: src/topics/transformer-explorer/components/ElementwiseOperation.tsx

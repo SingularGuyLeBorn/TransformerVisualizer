@@ -12,6 +12,41 @@
   position: relative;
 }
 
+/* [NEW] Style for the Play Animation button container */
+.animation-button-container {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1005; /* Above columns but below panels */
+}
+
+.play-animation-button {
+    padding: 12px 24px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #fff;
+    background-color: #e63946; /* A strong call-to-action color */
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(230, 57, 70, 0.4);
+    transition: all 0.2s ease-in-out;
+}
+
+.play-animation-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(230, 57, 70, 0.5);
+}
+
+.play-animation-button:disabled {
+    background-color: #adb5bd;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+
 .column {
   flex: 1;
   background: var(--component-bg);
@@ -606,152 +641,101 @@
     min-width: 0;
 }
 
-
-/* Upgraded Calculation Tooltip Styles */
-.calculation-tooltip {
-    /* [MODIFIED] max-width removed to allow wide content */
-    width: auto;
-    font-size: 0.95em;
-    /* Other properties like position, z-index, etc., are inherited from .resizable-panel in App.css */
-}
-.tooltip-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid #eee;
-    padding: 8px 15px;
-    margin: 0;
-    cursor: default;
-}
-.tooltip-title {
-    font-weight: bold;
-    font-size: 1.1em;
-}
-.tooltip-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-.tooltip-toggle-btn, .tooltip-close-btn {
-    background: none;
-    border: none;
-    font-size: 1.5em;
-    cursor: pointer;
-    color: #999;
-    padding: 0 5px;
-    line-height: 1;
-}
-.tooltip-toggle-btn:hover, .tooltip-close-btn:hover {
-    color: #333;
-}
-.tooltip-content-wrapper {
-    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
-    max-height: 500px;
-    overflow: hidden;
-}
-.calculation-tooltip.collapsed .tooltip-content-wrapper {
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-}
-.tooltip-body {
+/* [NEW] Styles for animated ElementwiseCalculation */
+.elementwise-calc-container {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 10px;
-    padding: 15px;
-}
-.tooltip-vector-group {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.tooltip-symbol {
-    font-family: 'Times New Roman', serif;
-    font-weight: bold;
-    font-size: 1.2em;
-}
-.tooltip-vector {
-    display: flex;
-    gap: 4px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 2px 4px;
-    background-color: #f9f9f9;
-    overflow-x: auto;
-}
-.tooltip-element {
-    padding: 2px 4px;
-    background-color: #fff;
-    border-radius: 2px;
-    font-family: monospace;
-    transition: all 0.2s ease;
-}
-.tooltip-element.highlight {
-    background-color: var(--highlight-formula-bg);
-    border: 1px solid var(--highlight-formula-border);
-    transform: scale(1.1);
-}
-.tooltip-op-symbol {
-    font-size: 1.5em;
-    font-weight: bold;
-    padding: 0 10px;
-}
-.tooltip-result-line {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 1.1em;
-}
-.tooltip-result {
-    padding: 2px 6px;
-    border-radius: 4px;
-    background-color: var(--highlight-target-bg);
-    border: 1px solid var(--highlight-target-border);
-    color: var(--highlight-target-color);
-    font-weight: bold;
-}
-.tooltip-calculation-detail {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid #eee;
-}
-.tooltip-calc-title {
-    font-weight: bold;
+    width: 100%;
+    padding: 10px 0;
     font-size: 0.9em;
-    color: #333;
-    margin-bottom: 8px;
+}
+.calc-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    transition: opacity 0.4s ease;
+}
+.calc-step.hidden {
+    opacity: 0.3;
+    pointer-events: none;
+}
+.calc-label {
+    color: #555;
+    font-size: 1em;
+    font-weight: bold;
     font-family: sans-serif;
 }
-.tooltip-calc-equation, .tooltip-calc-equation-multi {
-    font-family: monospace;
-    font-size: 0.95em;
-    color: #555;
-    background-color: #f8f9fa;
-    padding: 10px;
-    border-radius: 6px;
-    overflow-x: auto;
-    white-space: pre-wrap;
+.elementwise-op-row {
+    display: flex;
+    gap: 5px;
+    border: 1px solid #ddd;
+    padding: 4px;
+    border-radius: 4px;
+    background: #fff;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
 }
-.tooltip-calc-equation .op {
-    color: #c0392b;
-    font-weight: bold;
+.elementwise-op-element {
+  width: 50px;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 2px;
+  font-family: monospace;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
-.tooltip-calc-equation .result {
-    font-weight: bold;
-    color: var(--highlight-target-color);
-}
-.tooltip-calc-term {
-    transition: background-color 0.2s ease;
-    border-radius: 3px;
-    padding: 1px 3px;
-}
-.tooltip-calc-term.highlight {
+.elementwise-op-element.highlight-step {
+    transform: scale(1.1);
+    border-color: var(--highlight-formula-border);
     background-color: var(--highlight-formula-bg);
 }
-.tooltip-calc-equation-multi {
+.elementwise-op-element.symbolic-ellipsis {
+    border: none;
+    background-color: transparent;
+    color: #aaa;
+    width: auto;
+}
+.elementwise-op-element.sum {
+    width: auto;
+    padding: 0 10px;
+    font-weight: bold;
+}
+.elementwise-op-element.source {
+    background-color: var(--highlight-source-bg) !important;
+    color: var(--highlight-source-color) !important;
+    border-color: var(--highlight-source-border) !important;
+}
+.elementwise-op-element.target {
+    background-color: var(--highlight-target-bg) !important;
+    color: var(--highlight-target-color) !important;
+    border-color: var(--highlight-target-border) !important;
+}
+.elementwise-controls {
     display: flex;
-    flex-direction: column;
-    gap: 5px;
+    gap: 10px;
+    margin-top: 10px;
+}
+.elementwise-controls button {
+    padding: 6px 12px;
+    font-size: 0.9em;
+    cursor: pointer;
+    border: 1px solid #6c757d;
+    border-radius: 4px;
+    background-color: #fff;
+}
+.elementwise-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 /* [REVISED] Modernized styles for Controls panel */
