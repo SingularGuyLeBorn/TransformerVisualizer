@@ -118,6 +118,15 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                     <div className="viz-formula-row"><InlineMath math="Z" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.Wv} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
                 <p>然后计算注意力分数, 进行缩放和Softmax得到权重, 最后加权求和。 <InlineMath math="Q"/> 和 <InlineMath math="K"/> 的点积计算了每个词的“查询”与所有词的“标签”之间的相似度。除以 <InlineMath math="\sqrt{d_k}"/> 是为了在训练中保持梯度稳定。Softmax则将这些原始的相似度分数转换成一个和为1的概率分布，即“注意力权重”。最后，将这些权重与 <InlineMath math="V"/> 相乘，相当于对所有词的信息进行加权求和，得到一个融合了全句上下文信息的新向量。</p>
+                <div className="formula-display vertical">
+                     <div className="viz-formula-row">
+                        <InteractiveSymbolicMatrix name={HNe.Q} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick}/>
+                        <BlockMath math="\times" />
+                        <InteractiveSymbolicMatrix name={HNe.K} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} transpose={true}/>
+                        <BlockMath math="=" />
+                        <InteractiveSymbolicMatrix name={HNe.Scores} rows={dims.encoder_seq_len} cols={dims.encoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/>
+                     </div>
+                </div>
                 <BlockMath math={`S' = \\frac{QK^T}{\\sqrt{d_k}}`} />
                 <BlockMath math={`A = \\text{Softmax}(S')`} />
                 <BlockMath math={`H = A V`} />
@@ -233,7 +242,7 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                  <div className="formula-display vertical">
                     <div className="viz-formula-row">
                         <InteractiveSymbolicMatrix name={HNd_masked.Scores} rows={dims.decoder_seq_len} cols={dims.decoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/>
-                        <BlockMath math={`\\xrightarrow{\\text{Mask}+\\text{Scale}}`} />
+                        <BlockMath math={`\\xrightarrow{\\text{Mask}+\text{Scale}}`} />
                         <InteractiveSymbolicMatrix name={HNd_masked.ScaledScores} rows={dims.decoder_seq_len} cols={dims.decoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/>
                         <BlockMath math="\xrightarrow{\text{Softmax}}"/>
                         <InteractiveSymbolicMatrix name={HNd_masked.AttentionWeights} rows={dims.decoder_seq_len} cols={dims.decoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick} />
