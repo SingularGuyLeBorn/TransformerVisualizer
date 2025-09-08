@@ -5,23 +5,22 @@ import { Controls } from './components/Controls';
 import { Viz } from './components/Viz';
 import { Explanation } from './components/Explanation';
 import { CalculationTooltip } from '../../components/CalculationTooltip/CalculationTooltip';
-import { AnimationPanel } from './components/AnimationPanel'; // [NEW]
+import { AnimationPanel } from './components/AnimationPanel';
 import { TooltipState } from '../../components/CalculationTooltip/types';
 import { useTransformer } from './hooks/useTransformer';
 import { useSplitPane } from '../../hooks/useSplitPane';
 import { ElementIdentifier, HighlightState, TransformerData } from './types';
 import { generateTooltipData, createBackwardHighlight } from './lib/tracing';
+import { ViewToggle, ViewMode } from '../../components/ViewToggle/ViewToggle';
 
 export const TransformerExplorerTopic: React.FC = () => {
     const [dims, setDims] = useState({ d_model: 8, h: 2, seq_len: 2, n_layers: 1, d_ff: 32 });
     const [inputText, setInputText] = useState("I am a student");
     const [highlight, setHighlight] = useState<HighlightState>({ target: null, sources: [], destinations: [], activeComponent: null, activeResidual: null });
     const [tooltip, setTooltip] = useState<TooltipState | null>(null);
-
-    // [NEW] State for the new animation panel
-    const [preparedAnimationData, setPreparedAnimationData] = useState<TooltipState | null>(null);
     const [animationData, setAnimationData] = useState<TooltipState | null>(null);
-
+    const [viewMode, setViewMode] = useState<ViewMode>('none');
+    const [activeElement, setActiveElement] = useState<ElementIdentifier | null>(null);
 
     const { primarySize, separatorProps, containerProps } = useSplitPane(window.innerWidth * 0.55);
 
@@ -36,25 +35,37 @@ export const TransformerExplorerTopic: React.FC = () => {
               }, 100);
           }
         }
-      }, [highlight.activeComponent]);
+    }, [highlight.activeComponent]);
+
+    useEffect(() => {
+        if (viewMode !== 'none' && activeElement && transformerData) {
+            const { highlight: newHighlight } = createBackwardHighlight(activeElement, transformerData, dims);
+            const newCalculationData = generateTooltipData(activeElement, transformerData, newHighlight.sources);
+
+            if (viewMode === 'decomposition') {
+                setTooltip(newCalculationData);
+                setAnimationData(null);
+            } else { // animation mode
+                if (newCalculationData && newCalculationData.opType !== 'info') {
+                    setAnimationData(newCalculationData);
+                    setTooltip(null);
+                } else {
+                    setAnimationData(null);
+                    setTooltip(newCalculationData);
+                }
+            }
+        } else {
+            setTooltip(null);
+            setAnimationData(null);
+        }
+    }, [viewMode, activeElement, transformerData, dims]);
+
 
     const handleInteraction = useCallback((element: ElementIdentifier, event: React.MouseEvent) => {
         if (!transformerData) return;
         const { highlight: newHighlight } = createBackwardHighlight(element, transformerData, dims);
         setHighlight(newHighlight);
-
-        const newTooltipData = generateTooltipData(element, transformerData, newHighlight.sources);
-        setTooltip(newTooltipData);
-
-        // [NEW] Prepare animation data, but don't show it yet.
-        if (newTooltipData && newTooltipData.opType !== 'info') {
-            setPreparedAnimationData(newTooltipData);
-        } else {
-            setPreparedAnimationData(null);
-        }
-        // Close any existing animation panel when a new element is clicked
-        setAnimationData(null);
-
+        setActiveElement(element);
     }, [transformerData, dims]);
 
     const handleComponentClick = useCallback((componentId: string) => {
@@ -62,21 +73,22 @@ export const TransformerExplorerTopic: React.FC = () => {
           target: null, sources: [], destinations: [], activeComponent: componentId, activeResidual: null
       }));
       setTooltip(null);
-      // [NEW] Clear any prepared animation when just exploring components
-      setPreparedAnimationData(null);
       setAnimationData(null);
+      setActiveElement(null);
+      setViewMode('none');
     }, []);
 
-    const closeTooltip = useCallback(() => setTooltip(null), []);
-    const closeAnimationPanel = useCallback(() => setAnimationData(null), []);
+    const closeTooltip = useCallback(() => {
+        setTooltip(null);
+        setViewMode('none');
+        setActiveElement(null);
+    }, []);
 
-    const playAnimation = () => {
-        if (preparedAnimationData) {
-            setAnimationData(preparedAnimationData);
-            setTooltip(null); // Close the compact tooltip when animation starts
-        }
-    };
-
+    const closeAnimationPanel = useCallback(() => {
+        setAnimationData(null);
+        setViewMode('none');
+        setActiveElement(null);
+    }, []);
 
     if (!transformerData) {
         return <div style={{padding: "20px", textAlign: "center"}}>正在加载或维度设置无效... (d_model 必须能被 h 整除)</div>
@@ -92,26 +104,15 @@ export const TransformerExplorerTopic: React.FC = () => {
     return (
         <div className="main-layout" {...containerProps} style={{padding: '0', gap: '0', height: '100%'}}>
             {tooltip && <CalculationTooltip tooltip={tooltip} onClose={closeTooltip} />}
-            <AnimationPanel animationData={animationData} onClose={closeAnimationPanel} />
+            {animationData && <AnimationPanel animationData={animationData} onClose={closeAnimationPanel} />}
             <Controls dims={dims} setDims={setDims} inputText={inputText} setInputText={setInputText}/>
-
-            <div className="animation-button-container">
-                <button
-                    className="play-animation-button"
-                    onClick={playAnimation}
-                    disabled={!preparedAnimationData}
-                    title={preparedAnimationData ? "播放详细计算动画" : "点击一个单元格以准备动画"}
-                >
-                    ▶️ 播放动画
-                </button>
-            </div>
-
+            <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
 
             <div className="column left-column" style={{width: primarySize, flex: 'none', borderRadius: '0', boxShadow: 'none'}}>
                 <div className="column-content">
                     <h2>模型结构与数据流</h2>
                     <p style={{textAlign: 'center', margin: '-10px 0 15px 0', fontSize: '0.9em', color: '#555'}}>
-                        提示: 点击任何计算结果 (红色高亮) 的单元格,即可查看其详细计算过程.
+                        提示: 点击任何矩阵单元格进行联动高亮。选择左上角视图模式后再次点击，可查看计算详情。
                     </p>
                     <Viz
                         data={transformerData}

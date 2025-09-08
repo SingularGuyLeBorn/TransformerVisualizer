@@ -553,12 +553,14 @@ import { SoftmaxVisualizer } from '../visualizers/SoftmaxVisualizer';
 import { ActivationFunctionVisualizer } from '../visualizers/ActivationFunctionVisualizer';
 import { ElementWiseOpVisualizer } from '../visualizers/ElementWiseOpVisualizer';
 import { InlineMath } from 'react-katex';
-import { getSymbolParts } from '../../topics/transformer-explorer/config/symbolMapping';
+import { getSymbolParts } from '../../topics/transformer-explorer/lib/symbolMapping';
 import './CalculationTooltip.css';
+import { LayerNormVisualizer } from '../visualizers/LayerNormVisualizer';
 
 interface CalculationTooltipProps {
   tooltip: TooltipState;
   onClose: () => void;
+  initialViewMode?: 'compact' | 'detailed';
 }
 
 const formatNumber = (num: number, precision = 4) => {
@@ -601,9 +603,9 @@ const getVisibleIndices = (
   return result;
 };
 
-export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip, onClose }) => {
+export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip, onClose, initialViewMode = 'compact' }) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
-    const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('detailed');
+    const [viewMode, setViewMode] = useState<'compact' | 'detailed'>(initialViewMode);
     const [hoveredComponentIndex, setHoveredComponentIndex] = useState<number | null>(null);
     const panelRef = useRef<HTMLDivElement>(null);
 
@@ -616,9 +618,9 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
 
     useEffect(() => {
         setIsCollapsed(false);
-        setViewMode('detailed');
+        setViewMode(initialViewMode);
         setHoveredComponentIndex(null);
-    }, [tooltip]);
+    }, [tooltip, initialViewMode]);
 
     const renderVector = (vec: number[], symbolInfo: TooltipState['steps'][0]['aSymbolInfo'], direction: 'row' | 'column' = 'row') => {
         let mathSymbol = symbolInfo.base;
@@ -642,36 +644,11 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
     const renderBody = () => {
         if (!tooltip.steps || tooltip.steps.length === 0) return null;
 
-        // DETAILED (ANIMATION) VIEW
         if (viewMode === 'detailed') {
-            return tooltip.steps.map((step, stepIndex) => (
-                <div className="tooltip-step-container" key={stepIndex}>
-                    {step.title && <h3 style={{textAlign: 'center'}}>{step.title}</h3>}
-                    {(() => {
-                        const op = step.op === '·' ? '×' : step.op;
-                        switch(tooltip.opType) {
-                            case 'matmul':
-                                return <InteractiveMatMulVisualizer
-                                    sourceVectorsA={step.aSources!}
-                                    sourceVectorB={step.bSources![0]}
-                                    resultSymbolInfo={getSymbolParts(tooltip.target.name)}
-                                    operation={op as '×' | '+'}
-                                />;
-                            case 'softmax':
-                                return <SoftmaxVisualizer inputVector={step.a} inputLabel={step.aLabel} outputLabel={step.resultLabel} />;
-                            case 'relu':
-                                return <ActivationFunctionVisualizer functionType="relu" inputVector={step.a} inputLabel={step.aLabel} outputLabel={step.resultLabel} />;
-                            case 'add':
-                                return <ElementWiseOpVisualizer matrixA={[step.a]} matrixB={[step.b]} operation="+" labelA={step.aLabel} labelB={step.bLabel} labelC={step.resultLabel} />;
-                            default:
-                                return <div>此操作没有详细动画视图。</div>;
-                        }
-                    })()}
-                </div>
-            ));
+            return null;
         }
 
-        // COMPACT (BREAKDOWN) VIEW
+        // COMPACT (DECOMPOSITION) VIEW
         return tooltip.steps.map((step, stepIndex) => {
             let content;
             const focusIndex = tooltip.target.col;
@@ -720,14 +697,15 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
                     );
                     break;
                 case 'add':
+                     const addStep = tooltip.steps.find(s => s.op === '+') || step;
                     content = (
                         <div className="tooltip-add-container">
-                             {renderVector(step.a, step.aSymbolInfo, 'row')}
+                             {renderVector(addStep.a, addStep.aSymbolInfo, 'row')}
                              <div className="tooltip-op-symbol">+</div>
-                             {renderVector(step.b, step.bSymbolInfo, 'row')}
+                             {renderVector(addStep.b, addStep.bSymbolInfo, 'row')}
                              <div className="tooltip-result-line">
                                  <span className="tooltip-op-symbol">=</span>
-                                 <span className="tooltip-result">{formatNumber(step.result, 4)}</span>
+                                 <span className="tooltip-result">{formatNumber(addStep.result, 4)}</span>
                              </div>
                         </div>
                     );
@@ -765,6 +743,23 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
                         </>
                     );
                     break;
+                 case 'layernorm':
+                    const mean = step.a.reduce((a, b) => a + b, 0) / step.a.length;
+                    const variance = step.a.map(x => Math.pow(x - mean, 2)).reduce((a,b) => a+b, 0) / step.a.length;
+                    content = (
+                         <>
+                            {renderVector(step.a, step.aSymbolInfo, 'row')}
+                            <div className="tooltip-calculation-detail">
+                                <div className="tooltip-calc-title">LayerNorm 计算分解:</div>
+                                 <div className="tooltip-calc-equation-multi">
+                                    <div>1. 计算均值 μ: <span>{formatNumber(mean, 4)}</span></div>
+                                    <div>2. 计算方差 σ²: <span>{formatNumber(variance, 4)}</span></div>
+                                    <div>3. 归一化 (for index {focusIndex}): <span>({formatNumber(step.a[focusIndex], 2)} - {formatNumber(mean, 2)}) / √({formatNumber(variance, 2)} + ε) = <span className="result">{formatNumber(step.result, 4)}</span></span></div>
+                                </div>
+                            </div>
+                        </>
+                    );
+                    break;
                 default:
                     content = <div>未知操作类型。</div>;
             }
@@ -784,23 +779,13 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
         height: typeof size.height === 'number' && !isCollapsed ? size.height : 'auto',
     };
 
-    const hasDetailedView = ['matmul', 'softmax', 'relu', 'add'].includes(tooltip.opType);
-
     return (
         <div ref={panelRef} style={panelStyle} className={`calculation-tooltip ${isCollapsed ? 'collapsed' : ''} resizable-panel`}>
             <div className="panel-header" {...dragHandleProps}>
-                <span className="panel-title">{tooltip.title}</span>
+                <span className="panel-title">
+                     <InlineMath>{`Calculation for ${tooltip.target.symbol || ''}[${tooltip.target.row},${tooltip.target.col}]`}</InlineMath>
+                </span>
                 <div className="tooltip-controls">
-                    {hasDetailedView && (
-                        <button
-                            className="view-toggle-btn"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setViewMode(prev => prev === 'compact' ? 'detailed' : 'compact');
-                            }}>
-                            {viewMode === 'compact' ? '动画视图' : '分解视图'}
-                        </button>
-                    )}
                     <button onClick={() => setIsCollapsed(!isCollapsed)} className="tooltip-toggle-btn">
                         {isCollapsed ? '⊕' : '⊖'}
                     </button>
@@ -842,6 +827,8 @@ export interface ElementIdentifier {
   col: number;
   isInternal?: boolean;
   symbol?: string; // The full LaTeX string for the element, e.g., "Z_{final}[1,2]"
+  layerIndex?: number;
+  headIndex?: number;
 }
 
 /**
@@ -867,10 +854,9 @@ export interface CalculationStep {
     aLabel?: string;
     bLabel?: string;
     resultLabel?: string;
-    // [NEW] For multi-vector sources like in concatenated matmul
     aSources?: { data: Vector, symbolInfo: SymbolInfo }[];
     bSources?: { data: Vector, symbolInfo: SymbolInfo }[];
-    components?: CalculationComponent[]; // [FIXED] Re-added for backward compatibility
+    components?: CalculationComponent[];
 }
 
 /**
@@ -878,12 +864,127 @@ export interface CalculationStep {
  */
 export interface TooltipState {
     target: ElementIdentifier;
-    opType: 'matmul' | 'add' | 'softmax' | 'relu' | 'info';
+    opType: 'matmul' | 'add' | 'softmax' | 'relu' | 'layernorm' | 'wx-plus-b' | 'info';
     steps: CalculationStep[];
     title: string;
 }
 
 // END OF FILE: src/components/CalculationTooltip/types.ts
+
+
+================================================================================
+### 文件路径: src/components/ViewToggle/ViewToggle.css
+================================================================================
+
+/* FILE: src/components/ViewToggle/ViewToggle.css */
+.view-toggle-container {
+    position: absolute;
+    top: 20px;
+    left: 80px; /* Position it to the right of the sidebar toggle */
+    z-index: 1005;
+    background-color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(5px);
+    border-radius: 8px;
+    padding: 5px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    display: flex;
+    gap: 5px;
+    border: 1px solid var(--border-color);
+}
+
+.view-toggle-button {
+    padding: 8px 16px;
+    font-size: 0.9em;
+    font-weight: 500;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background-color: transparent;
+    color: #606266;
+    transition: all 0.2s ease-in-out;
+}
+
+.view-toggle-button.active {
+    background-color: #409eff;
+    color: #fff;
+    box-shadow: 0 2px 5px rgba(64, 158, 255, 0.3);
+}
+
+.view-toggle-button:not(.active):hover {
+    background-color: #f0f2f5;
+}
+
+.view-toggle-close-button {
+    background: none;
+    border: 1px solid #e0e0e0;
+    border-radius: 50%;
+    color: #909399;
+    cursor: pointer;
+    width: 28px;
+    height: 28px;
+    font-size: 1.2em;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 5px;
+    transition: all 0.2s ease;
+}
+
+.view-toggle-close-button:hover {
+    background-color: #f56c6c;
+    color: white;
+    border-color: #f56c6c;
+}
+/* END OF FILE: src/components/ViewToggle/ViewToggle.css */
+
+
+================================================================================
+### 文件路径: src/components/ViewToggle/ViewToggle.tsx
+================================================================================
+
+// FILE: src/components/ViewToggle/ViewToggle.tsx
+import React from 'react';
+import './ViewToggle.css';
+
+export type ViewMode = 'decomposition' | 'animation' | 'none';
+
+interface ViewToggleProps {
+  viewMode: ViewMode;
+  setViewMode: React.Dispatch<React.SetStateAction<ViewMode>>;
+}
+
+export const ViewToggle: React.FC<ViewToggleProps> = ({ viewMode, setViewMode }) => {
+  return (
+    <div className="view-toggle-container">
+      <button
+        className={`view-toggle-button ${viewMode === 'decomposition' ? 'active' : ''}`}
+        onClick={() => setViewMode(prev => prev === 'decomposition' ? 'none' : 'decomposition')}
+        title="切换到分解视图模式"
+      >
+        分解视图
+      </button>
+      <button
+        className={`view-toggle-button ${viewMode === 'animation' ? 'active' : ''}`}
+        onClick={() => setViewMode(prev => prev === 'animation' ? 'none' : 'animation')}
+        title="切换到动画视图模式"
+      >
+        动画视图
+      </button>
+      {viewMode !== 'none' && (
+         <button
+            className="view-toggle-close-button"
+            onClick={() => setViewMode('none')}
+            title="关闭视图模式"
+         >
+            &times;
+         </button>
+      )}
+    </div>
+  );
+};
+
+// END OF FILE: src/components/ViewToggle/ViewToggle.tsx
 
 
 ================================================================================
@@ -894,6 +995,7 @@ export interface TooltipState {
 import React, { useMemo } from 'react';
 import { Vector, ActivationFunctionType, ActivationStep } from './types';
 import { formatNumber, useAnimationController } from './utils';
+import { InlineMath } from 'react-katex';
 
 interface ActivationFunctionVisualizerProps {
   inputVector: Vector;
@@ -907,7 +1009,7 @@ export const ActivationFunctionVisualizer: React.FC<ActivationFunctionVisualizer
   const functions = {
     relu: (x: number) => Math.max(0, x),
     gelu: (x: number) => 0.5 * x * (1 + Math.tanh(Math.sqrt(2 / Math.PI) * (x + 0.044715 * Math.pow(x, 3)))),
-    silu: (x: number) => x / (1 + Math.exp(-x)), // Swish/SiLU
+    silu: (x: number) => x / (1 + Math.exp(-x)),
   };
 
   const outputVector = useMemo(() => inputVector.map(functions[functionType]), [inputVector, functionType]);
@@ -923,88 +1025,81 @@ export const ActivationFunctionVisualizer: React.FC<ActivationFunctionVisualizer
 
   const { currentStep, isPlaying, play, pause, reset, setStepManually } = useAnimationController(steps.length, 600);
   const currentAnimState = steps[currentStep] || { type: 'idle' };
-  const activeIndex = (currentAnimState.type === 'process' || currentAnimState.type === 'finish') ? (currentAnimState as any).index ?? inputVector.length - 1 : -1;
-
-  const viewBox = { minX: -5, maxX: 5, minY: -2, maxY: 5 };
-  const width = 300;
-  const height = 200;
-
-  const toSvgX = (x: number) => (x - viewBox.minX) / (viewBox.maxX - viewBox.minX) * width;
-  const toSvgY = (y: number) => height - (y - viewBox.minY) / (viewBox.maxY - viewBox.minY) * height;
-
-  const pathData = useMemo(() => {
-    let d = '';
-    for (let i = 0; i <= width; i++) {
-      const x = viewBox.minX + (i / width) * (viewBox.maxX - viewBox.minX);
-      const y = functions[functionType](x);
-      const svgX = toSvgX(x);
-      const svgY = toSvgY(y);
-      if (i === 0) { d += `M ${svgX} ${svgY}`; } else { d += ` L ${svgX} ${svgY}`; }
-    }
-    return d;
-  }, [functionType, functions, toSvgX, toSvgY, viewBox.maxX, viewBox.minX, width]);
+  const activeIndex = (currentAnimState.type === 'process') ? (currentAnimState as any).index : (currentAnimState.type === 'finish' ? inputVector.length - 1 : -1);
+  const lastCalculatedIndex = (currentAnimState.type === 'finish') ? inputVector.length - 1 : activeIndex;
 
 
-  // Inline Styles
   const styles: { [key: string]: React.CSSProperties } = {
     container: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6' },
     title: { margin: '0 0 10px 0', fontSize: '1.2em', fontWeight: 'bold', textTransform: 'uppercase' },
-    mainArea: { display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' },
-    vectorGroup: { display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'center' },
-    vectorLabel: { fontWeight: 'bold', color: '#6c757d', fontFamily: 'monospace' },
-    vector: { display: 'flex', flexDirection: 'column', gap: '5px' },
-    element: { width: '60px', padding: '5px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease', cursor: 'pointer', opacity: 1 },
-    hiddenElement: { opacity: 0, transform: 'scale(0.8)' },
-    highlight: { transform: 'scale(1.1)', borderColor: '#e63946', backgroundColor: 'rgba(230, 57, 70, 0.1)' },
-    chartContainer: { position: 'relative', width: width, height: height, border: '1px solid #ccc', backgroundColor: 'white' },
-    svg: { width: '100%', height: '100%' },
-    axis: { stroke: '#adb5bd', strokeWidth: 1 },
-    gridLine: { stroke: '#e9ecef', strokeWidth: 0.5 },
-    path: { fill: 'none', stroke: '#007bff', strokeWidth: 2 },
-    point: { transition: 'all 0.2s ease' },
+    mainArea: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', width: '100%' },
+    vectorSection: { display: 'flex', width: '100%', gap: '15px', alignItems: 'center' },
+    label: { fontWeight: 'bold', color: '#495057', fontSize: '1.5em', width: '80px', textAlign: 'right' },
+    vectorGroup: { flex: 1, minWidth: 0 },
+    vectorScroll: { overflowX: 'auto', padding: '5px' },
+    vectorContainer: { display: 'flex', flexDirection: 'column', gap: '2px' },
+    vector: { display: 'flex', gap: '5px', width: 'max-content' },
+    vectorIndices: { display: 'flex', gap: '5px' },
+    indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace', boxSizing: 'border-box' },
+    element: { width: '60px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
+    highlight: { transform: 'scale(1.15)', borderColor: '#4a90e2', backgroundColor: 'rgba(74, 144, 226, 0.1)' },
+    calculationBox: { height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', border: '1px solid #dee2e6', borderRadius: '8px', padding: '10px 20px', fontSize: '1.2em', transition: 'opacity 0.3s', fontFamily: 'monospace' },
     controls: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '10px' },
     button: { padding: '8px 16px', fontSize: '1em', cursor: 'pointer', border: '1px solid #6c757d', borderRadius: '4px', backgroundColor: '#fff' },
     playingButton: { backgroundColor: '#6c757d', color: '#fff' },
   };
 
-  const activePoint = activeIndex !== -1 ? { x: inputVector[activeIndex], y: outputVector[activeIndex] } : null;
+  const activeInput = activeIndex > -1 ? inputVector[activeIndex] : null;
+  const activeOutput = activeIndex > -1 ? outputVector[activeIndex] : null;
+  const calculationString = activeInput !== null && activeOutput !== null
+    ? `max(0, ${formatNumber(activeInput, 2)}) = ${formatNumber(activeOutput, 2)}`
+    : '...';
 
   return (
     <div style={styles.container}>
       <h3 style={styles.title}>{functionType} Activation</h3>
       <div style={styles.mainArea}>
-        <div style={styles.vectorGroup}>
-          <div style={styles.vectorLabel}>{inputLabel}</div>
-          <div style={styles.vector}>
-            {inputVector.map((val, i) => (
-              <div key={`in-${i}`} style={{ ...styles.element, ...(activeIndex === i ? styles.highlight : {}) }}>
-                {formatNumber(val, 2)}
+        <div style={styles.vectorSection}>
+          <div style={styles.label}><InlineMath>{inputLabel}</InlineMath></div>
+          <div style={styles.vectorGroup}>
+            <div style={styles.vectorScroll}>
+              <div style={styles.vectorContainer}>
+                <div style={styles.vector}>
+                  {inputVector.map((val, i) => (
+                    <div key={`in-${i}`} style={{ ...styles.element, ...(activeIndex === i ? styles.highlight : {}) }}>
+                      {formatNumber(val, 2)}
+                    </div>
+                  ))}
+                </div>
+                <div style={styles.vectorIndices}>
+                   {inputVector.map((_, i) => <div key={i} style={styles.indexLabel}>{i}</div>)}
+                </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
-        <div style={styles.chartContainer}>
-          <svg viewBox={`0 0 ${width} ${height}`} style={styles.svg}>
-            <path d={`M 0 ${toSvgY(0)} L ${width} ${toSvgY(0)}`} style={styles.axis} />
-            <path d={`M ${toSvgX(0)} 0 L ${toSvgX(0)} ${height}`} style={styles.axis} />
-            <path d={pathData} style={styles.path} />
-            {activePoint && (
-              <g>
-                <line x1={toSvgX(activePoint.x)} y1={toSvgY(0)} x2={toSvgX(activePoint.x)} y2={toSvgY(activePoint.y)} strokeDasharray="3 3" stroke="#e63946" />
-                <line x1={toSvgX(0)} y1={toSvgY(activePoint.y)} x2={toSvgX(activePoint.x)} y2={toSvgY(activePoint.y)} strokeDasharray="3 3" stroke="#e63946" />
-                <circle cx={toSvgX(activePoint.x)} cy={toSvgY(activePoint.y)} r="4" fill="#e63946" style={styles.point} />
-              </g>
-            )}
-          </svg>
+
+        <div style={{ ...styles.calculationBox, opacity: activeIndex > -1 ? 1 : 0.2 }}>
+            {calculationString}
         </div>
-        <div style={styles.vectorGroup}>
-          <div style={styles.vectorLabel}>{outputLabel}</div>
-          <div style={styles.vector}>
-            {outputVector.map((val, i) => (
-              <div key={`out-${i}`} style={{ ...styles.element, ...(activeIndex >= i ? {} : styles.hiddenElement), ...(activeIndex === i ? styles.highlight : {}) }}>
-                {formatNumber(val, 2)}
+
+        <div style={styles.vectorSection}>
+          <div style={styles.label}><InlineMath>{outputLabel}</InlineMath></div>
+          <div style={styles.vectorGroup}>
+            <div style={styles.vectorScroll}>
+              <div style={styles.vectorContainer}>
+                <div style={styles.vector}>
+                  {outputVector.map((val, i) => (
+                    <div key={`out-${i}`} style={{ ...styles.element, ...(activeIndex === i ? styles.highlight : {}), opacity: i > lastCalculatedIndex ? 0.3 : 1 }}>
+                      {i > lastCalculatedIndex ? '?' : formatNumber(val, 2)}
+                    </div>
+                  ))}
+                </div>
+                <div style={styles.vectorIndices}>
+                  {outputVector.map((_, i) => <div key={i} style={styles.indexLabel}>{i}</div>)}
+                </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </div>
@@ -1032,9 +1127,10 @@ export const ActivationFunctionVisualizer: React.FC<ActivationFunctionVisualizer
 ================================================================================
 
 // FILE: src/components/visualizers/ElementWiseOpVisualizer.tsx
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { Matrix, ElementWiseOpStep } from './types';
-import { formatNumber, getCurvePath, useAnimationController } from './utils';
+import { formatNumber, useAnimationController } from './utils';
+import { InlineMath } from 'react-katex';
 
 interface ElementWiseOpVisualizerProps {
   matrixA: Matrix;
@@ -1047,117 +1143,131 @@ interface ElementWiseOpVisualizerProps {
 
 export const ElementWiseOpVisualizer: React.FC<ElementWiseOpVisualizerProps> = ({ matrixA, matrixB, operation, labelA = 'A', labelB = 'B', labelC = 'C' }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const elementsARef = useRef<(HTMLDivElement | null)[][]>([]);
-  const elementsBRef = useRef<(HTMLDivElement | null)[][]>([]);
-  const elementsCRef = useRef<(HTMLDivElement | null)[][]>([]);
+  const elementsARef = useRef<(HTMLDivElement | null)[]>([]);
+  const elementsBRef = useRef<(HTMLDivElement | null)[]>([]);
 
-  // [FIXED] Hooks are now called unconditionally at the top level.
-  const resultMatrix = useMemo(() => matrixA.map((row, r) =>
-    row.map((val, c) => {
-      if (!matrixB[r] || matrixB[r][c] === undefined) return NaN; // Defensive check
+  const vectorA = matrixA[0];
+  const vectorB = matrixB[0];
+
+  const resultVector = useMemo(() => vectorA.map((val, c) => {
       switch (operation) {
-        case '+': return val + matrixB[r][c];
-        case '-': return val - matrixB[r][c];
-        case '×': return val * matrixB[r][c];
-        case '÷': return val / matrixB[r][c];
+        case '+': return val + vectorB[c];
+        case '-': return val - vectorB[c];
+        case '×': return val * vectorB[c];
+        case '÷': return val / vectorB[c];
         default: return NaN;
       }
-    })
-  ), [matrixA, matrixB, operation]);
+    }), [vectorA, vectorB, operation]);
 
-  const numRows = matrixA?.length || 0;
-  const numCols = matrixA?.[0]?.length || 0;
+  const numCols = vectorA.length;
 
   const steps: ElementWiseOpStep[] = useMemo(() => {
-    if (numRows === 0 || numCols === 0) return [];
     const generatedSteps: ElementWiseOpStep[] = [{ type: 'start' }];
-    for (let r = 0; r < numRows; r++) {
-      for (let c = 0; c < numCols; c++) {
-        generatedSteps.push({ type: 'highlight', row: r, col: c });
-        generatedSteps.push({ type: 'show-op', row: r, col: c }); // [NEW] Added step for operator
-        generatedSteps.push({ type: 'calculate', row: r, col: c });
-      }
+    for (let c = 0; c < numCols; c++) {
+      generatedSteps.push({ type: 'highlight', row: 0, col: c });
+      generatedSteps.push({ type: 'show-op', row: 0, col: c });
+      generatedSteps.push({ type: 'calculate', row: 0, col: c });
     }
     generatedSteps.push({ type: 'finish' });
     return generatedSteps;
-  }, [numRows, numCols]);
+  }, [numCols]);
 
-  const { currentStep, isPlaying, play, pause, reset, setStepManually } = useAnimationController(steps.length, 300);
-
-  // [FIXED] The conditional check is now moved below the hooks.
-  if (!matrixA || !matrixB || matrixA.length === 0 || matrixB.length === 0 || matrixA[0].length !== matrixB[0].length) {
-    return <div style={{padding: '20px', color: 'red'}}>输入矩阵维度不匹配或无效</div>;
-  }
-
-  elementsARef.current = Array(numRows).fill(null).map(() => Array(numCols).fill(null));
-  elementsBRef.current = Array(numRows).fill(null).map(() => Array(numCols).fill(null));
-  elementsCRef.current = Array(numRows).fill(null).map(() => Array(numCols).fill(null));
-
+  const { currentStep, isPlaying, play, pause, reset, setStepManually } = useAnimationController(steps.length, 600);
   const currentAnimState = steps[currentStep] || { type: 'idle' };
-  const activeCell = (currentAnimState.type === 'highlight' || currentAnimState.type === 'calculate' || currentAnimState.type === 'show-op') ? { row: (currentAnimState as any).row, col: (currentAnimState as any).col } : null;
+  const activeCol = (currentAnimState.type === 'highlight' || currentAnimState.type === 'calculate' || currentAnimState.type === 'show-op')
+      ? (currentAnimState as any).col
+      : -1;
+  const lastCalculatedIndex = (currentAnimState.type === 'finish')
+      ? numCols - 1
+      : (currentAnimState.type === 'calculate' ? (currentAnimState as any).col : activeCol - 1);
 
-  // Inline Styles
+  const [opPosition, setOpPosition] = useState<{ top: number, left: number } | null>(null);
+
+  useEffect(() => {
+    if (activeCol !== -1 && containerRef.current && elementsARef.current[activeCol] && elementsBRef.current[activeCol]) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const elARect = elementsARef.current[activeCol]!.getBoundingClientRect();
+      const elBRect = elementsBRef.current[activeCol]!.getBoundingClientRect();
+
+      const top = (elARect.bottom - containerRect.top + (elBRect.top - elARect.bottom) / 2);
+      const left = (elARect.left - containerRect.left + elARect.width / 2);
+
+      setOpPosition({ top, left });
+    }
+  }, [activeCol]);
+
   const styles: { [key: string]: React.CSSProperties } = {
-    container: { position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '15px', padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6' },
-    mainArea: { position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '25px', flexWrap: 'wrap', width: '100%' },
-    matrixContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' },
-    matrixLabel: { fontSize: '1.2em', fontWeight: 'bold', fontFamily: 'monospace' },
-    grid: { display: 'grid', gap: '5px', gridTemplateColumns: `repeat(${numCols}, 1fr)` },
-    element: { width: '50px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
-    sourceHighlight: { transform: 'scale(1.1)', borderColor: '#007bff', backgroundColor: 'rgba(0, 123, 255, 0.1)' },
-    targetHighlight: { transform: 'scale(1.1)', borderColor: '#28a745', backgroundColor: 'rgba(40, 167, 69, 0.1)' },
-    opSymbol: { fontSize: '2em', fontWeight: 'bold', transition: 'transform 0.3s ease, opacity 0.3s ease' },
-    svg: { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' },
-    path: { fill: 'none', strokeWidth: '2px', stroke: '#e63946', transition: 'opacity 0.2s ease', opacity: 0 },
-    pathVisible: { opacity: 1 },
+    container: { position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '15px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6', width: '100%', boxSizing: 'border-box' },
+    row: { display: 'flex', alignItems: 'center', gap: '15px', width: '100%' },
+    label: { fontWeight: 'bold', color: '#495057', fontSize: '1.5em', width: '60px', textAlign: 'right' },
+    vectorGroup: { flex: 1, minWidth: 0 },
+    vectorScroll: { overflowX: 'auto', padding: '10px 5px' },
+    vector: { display: 'flex', flexDirection: 'column', gap: '5px', width: 'max-content' },
+    vectorElements: { display: 'flex', gap: '5px' },
+    vectorIndices: { display: 'flex', gap: '5px' },
+    indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace', boxSizing: 'border-box' },
+    element: { width: '60px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
+    sourceHighlight: { transform: 'scale(1.15)', borderColor: '#4a90e2', backgroundColor: 'rgba(74, 144, 226, 0.1)', fontWeight: 'bold' },
+    resultHighlight: { transform: 'scale(1.15)', borderColor: '#28a745', backgroundColor: 'rgba(40, 167, 69, 0.1)', fontWeight: 'bold' },
+    opSymbol: { position: 'absolute', fontSize: '2em', fontWeight: 'bold', color: '#e63946', opacity: 0, transition: 'opacity 0.3s ease, transform 0.3s ease', transform: 'translate(-50%, -50%) scale(0.8)', pointerEvents: 'none' },
+    opVisible: { opacity: 1, transform: 'translate(-50%, -50%) scale(1)' },
     controls: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '10px' },
     button: { padding: '8px 16px', fontSize: '1em', cursor: 'pointer', border: '1px solid #6c757d', borderRadius: '4px', backgroundColor: '#fff' },
     playingButton: { backgroundColor: '#6c757d', color: '#fff' },
+    equalSignRow: { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '80px', height: '30px' },
+    equalSign: { fontSize: '2em', fontWeight: 'bold', color: '#6c757d' },
   };
 
-  const pathA = activeCell ? getCurvePath(elementsARef.current[activeCell.row][activeCell.col], elementsCRef.current[activeCell.row][activeCell.col], containerRef.current) : '';
-  const pathB = activeCell ? getCurvePath(elementsBRef.current[activeCell.row][activeCell.col], elementsCRef.current[activeCell.row][activeCell.col], containerRef.current) : '';
-
-  const renderMatrix = (matrix: Matrix, label: string, refArray: React.MutableRefObject<(HTMLDivElement | null)[][]>, highlightType: 'source' | 'target') => (
-    <div style={styles.matrixContainer}>
-      <div style={styles.matrixLabel}>{label}</div>
-      <div style={styles.grid}>
-        {matrix.map((row, r) => row.map((val, c) => {
-           const isVisible = highlightType === 'target' && (currentStep >= steps.findIndex(s => s.type === 'calculate' && s.row === r && s.col === c));
-           const isHighlighted = activeCell && activeCell.row === r && activeCell.col === c;
-          return (
-          <div
-            key={`${label}-${r}-${c}`}
-            ref={el => refArray.current[r][c] = el}
-            style={{
-              ...styles.element,
-              ...(isHighlighted ? (highlightType === 'source' ? styles.sourceHighlight : styles.targetHighlight) : {}),
-              opacity: highlightType === 'target' && !isVisible && currentStep > 0 ? 0.3 : 1
-            }}
-          >
-            {isVisible || highlightType === 'source' || currentStep === -1 ? formatNumber(val, 2) : '?'}
+  const renderVector = (vec: number[], label: string, isResult: boolean = false, refs?: React.MutableRefObject<(HTMLDivElement | null)[]>) => (
+      <div style={styles.row}>
+          <div style={styles.label}><InlineMath>{label}</InlineMath></div>
+          <div style={styles.vectorGroup}>
+              <div style={styles.vectorScroll}>
+                  <div style={styles.vector}>
+                      <div style={styles.vectorElements}>
+                          {vec.map((val, i) => (
+                              <div
+                                key={i}
+                                ref={refs ? el => refs.current[i] = el : undefined}
+                                style={{
+                                    ...styles.element,
+                                    ...(activeCol === i ? (isResult ? styles.resultHighlight : styles.sourceHighlight) : {}),
+                                    opacity: (isResult && i > lastCalculatedIndex && currentStep > 0) ? 0.3 : 1
+                                }}
+                              >
+                                  {(isResult && i > lastCalculatedIndex && currentStep > 0) ? '?' : formatNumber(val, 2)}
+                              </div>
+                          ))}
+                      </div>
+                      <div style={styles.vectorIndices}>
+                           {vec.map((_, i) => <div key={i} style={styles.indexLabel}>{i}</div>)}
+                      </div>
+                  </div>
+              </div>
           </div>
-        )}))}
       </div>
-    </div>
   );
 
-  const opIsVisible = currentAnimState.type === 'show-op';
-
   return (
-    <div style={styles.container}>
-      <div style={styles.mainArea} ref={containerRef}>
-        <svg style={styles.svg}>
-          <path d={pathA} style={{ ...styles.path, ...(activeCell && (currentAnimState.type === 'highlight' || opIsVisible) ? styles.pathVisible : {}) }} />
-          <path d={pathB} style={{ ...styles.path, ...(activeCell && (currentAnimState.type === 'highlight' || opIsVisible) ? styles.pathVisible : {}) }} />
-        </svg>
-        {renderMatrix(matrixA, labelA, elementsARef, 'source')}
-        <div style={{...styles.opSymbol, opacity: opIsVisible ? 1 : 0.3, transform: opIsVisible ? 'scale(1.2)' : 'scale(1)' }}>{operation}</div>
-        {renderMatrix(matrixB, labelB, elementsBRef, 'source')}
-        <div style={{...styles.opSymbol, opacity: 0.3}}>=</div>
-        {renderMatrix(resultMatrix, labelC, elementsCRef, 'target')}
+    <div style={styles.container} ref={containerRef}>
+      {renderVector(vectorA, labelA, false, elementsARef)}
+      {renderVector(vectorB, labelB, false, elementsBRef)}
+      {opPosition && (
+          <div style={{
+              ...styles.opSymbol,
+              top: opPosition.top,
+              left: opPosition.left,
+              ...(currentAnimState.type === 'show-op' ? styles.opVisible : {})
+          }}>
+              {operation}
+          </div>
+      )}
+      <div style={styles.equalSignRow}>
+          <div style={styles.equalSign}>=</div>
       </div>
-       <div style={styles.controls}>
+      {renderVector(resultVector, labelC, true)}
+
+      <div style={styles.controls}>
         <button onClick={play} style={{ ...styles.button, ...(isPlaying ? styles.playingButton : {}) }}>Play</button>
         <button onClick={pause} style={styles.button}>Pause</button>
         <button onClick={reset} style={styles.button}>Reset</button>
@@ -1168,7 +1278,7 @@ export const ElementWiseOpVisualizer: React.FC<ElementWiseOpVisualizerProps> = (
         max={steps.length - 1}
         value={currentStep}
         onChange={e => setStepManually(parseInt(e.target.value))}
-        style={{width: '80%', cursor: 'pointer', marginTop: '10px'}}
+        style={{width: '80%', cursor: 'pointer', marginTop: '15px'}}
       />
     </div>
   );
@@ -1181,13 +1291,12 @@ export const ElementWiseOpVisualizer: React.FC<ElementWiseOpVisualizerProps> = (
 ================================================================================
 
 // FILE: src/components/visualizers/InteractiveMatMulVisualizer.tsx
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { Vector, MatMulStep, SymbolInfo } from './types';
 import { useAnimationController, formatNumber } from './utils';
 import { InlineMath } from 'react-katex';
 
 interface MatMulVisualizerProps {
-  // Can now accept multiple source vectors for concatenation
   sourceVectorsA: { data: Vector, symbolInfo: SymbolInfo }[];
   sourceVectorB: { data: Vector, symbolInfo: SymbolInfo };
   resultSymbolInfo: SymbolInfo;
@@ -1204,7 +1313,6 @@ export const InteractiveMatMulVisualizer: React.FC<MatMulVisualizerProps> = ({
   const elementsARefs = useRef<(HTMLDivElement | null)[][]>(sourceVectorsA.map(() => []));
   const elementsBRef = useRef<(HTMLDivElement | null)[]>([]);
   const productRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const sumRef = useRef<HTMLDivElement>(null);
 
   const vectorA = useMemo(() => sourceVectorsA.map(v => v.data).flat(), [sourceVectorsA]);
   const vectorB = sourceVectorB.data;
@@ -1224,15 +1332,24 @@ export const InteractiveMatMulVisualizer: React.FC<MatMulVisualizerProps> = ({
     return generatedSteps;
   }, [vectorA, vectorB]);
 
-  const { currentStep, isPlaying, play, pause, reset, setStepManually } = useAnimationController(steps.length, 400);
-
+  const { currentStep, isPlaying, play, pause, reset, setStepManually } = useAnimationController(steps.length, 600);
   const result = useMemo(() => vectorA.reduce((sum, val, i) => sum + val * vectorB[i], 0), [vectorA, vectorB]);
   const currentAnimState: MatMulStep = steps[currentStep] || { type: 'idle', index: -1 };
+  const [sumHistory, setSumHistory] = useState<number[]>([]);
 
-  const handlePrevStep = () => currentStep > -1 && setStepManually(currentStep - 1);
-  const handleNextStep = () => currentStep < steps.length - 1 && setStepManually(currentStep + 1);
+  useEffect(() => {
+      // Recalculate sumHistory based on current step to ensure consistency
+      const newSumHistory: number[] = [];
+      for (let i = 0; i < currentStep; i++) {
+          const step = steps[i];
+          if (step && step.type === 'accumulate') {
+              newSumHistory.push(step.product);
+          }
+      }
+      setSumHistory(newSumHistory);
+  }, [currentStep, steps]);
 
-  // Auto-scroll logic
+
   useEffect(() => {
     if (currentAnimState.type !== 'idle' && currentAnimState.index !== -1) {
       const activeIndex = currentAnimState.index;
@@ -1255,24 +1372,33 @@ export const InteractiveMatMulVisualizer: React.FC<MatMulVisualizerProps> = ({
     container: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '15px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6', width: '100%', boxSizing: 'border-box' },
     row: { display: 'flex', alignItems: 'center', gap: '15px', width: '100%' },
     vectorGroup: { display: 'flex', flexDirection: 'column', gap: '5px', flex: 1, minWidth: 0 },
-    label: { fontWeight: 'bold', color: '#6c757d', display: 'flex', alignItems: 'center', gap: '8px', height: '30px' },
+    label: { fontWeight: 'bold', color: '#6c757d', display: 'flex', alignItems: 'center', gap: '8px', height: '30px', width: '80px', justifyContent: 'flex-end' },
     vectorScroll: { overflowX: 'auto', padding: '5px' },
+    vectorContainer: { display: 'flex', flexDirection: 'column', gap: '2px' },
     vector: { display: 'flex', gap: '5px', width: 'max-content', border: '1px solid #ccc', borderRadius: '4px', padding: '5px', backgroundColor: 'white' },
+    vectorIndices: { display: 'flex', gap: '5px' },
+    indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace', boxSizing: 'border-box' },
     element: { width: '60px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
-    highlight: { transform: 'scale(1.15)', borderColor: '#e63946', backgroundColor: 'rgba(230, 57, 70, 0.1)', fontWeight: 'bold', zIndex: 2 },
-    productRow: { display: 'flex', alignItems: 'center', position: 'relative', height: '50px', width: '100%' },
-    productsContainer: { flex: 1, minWidth: 0, overflowX: 'auto', padding: '5px' },
+    highlight: { transform: 'scale(1.15)', borderColor: '#4a90e2', backgroundColor: 'rgba(74, 144, 226, 0.1)', fontWeight: 'bold', zIndex: 2 },
+    productRow: { display: 'flex', alignItems: 'center', position: 'relative', width: '100%' },
+    productsContainer: { flex: 1, minWidth: 0, overflowX: 'auto', padding: '15px 5px' },
     products: { display: 'flex', gap: '10px', alignItems: 'center', width: 'max-content' },
+    productTermContainer: { display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' },
     productTerm: { display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '5px 8px', border: '1px dashed #adb5bd', borderRadius: '4px', opacity: 0, transition: 'opacity 0.3s ease', whiteSpace: 'nowrap', minWidth: '120px', position: 'relative' },
+    productResult: { fontSize: '0.8em', color: '#28a745', fontWeight: 'bold', opacity: 0, transition: 'opacity 0.3s 0.2s ease', height: '1.2em' },
     opSymbol: { position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)', fontSize: '1.5em', fontWeight: 'bold', color: '#e63946', opacity: 0, transition: 'opacity 0.2s' },
-    plus: { opacity: 0, transition: 'opacity 0.3s ease', fontWeight: 'bold', fontSize: '1.2em' },
-    sumContainer: { display: 'flex', alignItems: 'center', gap: '10px' },
+    plus: { opacity: 0, transition: 'opacity 0.3s ease', fontWeight: 'bold', fontSize: '1.2em', alignSelf: 'flex-start', paddingTop: '8px' },
+    sumContainer: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', backgroundColor: 'white', padding: '10px', borderRadius: '8px', border: '1px solid #dee2e6', flexWrap: 'wrap' },
+    sumLabel: { fontSize: '1.5em', fontWeight: 'bold' },
+    sumEquation: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', flex: 1, minWidth: '200px', fontSize: '1.1em', color: '#333' },
     sumValue: { padding: '8px 15px', fontSize: '1.2em', fontWeight: 'bold', border: '2px solid #28a745', borderRadius: '8px', backgroundColor: 'rgba(40, 167, 69, 0.1)', color: '#155724' },
     visible: { opacity: 1 },
-    controls: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '10px' },
+    controls: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '15px' },
     button: { padding: '8px 16px', fontSize: '1em', cursor: 'pointer', border: '1px solid #6c757d', borderRadius: '4px', backgroundColor: '#fff' },
     playingButton: { backgroundColor: '#6c757d', color: '#fff' },
   };
+
+  const cumulativeSum = sumHistory.reduce((a, b) => a + b, 0);
 
   let currentIndex = 0;
   return (
@@ -1280,15 +1406,20 @@ export const InteractiveMatMulVisualizer: React.FC<MatMulVisualizerProps> = ({
       {sourceVectorsA.map((vec, vecIndex) => {
         const vecContent = (
             <div style={styles.row} key={`a-vec-${vecIndex}`}>
-                <div style={styles.label}><InlineMath>{`${vec.symbolInfo.base}_{${vec.symbolInfo.subscript}}`}</InlineMath></div>
+                <div style={styles.label}><InlineMath>{`${vec.symbolInfo.base}${vec.symbolInfo.subscript ? `_{${vec.symbolInfo.subscript}}` : ''}`}</InlineMath></div>
                 <div style={styles.vectorGroup}>
                     <div style={styles.vectorScroll}>
+                      <div style={styles.vectorContainer}>
                         <div style={styles.vector}>
                             {vec.data.map((val, i) => {
                                 const globalIndex = currentIndex + i;
                                 return <div key={globalIndex} ref={el => elementsARefs.current[vecIndex][i] = el} style={{...styles.element, ...(currentAnimState.index === globalIndex ? styles.highlight : {})}}>{formatNumber(val, 2)}</div>;
                             })}
                         </div>
+                        <div style={styles.vectorIndices}>
+                            {vec.data.map((_, i) => <div key={i} style={styles.indexLabel}>{currentIndex + i}</div>)}
+                        </div>
+                      </div>
                     </div>
                 </div>
                 <div style={{...styles.label, visibility: vecIndex === 0 ? 'visible' : 'hidden' }}><InlineMath math="\odot" /></div>
@@ -1298,32 +1429,47 @@ export const InteractiveMatMulVisualizer: React.FC<MatMulVisualizerProps> = ({
         return vecContent;
       })}
       <div style={styles.row}>
-        <div style={styles.label}><InlineMath>{`${sourceVectorB.symbolInfo.base}_{${sourceVectorB.symbolInfo.subscript}}`}</InlineMath></div>
+        <div style={styles.label}><InlineMath>{`${sourceVectorB.symbolInfo.base}${sourceVectorB.symbolInfo.subscript ? `_{${sourceVectorB.symbolInfo.subscript}}` : ''}`}</InlineMath></div>
         <div style={styles.vectorGroup}>
           <div style={styles.vectorScroll}>
-            <div style={styles.vector}>
-              {vectorB.map((val, i) => (
-                <div key={i} ref={el => elementsBRef.current[i] = el} style={{...styles.element, ...(currentAnimState.index === i ? styles.highlight : {})}}>{formatNumber(val, 2)}</div>
-              ))}
-            </div>
+             <div style={styles.vectorContainer}>
+                <div style={styles.vector}>
+                  {vectorB.map((val, i) => (
+                    <div key={i} ref={el => elementsBRef.current[i] = el} style={{...styles.element, ...(currentAnimState.index === i ? styles.highlight : {})}}>{formatNumber(val, 2)}</div>
+                  ))}
+                </div>
+                <div style={styles.vectorIndices}>
+                    {vectorB.map((_, i) => <div key={i} style={styles.indexLabel}>{i}</div>)}
+                </div>
+              </div>
           </div>
         </div>
         <div style={{...styles.label, visibility: 'hidden' }}><InlineMath math="\odot" /></div>
       </div>
       <div style={styles.row}>
-        <div style={styles.label}><InlineMath>{`${resultSymbolInfo.base}`}</InlineMath></div>
+        <div style={styles.label}><InlineMath>{`${resultSymbolInfo.base}${resultSymbolInfo.subscript ? `_{${resultSymbolInfo.subscript}}` : ''}`}</InlineMath></div>
         <div style={styles.productRow}>
           <div style={styles.productsContainer}>
             <div style={styles.products}>
-              {vectorA.map((_, i) => (
-                <React.Fragment key={`prod-frag-${i}`}>
-                  <div ref={el => productRefs.current[i] = el} style={{ ...styles.productTerm, ...(currentStep >= steps.findIndex(s => s.type === 'multiply' && s.index === i) ? styles.visible : {}) }}>
-                    <div style={{...styles.opSymbol, ...(currentAnimState.type === 'show-op' && currentAnimState.index === i ? styles.visible : {})}}>{operation}</div>
-                    ({formatNumber(vectorA[i], 2)} {operation} {formatNumber(vectorB[i], 2)})
-                  </div>
-                  {i < vectorA.length - 1 && <span style={{...styles.plus, ...(currentStep > steps.findIndex(s => s.type === 'multiply' && s.index === i) ? styles.visible : {})}}>+</span>}
-                </React.Fragment>
-              ))}
+              {vectorA.map((_, i) => {
+                const stepIndexMultiply = steps.findIndex(s => s.type === 'multiply' && s.index === i);
+                const isVisible = currentStep >= stepIndexMultiply;
+                const productStep = steps[stepIndexMultiply] as Extract<MatMulStep, { type: 'multiply' }>;
+                return (
+                    <React.Fragment key={`prod-frag-${i}`}>
+                        <div style={styles.productTermContainer}>
+                            <div ref={el => productRefs.current[i] = el} style={{ ...styles.productTerm, ...(isVisible ? styles.visible : {}) }}>
+                                <div style={{...styles.opSymbol, ...(currentAnimState.type === 'show-op' && currentAnimState.index === i ? styles.visible : {})}}>{operation}</div>
+                                ({formatNumber(vectorA[i], 2)} {operation} {formatNumber(vectorB[i], 2)})
+                            </div>
+                            <div style={{...styles.productResult, ...(isVisible ? styles.visible : {})}}>
+                                {isVisible ? `= ${formatNumber(productStep.product, 3)}` : ''}
+                            </div>
+                        </div>
+                        {i < vectorA.length - 1 && <span style={{...styles.plus, ...(currentStep > stepIndexMultiply ? styles.visible : {})}}>+</span>}
+                    </React.Fragment>
+                );
+               })}
             </div>
           </div>
         </div>
@@ -1331,20 +1477,29 @@ export const InteractiveMatMulVisualizer: React.FC<MatMulVisualizerProps> = ({
       </div>
 
       <div style={styles.sumContainer}>
-        <div style={styles.label}><InlineMath math="\sum =" /></div>
-        <div ref={sumRef} style={styles.sumValue}>
-          {currentAnimState.type === 'accumulate' ? formatNumber(currentAnimState.cumulativeSum ?? 0, 3) : currentAnimState.type === 'finish' ? formatNumber(result, 3) : '?'}
+        <div style={styles.sumLabel}><InlineMath math="\sum =" /></div>
+        <div style={styles.sumEquation}>
+          {sumHistory.length > 0
+            ? <span>
+                {sumHistory.map((p, i) => `(${formatNumber(p, 3)})${i < sumHistory.length - 1 ? ' + ' : ''}`).join('')}
+                {sumHistory.length === vectorA.length ? '' : ` = ${formatNumber(cumulativeSum, 3)}`}
+              </span>
+            : (currentStep === -1 ? '?' : '0')
+          }
+        </div>
+        <div style={styles.sumValue}>
+          {currentAnimState.type === 'accumulate' ? formatNumber(currentAnimState.cumulativeSum ?? 0, 3) : currentAnimState.type === 'finish' ? formatNumber(result, 3) : (currentStep > 0 ? formatNumber(cumulativeSum, 3) : '?')}
         </div>
       </div>
 
       <div style={styles.controls}>
-        <button onClick={handlePrevStep} disabled={currentStep <= 0} style={styles.button}>上一步</button>
+        <button onClick={() => setStepManually(currentStep - 1)} disabled={currentStep <= 0} style={styles.button}>上一步</button>
         <button onClick={play} style={{ ...styles.button, ...(isPlaying ? styles.playingButton : {}) }}>Play</button>
         <button onClick={pause} style={styles.button}>Pause</button>
-        <button onClick={handleNextStep} disabled={currentStep >= steps.length - 1} style={styles.button}>下一步</button>
+        <button onClick={() => setStepManually(currentStep + 1)} disabled={currentStep >= steps.length - 1} style={styles.button}>下一步</button>
         <button onClick={reset} style={styles.button}>Reset</button>
       </div>
-      <input type="range" min={0} max={steps.length - 1} value={currentStep} onChange={e => setStepManually(parseInt(e.target.value))} style={{width: '90%', cursor: 'pointer'}} />
+      <input type="range" min={0} max={steps.length - 1} value={currentStep} onChange={e => setStepManually(parseInt(e.target.value))} style={{width: '90%', cursor: 'pointer', marginTop: '10px'}} />
     </div>
   );
 };
@@ -1356,16 +1511,22 @@ export const InteractiveMatMulVisualizer: React.FC<MatMulVisualizerProps> = ({
 ================================================================================
 
 // FILE: src/components/visualizers/LayerNormVisualizer.tsx
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Vector, LayerNormStep } from './types';
 import { formatNumber, useAnimationController } from './utils';
+import { InlineMath } from 'react-katex';
 
 interface LayerNormVisualizerProps {
   inputVector: Vector;
   epsilon?: number;
+  inputLabel?: string;
+  outputLabel?: string;
 }
 
-export const LayerNormVisualizer: React.FC<LayerNormVisualizerProps> = ({ inputVector, epsilon = 1e-5 }) => {
+export const LayerNormVisualizer: React.FC<LayerNormVisualizerProps> = ({ inputVector, epsilon = 1e-5, inputLabel = "Input", outputLabel = "Output" }) => {
+  const [calculationString, setCalculationString] = useState<string>('');
+  const [meanFormula, setMeanFormula] = useState<string>('');
+  const [varianceFormula, setVarianceFormula] = useState<string>('');
 
   const calculations = useMemo(() => {
     const mean = inputVector.reduce((a, b) => a + b, 0) / inputVector.length;
@@ -1377,11 +1538,25 @@ export const LayerNormVisualizer: React.FC<LayerNormVisualizerProps> = ({ inputV
 
   const steps: LayerNormStep[] = useMemo(() => {
       const generatedSteps: LayerNormStep[] = [{ type: 'start' }];
-      inputVector.forEach((_, i) => generatedSteps.push({ type: 'highlight-for-mean', index: i }));
+      let currentSum = 0;
+      inputVector.forEach((val, i) => {
+          currentSum += val;
+          generatedSteps.push({ type: 'accumulate-mean', index: i, sum: currentSum });
+      });
       generatedSteps.push({ type: 'calculate-mean', value: calculations.mean });
-      inputVector.forEach((_, i) => generatedSteps.push({ type: 'highlight-for-variance', index: i }));
+
+      let currentVarSum = 0;
+      inputVector.forEach((val, i) => {
+          const term = (val - calculations.mean) ** 2;
+          currentVarSum += term;
+          generatedSteps.push({ type: 'accumulate-variance', index: i, sum: currentVarSum });
+      });
       generatedSteps.push({ type: 'calculate-variance', value: calculations.variance });
-      inputVector.forEach((_, i) => generatedSteps.push({ type: 'apply-norm', index: i }));
+
+      inputVector.forEach((_, i) => {
+          generatedSteps.push({ type: 'show-norm-formula', index: i });
+          generatedSteps.push({ type: 'apply-norm', index: i });
+      });
       generatedSteps.push({ type: 'finish' });
       return generatedSteps;
   }, [inputVector, calculations]);
@@ -1389,18 +1564,59 @@ export const LayerNormVisualizer: React.FC<LayerNormVisualizerProps> = ({ inputV
   const { currentStep, isPlaying, play, pause, reset, setStepManually } = useAnimationController(steps.length, 300);
   const currentAnimState = steps[currentStep] || { type: 'idle' };
 
-  // Inline Styles
+  useEffect(() => {
+    let newCalcString = '';
+    const state = currentAnimState;
+    if (state.type === 'accumulate-mean' || state.type === 'calculate-mean') {
+        const history = inputVector.slice(0, (state as any).index + 1);
+        const sumStr = history.map(v => formatNumber(v, 2)).join(' + ');
+        const currentSum = history.reduce((a,b)=>a+b, 0);
+        setMeanFormula(`μ = (${sumStr}) / ${inputVector.length} = ${formatNumber(currentSum / inputVector.length, 4)}`);
+        setVarianceFormula('');
+    } else if (state.type === 'accumulate-variance' || state.type === 'calculate-variance') {
+        const history = inputVector.slice(0, (state as any).index + 1).map(v => (v - calculations.mean) ** 2);
+        const sumStr = history.map(v => formatNumber(v, 2)).join(' + ');
+        const currentSum = history.reduce((a,b)=>a+b, 0);
+        setVarianceFormula(`σ² = (${sumStr}) / ${inputVector.length} = ${formatNumber(currentSum / inputVector.length, 4)}`);
+    }
+
+    if (state.type === 'show-norm-formula' || state.type === 'apply-norm') {
+        const x = inputVector[state.index];
+        const res = calculations.normalized[state.index];
+        newCalcString = `(${formatNumber(x,2)} - ${formatNumber(calculations.mean,2)}) / √(${formatNumber(calculations.variance,2)} + ε) = ${formatNumber(res, 4)}`;
+    } else {
+        newCalcString = '';
+    }
+    setCalculationString(newCalcString);
+  }, [currentAnimState, calculations, inputVector]);
+
+  useEffect(() => {
+      if(currentStep === -1) {
+          setMeanFormula('');
+          setVarianceFormula('');
+      }
+  }, [currentStep]);
+
+
   const styles: { [key: string]: React.CSSProperties } = {
     container: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6' },
     stepContainer: { width: '100%', padding: '15px', border: '1px solid #e9ecef', borderRadius: '8px', backgroundColor: '#fff', textAlign: 'center' },
     title: { margin: '0 0 10px 0', fontSize: '1.2em', fontWeight: 'bold' },
     description: { margin: '0 0 15px 0', color: '#6c757d', minHeight: '40px' },
-    vector: { display: 'flex', justifyContent: 'center', gap: '5px', flexWrap: 'wrap' },
+    calculationBox: { minHeight: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#e9ecef', border: '1px solid #dee2e6', borderRadius: '8px', padding: '8px 15px', fontSize: '1em', transition: 'opacity 0.3s', fontFamily: 'monospace', margin: '5px 0', overflowX: 'auto', whiteSpace: 'nowrap' },
+    vectorSection: { display: 'flex', width: '100%', gap: '15px', alignItems: 'center' },
+    label: { fontWeight: 'bold', color: '#495057', fontSize: '1.2em', width: '100px', textAlign: 'right' },
+    vectorGroup: { flex: 1, minWidth: 0 },
+    vectorScroll: { overflowX: 'auto', padding: '5px' },
+    vectorContainer: { display: 'flex', flexDirection: 'column', gap: '2px' },
+    vector: { display: 'flex', gap: '5px', width: 'max-content' },
+    vectorIndices: { display: 'flex', gap: '5px' },
+    indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace', boxSizing: 'border-box' },
     element: { minWidth: '60px', padding: '5px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
-    highlight: { borderColor: '#17a2b8', backgroundColor: 'rgba(23, 162, 184, 0.1)', transform: 'scale(1.1)' },
+    highlightMean: { borderColor: '#4a90e2', backgroundColor: 'rgba(74, 144, 226, 0.1)', transform: 'scale(1.1)' },
+    highlightVariance: { borderColor: '#f5a623', backgroundColor: 'rgba(245, 166, 35, 0.1)', transform: 'scale(1.1)' },
+    highlightNorm: { borderColor: '#28a745', backgroundColor: 'rgba(40, 167, 69, 0.1)', transform: 'scale(1.1)' },
     connector: { fontSize: '2em', color: '#6c757d', margin: '5px 0', transition: 'opacity 0.3s ease' },
-    scalarContainer: { display: 'flex', gap: '20px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' },
-    scalar: { padding: '8px 15px', fontSize: '1.1em', fontWeight: 'bold', border: '1px solid #ced4da', borderRadius: '8px', backgroundColor: '#e9ecef', transition: 'all 0.3s ease' },
     controls: { display: 'flex', gap: '10px', marginTop: '10px' },
     button: { padding: '8px 16px', fontSize: '1em', cursor: 'pointer', border: '1px solid #6c757d', borderRadius: '4px', backgroundColor: '#fff' },
     playingButton: { backgroundColor: '#6c757d', color: '#fff' },
@@ -1408,42 +1624,53 @@ export const LayerNormVisualizer: React.FC<LayerNormVisualizerProps> = ({ inputV
 
   const descriptions: Record<string, string> = {
     start: '初始输入向量。点击 "Play" 开始计算。',
-    'highlight-for-mean': `首先，计算向量所有元素的平均值。`,
-    'calculate-mean': `平均值为 ${formatNumber(calculations.mean)}。`,
-    'highlight-for-variance': `然后，计算方差 (variance)，衡量数据点的离散程度。`,
-    'calculate-variance': `方差为 ${formatNumber(calculations.variance)}。`,
-    'apply-norm': `最后，使用均值和标准差对每个元素进行归一化。公式: (x - μ) / √(σ² + ε)`,
+    'accumulate-mean': '1. 计算均值(μ): 将所有元素累加求和,然后除以元素数量。',
+    'calculate-mean': `1. 均值(μ)计算完成，值为 ${formatNumber(calculations.mean)}。`,
+    'accumulate-variance': '2. 计算方差(σ²): 将每个元素与均值的差的平方累加,然后求平均。',
+    'calculate-variance': `2. 方差(σ²)计算完成，值为 ${formatNumber(calculations.variance)}。`,
+    'show-norm-formula': '3. 归一化: 使用均值和标准差对每个元素进行归一化。',
+    'apply-norm': '3. 归一化: 使用均值和标准差对每个元素进行归一化。',
     finish: '计算完成！输出向量的均值接近0，方差接近1。',
+    idle: '准备开始LayerNorm计算。',
   };
 
   const getActiveDescription = () => {
-      if (currentAnimState.type in descriptions) return descriptions[currentAnimState.type];
-      return descriptions['start'];
-  }
+    const key = currentAnimState.type as keyof typeof descriptions;
+    return descriptions[key] || descriptions['start'];
+  };
 
   const isMeanCalculated = currentStep >= steps.findIndex(s => s.type === 'calculate-mean');
   const isVarianceCalculated = currentStep >= steps.findIndex(s => s.type === 'calculate-variance');
 
-  const renderVector = (vec: Vector, isOutput: boolean = false) => (
-    <div style={styles.vector}>
-      {vec.map((val, i) => {
-        let isHighlighted = false;
-        // [FIXED] Type-safe access to 'index' property
-        if ((currentAnimState.type === 'highlight-for-mean' || currentAnimState.type === 'highlight-for-variance') && currentAnimState.index === i) {
-            isHighlighted = true;
-        }
-        if (currentAnimState.type === 'apply-norm' && currentAnimState.index === i && isOutput) {
-            isHighlighted = true;
-        }
+  const renderVector = (vec: Vector, label: string, isOutput: boolean = false) => (
+    <div style={styles.vectorSection}>
+      <div style={styles.label}><InlineMath>{label}</InlineMath></div>
+      <div style={styles.vectorGroup}>
+        <div style={styles.vectorScroll}>
+          <div style={styles.vectorContainer}>
+            <div style={styles.vector}>
+              {vec.map((val, i) => {
+                let highlightStyle = {};
+                if ((currentAnimState.type === 'accumulate-mean') && currentAnimState.index === i) highlightStyle = styles.highlightMean;
+                if ((currentAnimState.type === 'accumulate-variance') && currentAnimState.index === i) highlightStyle = styles.highlightVariance;
+                if ((currentAnimState.type === 'apply-norm' || currentAnimState.type === 'show-norm-formula') && currentAnimState.index === i && !isOutput) highlightStyle = styles.highlightMean;
+                if ((currentAnimState.type === 'apply-norm' || currentAnimState.type === 'show-norm-formula') && currentAnimState.index === i && isOutput) highlightStyle = styles.highlightNorm;
 
-        const isVisible = !isOutput || currentStep >= steps.findIndex(s => s.type === 'apply-norm' && s.index === i);
+                const isVisible = !isOutput || currentStep >= steps.findIndex(s => s.type === 'apply-norm' && s.index === i);
 
-        return (
-          <div key={i} style={{ ...styles.element, ...(isHighlighted ? styles.highlight : {}), opacity: isVisible ? 1 : 0.3 }}>
-            {isVisible ? formatNumber(val) : '?'}
+                return (
+                  <div key={i} style={{ ...styles.element, ...highlightStyle, opacity: isVisible ? 1 : 0.3 }}>
+                    {isVisible ? formatNumber(val) : '?'}
+                  </div>
+                );
+              })}
+            </div>
+            <div style={styles.vectorIndices}>
+              {vec.map((_, i) => <div key={i} style={styles.indexLabel}>{i}</div>)}
+            </div>
           </div>
-        )
-      })}
+        </div>
+      </div>
     </div>
   );
 
@@ -1453,21 +1680,14 @@ export const LayerNormVisualizer: React.FC<LayerNormVisualizerProps> = ({ inputV
         <h3 style={styles.title}>LayerNorm(x)</h3>
         <p style={styles.description}>{getActiveDescription()}</p>
 
-        {renderVector(inputVector)}
+        {renderVector(inputVector, inputLabel)}
 
-        <div style={{...styles.connector, opacity: isMeanCalculated ? 1 : 0.2 }}>↓</div>
-
-        <div style={styles.scalarContainer}>
-          <div style={{ ...styles.scalar, ...(currentAnimState.type === 'calculate-mean' ? styles.highlight : {}), opacity: isMeanCalculated ? 1 : 0.2 }}>
-            μ = {isMeanCalculated ? formatNumber(calculations.mean) : '?'}
-          </div>
-          <div style={{ ...styles.scalar, ...(currentAnimState.type === 'calculate-variance' ? styles.highlight : {}), opacity: isVarianceCalculated ? 1 : 0.2 }}>
-            σ² = {isVarianceCalculated ? formatNumber(calculations.variance) : '?'}
-          </div>
-        </div>
-
+        <div style={{...styles.connector, opacity: currentStep > 0 ? 1 : 0.2 }}>↓</div>
+        <div style={{...styles.calculationBox, opacity: meanFormula ? 1 : 0, borderColor: isMeanCalculated ? '#28a745' : '#dee2e6'}}>{meanFormula || 'μ = ?'}</div>
+        <div style={{...styles.calculationBox, opacity: isMeanCalculated ? 1 : 0, borderColor: isVarianceCalculated ? '#28a745' : '#dee2e6'}}>{varianceFormula || 'σ² = ?'}</div>
+        <div style={{...styles.calculationBox, opacity: calculationString ? 1 : 0}}>{calculationString || '...'}</div>
         <div style={{...styles.connector, opacity: isVarianceCalculated ? 1 : 0.2 }}>↓</div>
-        {renderVector(calculations.normalized, true)}
+        {renderVector(calculations.normalized, outputLabel, true)}
       </div>
       <div style={styles.controls}>
         <button onClick={play} style={{ ...styles.button, ...(isPlaying ? styles.playingButton : {}) }}>Play</button>
@@ -1550,11 +1770,12 @@ export const RMSNormVisualizer: React.FC<RMSNormVisualizerProps> = ({ inputVecto
     'calculate-rms': `然后，计算均方根 (Root Mean Square)。公式: √ (Σ(x²) / n + ε)`,
     normalize: `最后，将每个原始元素除以 RMS 值进行归一化。公式: x / RMS(x)`,
     finish: '计算完成！(注意：这里省略了可学习的 gamma 缩放步骤)',
+    idle: '准备开始RMSNorm计算。',
   };
 
   const getActiveDescription = () => {
-    if (currentAnimState.type in descriptions) return descriptions[currentAnimState.type];
-    return descriptions['start'];
+    const key = currentAnimState.type as keyof typeof descriptions;
+    return descriptions[key] || descriptions['start'];
   }
 
   const isSumCalculated = currentStep >= steps.findIndex(s => s.type === 'sum-squares');
@@ -1632,6 +1853,7 @@ export const RMSNormVisualizer: React.FC<RMSNormVisualizerProps> = ({ inputVecto
 import React, { useMemo } from 'react';
 import { Vector, SoftmaxStep } from './types';
 import { formatNumber, useAnimationController } from './utils';
+import { InlineMath } from 'react-katex';
 
 interface SoftmaxVisualizerProps {
   inputVector: Vector;
@@ -1639,14 +1861,15 @@ interface SoftmaxVisualizerProps {
   outputLabel?: string;
 }
 
-export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVector, inputLabel = "Logits", outputLabel = "Probabilities" }) => {
+export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVector, inputLabel = "L", outputLabel = "P" }) => {
 
   const calculations = useMemo(() => {
-    const maxVal = Math.max(...inputVector);
+    const finiteInputs = inputVector.filter(isFinite);
+    const maxVal = finiteInputs.length > 0 ? Math.max(...finiteInputs) : 0;
     const shifted = inputVector.map(v => v - maxVal);
-    const exps = shifted.map(v => Math.exp(v));
+    const exps = shifted.map(v => isFinite(v) ? Math.exp(v) : 0);
     const sumExps = exps.reduce((a, b) => a + b, 0);
-    const result = exps.map(v => v / sumExps);
+    const result = sumExps > 0 ? exps.map(v => v / sumExps) : exps.map(()=> 1 / exps.length);
     return { maxVal, shifted, exps, sumExps, result };
   }, [inputVector]);
 
@@ -1664,15 +1887,21 @@ export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVecto
   const { currentStep, isPlaying, play, pause, reset, setStepManually } = useAnimationController(steps.length, 300);
   const currentAnimState = steps[currentStep] || { type: 'idle' };
 
-  // Inline Styles
   const styles: { [key: string]: React.CSSProperties } = {
     container: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6' },
     stepContainer: { width: '100%', padding: '15px', border: '1px solid #e9ecef', borderRadius: '8px', backgroundColor: '#fff', textAlign: 'center' },
     title: { margin: '0 0 10px 0', fontSize: '1.2em', fontWeight: 'bold' },
     description: { margin: '0 0 15px 0', color: '#6c757d', minHeight: '40px', fontSize: '0.9em' },
-    vector: { display: 'flex', justifyContent: 'center', gap: '5px', flexWrap: 'wrap' },
+    vectorSection: { display: 'flex', width: '100%', gap: '15px', alignItems: 'center' },
+    label: { fontWeight: 'bold', color: '#495057', fontSize: '1.2em', width: '100px', textAlign: 'right' },
+    vectorGroup: { flex: 1, minWidth: 0 },
+    vectorScroll: { overflowX: 'auto', padding: '5px' },
+    vectorContainer: { display: 'flex', flexDirection: 'column', gap: '2px' },
+    vector: { display: 'flex', gap: '5px', width: 'max-content' },
+    vectorIndices: { display: 'flex', gap: '5px' },
+    indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace', boxSizing: 'border-box' },
     element: { minWidth: '60px', padding: '5px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
-    highlight: { borderColor: '#e63946', backgroundColor: 'rgba(230, 57, 70, 0.1)', transform: 'scale(1.1)' },
+    highlight: { borderColor: '#4a90e2', backgroundColor: 'rgba(74, 144, 226, 0.1)', transform: 'scale(1.1)' },
     connector: { fontSize: '1.5em', color: '#6c757d', margin: '5px 0', transition: 'opacity 0.3s ease' },
     scalar: { padding: '8px 15px', fontSize: '1.1em', fontWeight: 'bold', border: '1px solid #ced4da', borderRadius: '8px', backgroundColor: '#e9ecef', transition: 'all 0.3s ease' },
     controls: { display: 'flex', gap: '10px', marginTop: '10px' },
@@ -1681,18 +1910,19 @@ export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVecto
   };
 
   const descriptions: Record<string, string> = {
-    start: `初始输入向量 (${inputLabel})。点击 "Play" 开始计算。`,
-    'highlight-max': `为了数值稳定性，首先找到最大值 (${formatNumber(calculations.maxVal, 2)})。`,
-    'subtract-max': `从每个元素中减去最大值。`,
-    exponentiate: '对每个新元素应用指数函数 e^x。',
-    'sum-exps': `将所有指数结果相加，得到归一化因子。`,
-    normalize: `将每个指数结果除以总和，得到最终的概率分布 (${outputLabel})。`,
-    finish: '计算完成！这是一个有效的概率分布，所有元素之和为1。',
+    start: `初始输入向量 (Logits / ${inputLabel})。点击 "Play" 开始计算。`,
+    'highlight-max': `1. 为保证数值稳定性, 计算最大值: max(${inputLabel}) = ${formatNumber(calculations.maxVal, 2)}。`,
+    'subtract-max': `2. 从每个元素中减去最大值, 得到 L'。这可以防止计算指数时溢出。`,
+    exponentiate: `3. 对 L' 中每个元素应用指数函数 e^x, 得到 E。`,
+    'sum-exps': `4. 将 E 中所有元素相加, 得到归一化因子 ΣE = ${formatNumber(calculations.sumExps, 4)}。`,
+    normalize: `5. 将 E 中每个元素除以总和 ΣE, 得到最终的概率分布 ${outputLabel}。`,
+    finish: '计算完成！这是一个有效的概率分布, 所有元素之和为1。',
+    idle: '准备开始Softmax计算。',
   };
 
   const getActiveDescription = () => {
-    if (currentAnimState.type in descriptions) return descriptions[currentAnimState.type];
-    return descriptions['start'];
+    const key = currentAnimState.type as keyof typeof descriptions;
+    return descriptions[key] || descriptions['start'];
   }
 
   const isShiftedVisible = (index: number) => currentStep >= steps.findIndex(s => s.type === 'subtract-max' && s.index === index);
@@ -1700,25 +1930,37 @@ export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVecto
   const isSumVisible = currentStep >= steps.findIndex(s => s.type === 'sum-exps');
   const isResultVisible = (index: number) => currentStep >= steps.findIndex(s => s.type === 'normalize' && s.index === index);
 
-  const renderVector = (vec: Vector, type: 'input' | 'shifted' | 'exp' | 'result') => (
-    <div style={styles.vector}>
-      {vec.map((val, i) => {
-        let isHighlighted = false;
-        let isVisible = true;
-        if (currentAnimState.type === 'subtract-max' && currentAnimState.index === i && (type === 'input' || type === 'shifted')) isHighlighted = true;
-        if (currentAnimState.type === 'exponentiate' && currentAnimState.index === i && (type === 'shifted' || type === 'exp')) isHighlighted = true;
-        if (currentAnimState.type === 'normalize' && currentAnimState.index === i && (type === 'exp' || type === 'result')) isHighlighted = true;
+  const renderVector = (vec: Vector, label: string | React.ReactNode, type: 'input' | 'shifted' | 'exp' | 'result') => (
+    <div style={styles.vectorSection}>
+        <div style={styles.label}>{typeof label === 'string' ? <InlineMath>{label}</InlineMath> : label}</div>
+        <div style={styles.vectorGroup}>
+            <div style={styles.vectorScroll}>
+                <div style={styles.vectorContainer}>
+                    <div style={styles.vector}>
+                        {vec.map((val, i) => {
+                            let isHighlighted = false;
+                            let isVisible = true;
+                            if (currentAnimState.type === 'subtract-max' && currentAnimState.index === i && (type === 'input' || type === 'shifted')) isHighlighted = true;
+                            if (currentAnimState.type === 'exponentiate' && currentAnimState.index === i && (type === 'shifted' || type === 'exp')) isHighlighted = true;
+                            if (currentAnimState.type === 'normalize' && currentAnimState.index === i && (type === 'exp' || type === 'result')) isHighlighted = true;
 
-        if (type === 'shifted') isVisible = isShiftedVisible(i);
-        if (type === 'exp') isVisible = isExpVisible(i);
-        if (type === 'result') isVisible = isResultVisible(i);
+                            if (type === 'shifted') isVisible = isShiftedVisible(i);
+                            if (type === 'exp') isVisible = isExpVisible(i);
+                            if (type === 'result') isVisible = isResultVisible(i);
 
-        return (
-          <div key={`${type}-${i}`} style={{ ...styles.element, ...(isHighlighted ? styles.highlight : {}), opacity: isVisible ? 1 : 0.3 }}>
-            {isVisible ? formatNumber(val) : '?'}
-          </div>
-        );
-      })}
+                            return (
+                                <div key={`${type}-${i}`} style={{ ...styles.element, ...(isHighlighted ? styles.highlight : {}), opacity: isVisible ? 1 : 0.3 }}>
+                                    {isVisible ? formatNumber(val, 2) : '?'}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div style={styles.vectorIndices}>
+                        {vec.map((_, i) => <div key={i} style={styles.indexLabel}>{i}</div>)}
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
   );
 
@@ -1728,17 +1970,17 @@ export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVecto
         <h3 style={styles.title}>Softmax(x)</h3>
         <p style={styles.description}>{getActiveDescription()}</p>
 
-        {renderVector(inputVector, 'input')}
-        <div style={{...styles.connector, opacity: currentStep >= 1 ? 1 : 0.2 }}>↓ - max({formatNumber(calculations.maxVal, 2)})</div>
-        {renderVector(calculations.shifted, 'shifted')}
-        <div style={{...styles.connector, opacity: isShiftedVisible(inputVector.length - 1) ? 1 : 0.2 }}>↓ e^x</div>
-        {renderVector(calculations.exps, 'exp')}
-        <div style={{...styles.connector, opacity: isExpVisible(inputVector.length - 1) ? 1 : 0.2 }}>↓ Σ</div>
+        {renderVector(inputVector, inputLabel, 'input')}
+        <div style={{...styles.connector, opacity: currentStep >= 1 ? 1 : 0.2 }}>↓ <InlineMath>{"- max(" + inputLabel + ") = -" + formatNumber(calculations.maxVal, 2)}</InlineMath></div>
+        {renderVector(calculations.shifted, "L' = " + inputLabel + " - max(" + inputLabel + ")", 'shifted')}
+        <div style={{...styles.connector, opacity: isShiftedVisible(inputVector.length - 1) ? 1 : 0.2 }}>↓ <InlineMath>e^x</InlineMath></div>
+        {renderVector(calculations.exps, "E = e^{L'}", 'exp')}
+        <div style={{...styles.connector, opacity: isExpVisible(inputVector.length - 1) ? 1 : 0.2 }}>↓ <InlineMath>\\sum</InlineMath></div>
         <div style={{...styles.scalar, ...(currentAnimState.type === 'sum-exps' ? styles.highlight : {}), opacity: isSumVisible ? 1 : 0.2 }}>
-            {isSumVisible ? formatNumber(calculations.sumExps) : '?'}
+           <InlineMath>{"\\sum E ="}</InlineMath> {isSumVisible ? formatNumber(calculations.sumExps, 4) : '?'}
         </div>
         <div style={{...styles.connector, opacity: isSumVisible ? 1 : 0.2 }}>↓ Normalize</div>
-        {renderVector(calculations.result, 'result')}
+        {renderVector(calculations.result, "P = E / \\sum E", 'result')}
       </div>
       <div style={styles.controls}>
         <button onClick={play} style={{ ...styles.button, ...(isPlaying ? styles.playingButton : {}) }}>Play</button>
@@ -1854,6 +2096,124 @@ export const SwiGLUVisualizer: React.FC<SwiGLUVisualizerProps> = ({ inputVector,
 
 
 ================================================================================
+### 文件路径: src/components/visualizers/WxPlusBVisualizer.tsx
+================================================================================
+
+// FILE: src/components/visualizers/WxPlusBVisualizer.tsx
+import React, { useMemo } from 'react';
+import { Vector, SymbolInfo, WxPlusBStep, MatMulStep } from './types';
+import { useAnimationController, formatNumber } from './utils';
+import { InlineMath } from 'react-katex';
+import { InteractiveMatMulVisualizer } from './InteractiveMatMulVisualizer';
+
+interface WxPlusBVisualizerProps {
+  sourceVectorsA: { data: Vector, symbolInfo: SymbolInfo }[];
+  sourceVectorB: { data: Vector, symbolInfo: SymbolInfo };
+  biasVector: { data: Vector, symbolInfo: SymbolInfo };
+  resultSymbolInfo: SymbolInfo;
+}
+
+export const WxPlusBVisualizer: React.FC<WxPlusBVisualizerProps> = ({
+  sourceVectorsA,
+  sourceVectorB,
+  biasVector,
+  resultSymbolInfo,
+}) => {
+  const vectorA = useMemo(() => sourceVectorsA.map(v => v.data).flat(), [sourceVectorsA]);
+  const vectorB = sourceVectorB.data;
+  const bias = biasVector.data[0];
+
+  const matmulResult = useMemo(() => vectorA.reduce((sum, val, i) => sum + val * vectorB[i], 0), [vectorA, vectorB]);
+  const finalResult = matmulResult + bias;
+
+  const matmulStepsCount = 1 + (vectorA.length * 4) + 1;
+
+  const combinedSteps: WxPlusBStep[] = useMemo(() => {
+    const generatedSteps: any[] = [];
+    // Matmul phase
+    for (let i = 1; i < matmulStepsCount; i++) {
+        generatedSteps.push({ type: 'matmul-step', step: i });
+    }
+    // Bias phase
+    generatedSteps.push({ type: 'finish-matmul', matmulResult });
+    generatedSteps.push({ type: 'highlight-bias' });
+    generatedSteps.push({ type: 'add-bias', finalResult });
+    generatedSteps.push({ type: 'finish-add' });
+    return generatedSteps;
+  }, [matmulStepsCount, matmulResult, finalResult]);
+
+  const { currentStep, isPlaying, play, pause, reset, setStepManually } = useAnimationController(combinedSteps.length, 300);
+  const currentAnimState = combinedSteps[currentStep] || { type: 'idle' };
+
+  const isMatmulFinished = currentStep >= combinedSteps.findIndex(s => s.type === 'finish-matmul');
+
+  // --- Inline Styles ---
+  const styles: { [key: string]: React.CSSProperties } = {
+    container: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '15px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6', width: '100%', boxSizing: 'border-box' },
+    phaseTitle: { fontSize: '1.2em', fontWeight: 'bold', color: '#343a40', marginTop: '10px', marginBottom: '5px', paddingBottom: '5px', borderBottom: '2px solid #e9ecef', width: '100%', textAlign: 'center' },
+    matmulSection: { width: '100%', border: '1px dashed #ced4da', borderRadius: '8px', padding: '10px', backgroundColor: '#fff' },
+    biasAddSection: { width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', marginTop: '15px', transition: 'opacity 0.3s ease' },
+    biasRow: { display: 'flex', alignItems: 'center', gap: '20px', fontSize: '1.5em', fontWeight: 'bold' },
+    biasElement: { padding: '10px 20px', borderRadius: '8px', border: '1px solid #ced4da', backgroundColor: '#fff', fontFamily: 'monospace', transition: 'all 0.3s ease' },
+    highlightSource: { borderColor: '#4a90e2', backgroundColor: 'rgba(74, 144, 226, 0.1)', transform: 'scale(1.1)' },
+    highlightResult: { borderColor: '#28a745', backgroundColor: 'rgba(40, 167, 69, 0.1)', transform: 'scale(1.1)' },
+    controls: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '15px', width: '100%' },
+    button: { padding: '8px 16px', fontSize: '1em', cursor: 'pointer', border: '1px solid #6c757d', borderRadius: '4px', backgroundColor: '#fff' },
+    playingButton: { backgroundColor: '#6c757d', color: '#fff' },
+  };
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.phaseTitle}>Phase 1: Dot Product (W·x)</div>
+      <div style={styles.matmulSection}>
+          <InteractiveMatMulVisualizer
+              sourceVectorsA={sourceVectorsA}
+              sourceVectorB={sourceVectorB}
+              resultSymbolInfo={{ base: 'W·x' }}
+          />
+      </div>
+
+      <div style={{...styles.phaseTitle, opacity: isMatmulFinished ? 1 : 0.3, marginTop: '20px' }}>
+        Phase 2: Add Bias (+b)
+      </div>
+      <div style={{...styles.biasAddSection, opacity: isMatmulFinished ? 1 : 0.3 }}>
+        <div style={styles.biasRow}>
+            <div style={{...styles.biasElement, ...(currentAnimState.type === 'highlight-bias' ? styles.highlightSource : {})}}>
+                {formatNumber(matmulResult, 4)}
+            </div>
+            <span>+</span>
+            <div style={{...styles.biasElement, ...(currentAnimState.type === 'highlight-bias' ? styles.highlightSource : {})}}>
+                {formatNumber(bias, 4)}
+            </div>
+            <span>=</span>
+            <div style={{...styles.biasElement, ...(currentAnimState.type === 'add-bias' || currentAnimState.type === 'finish-add' ? styles.highlightResult : {})}}>
+                {currentAnimState.type === 'add-bias' || currentAnimState.type === 'finish-add' ? formatNumber(finalResult, 4) : '?'}
+            </div>
+        </div>
+      </div>
+
+      <div style={styles.controls}>
+        <button onClick={() => setStepManually(currentStep - 1)} disabled={currentStep <= 0} style={styles.button}>上一步</button>
+        <button onClick={play} style={{...styles.button, ...(isPlaying ? styles.playingButton : {})}}>Play</button>
+        <button onClick={pause} style={styles.button}>Pause</button>
+        <button onClick={() => setStepManually(currentStep + 1)} disabled={currentStep >= combinedSteps.length - 1} style={styles.button}>下一步</button>
+        <button onClick={reset} style={styles.button}>Reset</button>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={combinedSteps.length - 1}
+        value={currentStep}
+        onChange={e => setStepManually(parseInt(e.target.value))}
+        style={{width: '90%', cursor: 'pointer', marginTop: '10px'}}
+      />
+    </div>
+  );
+};
+// END OF FILE: src/components/visualizers/WxPlusBVisualizer.tsx
+
+
+================================================================================
 ### 文件路径: src/components/visualizers/types.ts
 ================================================================================
 
@@ -1866,29 +2226,24 @@ export const SwiGLUVisualizer: React.FC<SwiGLUVisualizerProps> = ({ inputVector,
 export type Vector = number[];
 export type Matrix = number[][];
 
-// 动画步骤的状态，用于控制分步可视化
 export type AnimationStatus = 'idle' | 'running' | 'paused' | 'finished';
 
-// 点积动画的详细步骤
 export type MatMulStep =
   | { type: 'start' | 'finish' | 'idle', index: -1, cumulativeSum?: number }
   | { type: 'highlight-pair' | 'show-op', index: number }
   | { type: 'multiply', index: number, product: number }
   | { type: 'accumulate', index: number, product: number, cumulativeSum: number };
 
-// [NEW] Element-wise operation animation steps
 export type ElementWiseOpStep =
   | { type: 'idle' | 'start' | 'finish' }
   | { type: 'highlight', row: number, col: number }
   | { type: 'show-op', row: number, col: number }
   | { type: 'calculate', row: number, col: number };
 
-// [NEW] Activation function animation steps
 export type ActivationStep =
   | { type: 'idle' | 'start' | 'finish' }
   | { type: 'process', index: number };
 
-// [NEW] Softmax animation steps
 export type SoftmaxStep =
   | { type: 'idle' | 'start' | 'finish' }
   | { type: 'highlight-max', value: number }
@@ -1897,16 +2252,17 @@ export type SoftmaxStep =
   | { type: 'sum-exps', value: number }
   | { type: 'normalize', index: number };
 
-// [NEW] LayerNorm animation steps
 export type LayerNormStep =
   | { type: 'idle' | 'start' | 'finish' }
   | { type: 'highlight-for-mean', index: number }
+  | { type: 'accumulate-mean', index: number, sum: number }
   | { type: 'calculate-mean', value: number }
   | { type: 'highlight-for-variance', index: number }
+  | { type: 'accumulate-variance', index: number, sum: number }
   | { type: 'calculate-variance', value: number }
+  | { type: 'show-norm-formula', index: number }
   | { type: 'apply-norm', index: number };
 
-// [NEW] RMSNorm animation steps
 export type RMSNormStep =
   | { type: 'idle' | 'start' | 'finish' }
   | { type: 'square', index: number }
@@ -1914,8 +2270,16 @@ export type RMSNormStep =
   | { type: 'calculate-rms', value: number }
   | { type: 'normalize', index: number };
 
+// [NEW] Combined Wx+b animation steps
+export type WxPlusBStep =
+  | { type: 'idle' }
+  | { type: 'start-matmul' }
+  | { type: 'matmul-step', step: number } // Corresponds to the inner matmul step
+  | { type: 'finish-matmul', matmulResult: number }
+  | { type: 'highlight-bias' }
+  | { type: 'add-bias', finalResult: number }
+  | { type: 'finish-add' };
 
-// Softmax/LayerNorm/RMSNorm 动画的步骤名称 (DEPRECATED FOR ANIMATED VISUALIZERS, kept for compatibility if needed)
 export type ProcessingStep =
   | 'start'
   | 'subtract-max'
@@ -1925,21 +2289,18 @@ export type ProcessingStep =
   | 'calculate-mean'
   | 'calculate-variance'
   | 'apply-norm'
-  | 'calculate-squared-sum' // For RMSNorm
-  | 'calculate-rms'         // For RMSNorm
-  | 'apply-rms-norm'      // For RMSNorm
+  | 'calculate-squared-sum'
+  | 'calculate-rms'
+  | 'apply-rms-norm'
   | 'done';
 
-// 支持的激活函数类型
 export type ActivationFunctionType = 'relu' | 'gelu' | 'silu';
 
-// [NEW] For InteractiveMatMulVisualizer
 export interface CalculationComponent {
     a: number;
     b: number;
 }
 
-// [NEW] Generic Symbol Information for tooltips
 export interface SymbolInfo {
     base: string;
     superscript?: string;
@@ -1954,7 +2315,7 @@ export interface SymbolInfo {
 
 // FILE: src/components/visualizers/utils.ts
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * 格式化数字以便显示
@@ -1980,27 +2341,44 @@ export const formatNumber = (num: number, precision: number = 3): string => {
 export const useAnimationController = (totalSteps: number, delay: number = 500) => {
     const [step, setStep] = useState<number>(-1); // -1表示未开始
     const [isPlaying, setIsPlaying] = useState<boolean>(false);
+    const intervalRef = useRef<number | null>(null);
+
+    const stopInterval = useCallback(() => {
+        if (intervalRef.current !== null) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+    }, []);
 
     useEffect(() => {
-        if (!isPlaying || step >= totalSteps - 1) {
+        if (isPlaying) {
             if (step >= totalSteps - 1) {
                 setIsPlaying(false);
+                stopInterval();
+                return;
             }
-            return;
+            intervalRef.current = window.setInterval(() => {
+                setStep(prev => {
+                    if (prev >= totalSteps - 1) {
+                        stopInterval();
+                        setIsPlaying(false);
+                        return prev;
+                    }
+                    return prev + 1;
+                });
+            }, delay);
+        } else {
+            stopInterval();
         }
 
-        const timer = setTimeout(() => {
-            setStep(prev => prev + 1);
-        }, delay);
-
-        return () => clearTimeout(timer);
-    }, [isPlaying, step, totalSteps, delay]);
+        return () => stopInterval();
+    }, [isPlaying, step, totalSteps, delay, stopInterval]);
 
     const play = useCallback(() => {
         if (step >= totalSteps - 1) {
-            setStep(0); // 如果已完成，则从头播放
+            setStep(0);
         } else if (step === -1) {
-            setStep(0); // 首次播放
+            setStep(0);
         }
         setIsPlaying(true);
     }, [step, totalSteps]);
@@ -2015,7 +2393,7 @@ export const useAnimationController = (totalSteps: number, delay: number = 500) 
     }, []);
 
     const setStepManually = useCallback((newStep: number) => {
-        setIsPlaying(false);
+        setIsPlaying(false); // Stop playback when user interacts with slider
         if (newStep >= -1 && newStep < totalSteps) {
             setStep(newStep);
         }
@@ -2797,13 +3175,13 @@ export {};
    ensuring it is fully self-contained. Many styles are adapted from the
    transformer-explorer topic to maintain visual consistency. */
 
-/* [ADDED] Layout styles for independent scrolling columns */
 .main-layout {
   display: flex;
   height: 100%;
   overflow: hidden;
   position: relative;
 }
+
 .column {
   height: 100%;
   overflow-y: auto;
@@ -2858,7 +3236,6 @@ export {};
     gap: 20px;
 }
 
-/* [NEW] Styles for explanation subsections */
 .explanation-subsection {
     width: 100%;
     margin-bottom: 20px;
@@ -2895,9 +3272,9 @@ export {};
     border-radius: 8px;
     padding: 15px;
     background-color: rgba(0,0,0,0.015);
-    display: flex; /* [ADDED] For centering single matrices */
-    flex-direction: column; /* [ADDED] */
-    align-items: center; /* [ADDED] */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .step-title {
@@ -2937,21 +3314,16 @@ export {};
     opacity: 0.3;
 }
 
-/* [REWRITTEN] Robust side-label logic using CSS context */
-
-/* Default state: bottom label */
 .matrix-wrapper .matrix-label-side { display: none; }
 .matrix-wrapper .matrix-label,
 .matrix-wrapper .matrix-label-container {
     display: flex;
 }
 
-/* Symbolic matrix needs a separate rule for its bottom label */
 .matrix-wrapper > .matrix-label {
     margin-top: 8px;
 }
 
-/* Side-label state: triggered by prop OR parent class */
 .matrix-wrapper.side-label,
 .viz-row.vertical .matrix-wrapper,
 .explanation-row.vertical .matrix-wrapper,
@@ -2965,22 +3337,21 @@ export {};
 .viz-row.vertical .matrix-wrapper .matrix-label-side,
 .explanation-row.vertical .matrix-wrapper .matrix-label-side,
 .explanation-row > .matrix-wrapper:only-child .matrix-label-side {
-    display: flex; /* Show side label */
+    display: flex;
 }
 
 .matrix-wrapper.side-label .matrix-label-container,
 .viz-row.vertical .matrix-wrapper .matrix-label-container,
 .explanation-row.vertical .matrix-wrapper .matrix-label-container,
-.matrix-wrapper.side-label > .matrix-label, /* Target symbolic matrix bottom label */
+.matrix-wrapper.side-label > .matrix-label,
 .viz-row.vertical .matrix-wrapper > .matrix-label,
 .explanation-row.vertical .matrix-wrapper > .matrix-label,
 .explanation-row > .matrix-wrapper:only-child .matrix-label-container,
 .explanation-row > .matrix-wrapper:only-child > .matrix-label {
-    display: none; /* Hide bottom label */
+    display: none;
 }
 
 
-/* [NEW] Styles for Elementwise Operation Visualization */
 .elementwise-op-container {
     width: 100%;
     padding: 10px;
@@ -2999,7 +3370,6 @@ export {};
     font-size: 1.1em;
 }
 
-/* [REWRITTEN] Styles for Interactive ElementwiseCalculation */
 .elementwise-calc-container {
     display: flex;
     flex-direction: column;
@@ -3035,7 +3405,7 @@ export {};
     border-radius: 4px;
     background: #fff;
     align-items: center;
-    flex-wrap: wrap; /* Allow wrapping for small screens */
+    flex-wrap: wrap;
     justify-content: center;
 }
 .elementwise-op-element {
@@ -3096,7 +3466,6 @@ export {};
     cursor: not-allowed;
 }
 
-/* [NEW] Styles for Calculation Tooltip - specific to this topic */
 .tooltip-matmul-container {
     display: flex;
     align-items: center;
@@ -3105,7 +3474,6 @@ export {};
     justify-content: center;
 }
 
-/* [NEW] Styles for Summary Table */
 .summary-table {
     width: 100%;
     border-collapse: collapse;
@@ -3135,11 +3503,10 @@ export {};
     min-width: 120px;
 }
 
-/* [ADDED & MODERNIZED] Styles for Controls panel in this topic */
 .controls-container {
     display: flex;
     flex-direction: column;
-    gap: 18px; /* More vertical space */
+    gap: 18px;
     padding: 20px;
     flex-grow: 1;
     overflow-y: auto;
@@ -3147,27 +3514,26 @@ export {};
 
 .control-group {
     display: flex;
-    justify-content: space-between; /* Label on left, input on right */
+    justify-content: space-between;
     align-items: center;
     width: 100%;
 }
 
 .control-group label {
     font-size: 0.95em;
-    color: #495057; /* Darker, more professional gray */
-    font-weight: 500; /* Medium weight */
+    color: #495057;
+    font-weight: 500;
     flex-shrink: 0;
-    padding-right: 15px; /* Space between label and input */
+    padding-right: 15px;
     text-align: left;
 }
 
-/* Common styles for number inputs and the d_model display */
 .control-group input[type="number"],
 .control-group .d_k-value {
-    width: 80px; /* Align the number inputs and the d_k value */
+    width: 80px;
     padding: 8px 12px;
     border: 1px solid var(--border-color);
-    border-radius: 6px; /* Slightly more rounded */
+    border-radius: 6px;
     font-size: 1em;
     text-align: center;
     box-sizing: border-box;
@@ -3176,19 +3542,18 @@ export {};
 
 .control-group input:focus {
     outline: none;
-    border-color: #409eff; /* Accent color on focus */
-    box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.2); /* Subtle glow */
+    border-color: #409eff;
+    box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.2);
 }
 
 .d_k-value {
-    font-weight: 600; /* Bolder */
-    background-color: #f0f2f5; /* Subtle background */
+    font-weight: 600;
+    background-color: #f0f2f5;
     color: #303133;
     border-color: #e4e7ed;
 }
 
 
-/* [NEW] Styles for introduction blocks and other typography */
 .math-block {
   margin-bottom: 25px;
   padding: 20px;
@@ -3218,7 +3583,6 @@ export {};
    font-family: monospace;
 }
 
-/* [ADDED] For matrix overflow */
 .matrix-scroll-wrapper {
     overflow-x: auto;
     padding-bottom: 10px;
@@ -3234,17 +3598,19 @@ export {};
 ================================================================================
 
 // FILE: src/topics/attention-variants/AttentionVariantsTopic.tsx
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import './AttentionVariantsTopic.css';
 import { Controls } from './components/Controls';
 import { Viz } from './components/Viz';
 import { Explanation } from './components/Explanation';
 import { CalculationTooltip } from '../../components/CalculationTooltip/CalculationTooltip';
+import { AnimationPanel } from './components/AnimationPanel';
 import { TooltipState } from '../../components/CalculationTooltip/types';
 import { useAttention } from './hooks/useAttention';
 import { useSplitPane } from '../../hooks/useSplitPane';
 import { HighlightState, ElementIdentifier, AttentionData } from './types';
 import { generateTooltipData, createBackwardHighlight } from './lib/tracing';
+import { ViewToggle, ViewMode } from '../../components/ViewToggle/ViewToggle';
 
 export const AttentionVariantsTopic: React.FC = () => {
     const [dims, setDims] = useState({
@@ -3257,22 +3623,57 @@ export const AttentionVariantsTopic: React.FC = () => {
 
     const [highlight, setHighlight] = useState<HighlightState>({ target: null, sources: [] });
     const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+    const [animationData, setAnimationData] = useState<TooltipState | null>(null);
+    const [viewMode, setViewMode] = useState<ViewMode>('none');
+    const [activeElement, setActiveElement] = useState<ElementIdentifier | null>(null);
+
 
     const { primarySize, separatorProps, containerProps } = useSplitPane(window.innerWidth * 0.55);
 
     const attentionData: AttentionData | null = useAttention(dims);
 
+    useEffect(() => {
+        if (viewMode !== 'none' && activeElement && attentionData) {
+            const newHighlight = createBackwardHighlight(activeElement, attentionData, dims);
+            const newCalculationData = generateTooltipData(activeElement, attentionData, newHighlight.sources);
+
+            if (viewMode === 'decomposition') {
+                setTooltip(newCalculationData);
+                setAnimationData(null);
+            } else { // animation mode
+                if (newCalculationData && newCalculationData.opType !== 'info') {
+                    setAnimationData(newCalculationData);
+                    setTooltip(null);
+                } else {
+                    setAnimationData(null);
+                    setTooltip(newCalculationData);
+                }
+            }
+        } else {
+            setTooltip(null);
+            setAnimationData(null);
+        }
+    }, [viewMode, activeElement, attentionData, dims]);
+
+
     const handleInteraction = useCallback((element: ElementIdentifier, event: React.MouseEvent) => {
         if (!attentionData) return;
         const newHighlight = createBackwardHighlight(element, attentionData, dims);
         setHighlight(newHighlight);
-
-        const newTooltip = generateTooltipData(element, attentionData, newHighlight.sources);
-        setTooltip(newTooltip);
-
+        setActiveElement(element);
     }, [attentionData, dims]);
 
-    const closeTooltip = useCallback(() => setTooltip(null), []);
+    const closeTooltip = useCallback(() => {
+        setTooltip(null);
+        setViewMode('none');
+        setActiveElement(null);
+    }, []);
+
+    const closeAnimationPanel = useCallback(() => {
+        setAnimationData(null);
+        setViewMode('none');
+        setActiveElement(null);
+    }, []);
 
     if (!attentionData) {
         return <div style={{ padding: "20px", textAlign: "center" }}>正在加载或维度设置无效... (确保 d_model = n_q_heads * d_head 且 n_q_heads 能被 n_kv_heads 整除)</div>;
@@ -3281,7 +3682,11 @@ export const AttentionVariantsTopic: React.FC = () => {
     return (
         <div className="main-layout" {...containerProps}>
             {tooltip && <CalculationTooltip tooltip={tooltip} onClose={closeTooltip} />}
+            {animationData && <AnimationPanel animationData={animationData} onClose={closeAnimationPanel} />}
             <Controls dims={dims} setDims={setDims} />
+            <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
+
+
             <div className="column left-column" style={{width: primarySize, flex: 'none'}}>
                 <div className="column-content">
                     <h2>数值模拟</h2>
@@ -3377,6 +3782,120 @@ export interface AttentionData {
 }
 
 // END OF FILE: src/topics/attention-variants/types.ts
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/components/AnimationPanel.tsx
+================================================================================
+
+// FILE: src/topics/attention-variants/components/AnimationPanel.tsx
+import React, { useRef } from 'react';
+import { TooltipState } from '../../../components/CalculationTooltip/types';
+import { useDraggableAndResizable } from '../../../hooks/useDraggableAndResizable';
+import { InteractiveMatMulVisualizer } from '../../../components/visualizers/InteractiveMatMulVisualizer';
+import { SoftmaxVisualizer } from '../../../components/visualizers/SoftmaxVisualizer';
+import { getSymbolParts } from '../lib/symbolMapping';
+import '../../../components/CalculationTooltip/CalculationTooltip.css'; // Reuse styles
+
+interface AnimationPanelProps {
+  animationData: TooltipState | null;
+  onClose: () => void;
+}
+
+export const AnimationPanel: React.FC<AnimationPanelProps> = ({ animationData, onClose }) => {
+    const panelRef = useRef<HTMLDivElement>(null);
+
+    const { position, size, dragHandleProps, resizeHandleProps } = useDraggableAndResizable({
+        x: 100,
+        y: 100,
+        width: 900,
+        height: 650,
+    }, panelRef);
+
+    if (!animationData) {
+        return null;
+    }
+
+    // [MODIFIED] Inline styles object
+    const styles: { [key: string]: React.CSSProperties } = {
+        panel: {
+            top: position.y,
+            left: position.x,
+            width: size.width,
+            height: size.height,
+            zIndex: 1010, // Ensure it's above other panels
+        },
+        panelHeader: {
+            backgroundColor: '#f0f8ff', // A light blue to distinguish it
+            borderBottom: '1px solid #cce5ff',
+        },
+        panelTitle: {
+            color: '#004085',
+        },
+        panelContentWrapper: {
+            flexGrow: 1,
+            overflowY: 'auto',
+            padding: '10px',
+            backgroundColor: '#ffffff',
+        },
+        visualizerContainer: {
+            height: '100%', // Ensure container takes full height
+        },
+        visualizerRoot: {
+            border: 'none',
+            boxShadow: 'none',
+            width: '100%',
+            height: '100%',
+            boxSizing: 'border-box',
+        },
+    };
+
+
+    const renderVisualizer = () => {
+        const step = animationData.steps[0];
+        const op = step.op === '·' ? '×' : step.op;
+
+        switch (animationData.opType) {
+            case 'matmul':
+                return <InteractiveMatMulVisualizer
+                    sourceVectorsA={step.aSources!}
+                    sourceVectorB={step.bSources![0]}
+                    resultSymbolInfo={getSymbolParts(animationData.target.name)}
+                    operation={op as '×' | '+'}
+                />;
+            case 'softmax':
+                return <SoftmaxVisualizer
+                    inputVector={step.a}
+                    inputLabel={step.aLabel}
+                    outputLabel={step.resultLabel}
+                />;
+            default:
+                return <div style={{ padding: '20px' }}>此操作类型没有可用的动画。</div>;
+        }
+    };
+
+    return (
+        <div ref={panelRef} style={styles.panel} className="animation-panel resizable-panel">
+            <div className="panel-header" {...dragHandleProps} style={styles.panelHeader}>
+                <span className="panel-title" style={styles.panelTitle}>{animationData.title}</span>
+                <button onClick={onClose} className="tooltip-close-btn">&times;</button>
+            </div>
+            <div className="panel-content-wrapper" style={styles.panelContentWrapper}>
+                <div style={styles.visualizerContainer}>
+                    <div style={styles.visualizerRoot}>
+                        {renderVisualizer()}
+                    </div>
+                </div>
+            </div>
+            <div className="resize-handle br" {...resizeHandleProps.br}></div>
+            <div className="resize-handle t" {...resizeHandleProps.t}></div>
+            <div className="resize-handle r" {...resizeHandleProps.r}></div>
+            <div className="resize-handle b" {...resizeHandleProps.b}></div>
+            <div className="resize-handle l" {...resizeHandleProps.l}></div>
+        </div>
+    );
+};
+// END OF FILE: src/topics/attention-variants/components/AnimationPanel.tsx
 
 
 ================================================================================
@@ -4680,42 +5199,57 @@ interface SymbolParts {
 export const getSymbolParts = (name: string): SymbolParts => {
     const parts = name.split('.');
     const variant = parts[0] as 'mha' | 'mqa' | 'gqa';
+    const conceptualName = parts[parts.length - 1];
 
-    // Handle weight matrices like 'gqa.wq.0'
-    if (parts.length === 3 && parts[1].startsWith('w')) {
-        const type = parts[1].charAt(1).toUpperCase(); // Q, K, V
-        const index = parts[2];
-        return { base: 'W', superscript: type, subscript: index };
+    let base: string;
+    let superscript: string | undefined;
+    let newSubscripts: (string | number)[] = [];
+
+    // Base symbol mapping
+    const baseMap: { [key: string]: string } = {
+        'input': 'H',
+        'wo': 'W',
+        'combined': 'H_{cat}',
+        'output': 'Z',
+        'Q': 'Q', 'K': 'K', 'V': 'V',
+        'Scores': 'S', 'Weights': 'A', 'Output': 'H'
+    };
+
+    // Default or mapped base
+    base = baseMap[conceptualName] || `W_{${conceptualName}}`;
+
+    // Handle existing subscripts in base
+    const baseMatch = base.match(/([A-Za-z]+)_\{(.*)\}/);
+    if (baseMatch) {
+        base = baseMatch[1];
+        newSubscripts.push(baseMatch[2]);
     }
 
-    // Handle 'gqa.wo'
-    if (parts.length === 2 && parts[1] === 'wo') {
-        return { base: 'W', superscript: 'O' };
+    // Handle weight matrices like 'gqa.wq.0' or 'mha.wo'
+    if (parts[1] && parts[1].startsWith('w')) {
+        base = 'W';
+        if (parts[1].length === 2) { // wq, wk, wv
+            superscript = parts[1].charAt(1).toUpperCase();
+            if (parts[2]) newSubscripts.push(parts[2]);
+        } else { // wo
+            superscript = 'O';
+        }
     }
 
-    // Handle head-specific matrices like 'mha.heads.0.Q'
+    // Handle head-specific matrices
     if (parts.length === 4 && parts[1] === 'heads') {
         const headIndex = parts[2];
-        const type = parts[3]; // Q, K, V, Scores, Weights, Output
-
-        const baseMap: { [key: string]: string } = {
-            'Q': 'Q', 'K': 'K', 'V': 'V',
-            'Scores': 'S', 'Weights': 'A', 'Output': 'H'
-        };
-
-        return { base: baseMap[type] || '?', subscript: headIndex };
+        newSubscripts.push(headIndex);
     }
 
-    // Handle top-level matrices like 'mha.input' or 'gqa.output'
-    if (parts.length === 2) {
-        const type = parts[1];
-        if (type === 'input') return { base: 'H' };
-        if (type === 'combined') return { base: 'H', subscript: 'cat' };
-        if (type === 'output') return { base: 'Z', subscript: variant.toUpperCase() };
+    // Add variant subscript for final output
+    if (conceptualName === 'output') {
+        newSubscripts.push(variant.toUpperCase());
     }
 
-    // Default fallback
-    return { base: 'X' };
+    const subscript = newSubscripts.length > 0 ? newSubscripts.join(',') : undefined;
+
+    return { base, superscript, subscript };
 };
 // END OF FILE: src/topics/attention-variants/lib/symbolMapping.ts
 
@@ -4726,12 +5260,9 @@ export const getSymbolParts = (name: string): SymbolParts => {
 
 // FILE: src/topics/attention-variants/lib/tracing.ts
 import { TooltipState } from '../../../components/CalculationTooltip/types';
-import { HighlightState, ElementIdentifier, AttentionData, HighlightSource, AttentionVariantData, CalculationComponent, Vector } from '../types';
+import { HighlightState, ElementIdentifier, AttentionData, HighlightSource, AttentionVariantData } from '../types';
 import { getSymbolParts } from './symbolMapping';
 
-// =======================
-//   TOOLTIP LOGIC
-// =======================
 const getMatrixByName = (name: string, data: AttentionData): number[][] | undefined => {
     const parts = name.split('.');
     if (parts.length < 2) return undefined;
@@ -4750,7 +5281,6 @@ const getMatrixByName = (name: string, data: AttentionData): number[][] | undefi
     if (name.includes('.heads.')) {
         const headData = variantData.heads[headIndex];
         if (!headData) return undefined;
-        // This is a type assertion, be careful with it.
         return headData[conceptualName as keyof typeof headData] as number[][] | undefined;
     }
 
@@ -4759,15 +5289,13 @@ const getMatrixByName = (name: string, data: AttentionData): number[][] | undefi
     if (conceptualName === 'combined') return variantData.CombinedOutput;
     if (conceptualName === 'output') return variantData.FinalOutput;
 
-    // For weights like mha.wq.0
     if(parts[1]?.startsWith('w')) {
-        const type = parts[1].charAt(1); // q, k, v
+        const type = parts[1].charAt(1);
         const index = parseInt(parts[2] || '0', 10);
         if (type === 'q') return data.Wq[index];
         if (type === 'k') return data.Wk[index];
         if (type === 'v') return data.Wv[index];
     }
-
 
     return undefined;
 };
@@ -4784,7 +5312,38 @@ export const generateTooltipData = (element: ElementIdentifier, data: AttentionD
 
     const conceptualName = name.split('.').pop() || '';
 
-    if (['Q', 'K', 'V', 'Scores', 'Output', 'combined', 'output'].includes(conceptualName)) {
+    if (conceptualName === 'output' || conceptualName === 'combined') {
+        opType = 'matmul';
+        const headOutputSources = sources.filter(s => s.name.includes('.Output'));
+        const woSource = sources.find(s => s.name.endsWith('.wo'));
+
+        if (headOutputSources.length > 0 && woSource) {
+            const aSources = headOutputSources
+                .sort((a, b) => parseInt(a.name.match(/heads\.(\d+)/)![1]) - parseInt(b.name.match(/heads\.(\d+)/)![1]))
+                .map(source => {
+                    const headIndex = parseInt(source.name.match(/heads\.(\d+)/)![1]);
+                    const symbol = getSymbolParts(source.name);
+                    symbol.subscript = headIndex.toString(); // Ensure subscript is correct
+                    return {
+                        data: getMatrixByName(source.name, data)![source.row],
+                        symbolInfo: symbol
+                    };
+                });
+            const bSources = [{
+                data: getMatrixByName(woSource.name, data)!.map(r => r[woSource.col]),
+                symbolInfo: getSymbolParts(woSource.name)
+            }];
+            const vecA = aSources.flatMap(s => s.data);
+            const vecB = bSources[0].data;
+
+            steps.push({
+                a: vecA, b: vecB, op: '·', result: targetValue,
+                aSources, bSources,
+                aSymbolInfo: getSymbolParts(name),
+                bSymbolInfo: getSymbolParts(woSource.name),
+            });
+        }
+    } else if (['Q', 'K', 'V', 'Scores', 'Output'].includes(conceptualName)) {
         opType = 'matmul';
         const source1 = sources.find(s => s.highlightRow);
         const source2 = sources.find(s => s.highlightCol);
@@ -4794,19 +5353,17 @@ export const generateTooltipData = (element: ElementIdentifier, data: AttentionD
              if (matrixA && matrixB) {
                  const vecA = matrixA[source1.row];
                  const vecB = matrixB.map(r => r[source2.col]);
-                 const components: CalculationComponent[] = vecA.map((val, i) => ({ a: val, b: vecB[i] }));
+                 const aSources = [{ data: vecA, symbolInfo: getSymbolParts(source1.name) }];
+                 const bSources = [{ data: vecB, symbolInfo: getSymbolParts(source2.name) }];
                  steps.push({
-                     a: vecA,
-                     b: vecB,
-                     op: '·',
-                     result: targetValue,
+                     a: vecA, b: vecB, op: '·', result: targetValue,
+                     aSources, bSources,
                      aSymbolInfo: getSymbolParts(source1.name),
-                     bSymbolInfo: getSymbolParts(source2.name),
-                     components
+                     bSymbolInfo: getSymbolParts(source2.name)
                  });
              }
         }
-    } else if (conceptualName === 'Weights') { // [MODIFIED] Trigger softmax tooltip on Weights click
+    } else if (conceptualName === 'Weights') {
         opType = 'softmax';
         const scoresName = sources.find(s => s.name.endsWith('.Scores'))?.name;
         if(scoresName){
@@ -4814,14 +5371,9 @@ export const generateTooltipData = (element: ElementIdentifier, data: AttentionD
             if(matrixA) {
                 const vecA = matrixA[row];
                 steps.push({
-                    a: vecA,
-                    b: [],
-                    op: 'softmax',
-                    result: targetValue,
-                    aSymbolInfo: getSymbolParts(scoresName),
-                    bSymbolInfo: { base: '' },
-                    aLabel: 'Scores',
-                    resultLabel: 'Weights'
+                    a: vecA, b: [], op: 'softmax', result: targetValue,
+                    aSymbolInfo: getSymbolParts(scoresName), bSymbolInfo: { base: '' },
+                    aLabel: 'Scores', resultLabel: 'Weights'
                 });
             }
         }
@@ -4835,9 +5387,6 @@ export const generateTooltipData = (element: ElementIdentifier, data: AttentionD
     return { target: element, opType, steps, title: `Calculation for ${element.symbol}[${row},${col}]` };
 };
 
-// =======================
-//   HIGHLIGHTING LOGIC
-// =======================
 export const createBackwardHighlight = (element: ElementIdentifier, data: AttentionData, dims: any): HighlightState => {
     const { variant, name, row, col, isInternal } = element;
     const sources: HighlightSource[] = [];
@@ -4845,12 +5394,6 @@ export const createBackwardHighlight = (element: ElementIdentifier, data: Attent
     if (variant === 'mla') {
         return { target: element, sources: [] };
     }
-
-    const internalDims = {
-        d_head: data.mha.heads[0].Q[0].length,
-        n_q_heads: data.gqa.heads.length,
-        n_kv_heads_gqa: data.gqa.K_proj ? (data.gqa.K_proj[0].length / data.mha.heads[0].Q[0].length) : dims.n_kv_heads,
-    };
 
     const conceptualName = name.split('.').pop() || '';
     const headIndexMatch = name.match(/heads\.(\d+)/);
@@ -4869,21 +5412,20 @@ export const createBackwardHighlight = (element: ElementIdentifier, data: Attent
 
 
     if (conceptualName === 'output') {
-        sources.push({ ...element, name: `${variant}.combined`, row: row, col: -1, highlightRow: true });
-        sources.push({ ...element, name: `${variant}.wo`, row: -1, col: col, highlightCol: true });
+        sources.push({ ...element, variant, name: `${variant}.combined`, row: row, col: -1, highlightRow: true });
+        sources.push({ ...element, variant, name: `${variant}.wo`, row: -1, col: col, highlightCol: true });
     }
     else if (conceptualName === 'combined') {
-        const headIndexForCol = Math.floor(col / internalDims.d_head);
-        sources.push({ ...element, name: `${variant}.heads.${headIndexForCol}.Output`, row: row, col: col % internalDims.d_head });
+        const d_head = data.mha.heads[0].Output[0].length;
+        const headIndexForCol = Math.floor(col / d_head);
+        sources.push({ ...element, name: `${variant}.heads.${headIndexForCol}.Output`, row: row, col: col % d_head });
     }
     else if (conceptualName === 'Output') {
         sources.push({ ...element, name: `${variant}.heads.${headIndex}.Weights`, row: row, col: -1, highlightRow: true });
         sources.push({ ...element, name: `${variant}.heads.${headIndex}.V`, row: -1, col: col, highlightCol: true });
     }
     else if (conceptualName === 'Weights') {
-        // [MODIFIED] Source for a Weight element is the entire corresponding row of Scores.
         sources.push({ ...element, name: `${variant}.heads.${headIndex}.Scores`, row: row, col: -1, highlightRow: true });
-        // The isInternal flag is now set in the tooltip generation, not needed for highlighting.
     }
     else if (conceptualName === 'Scores') {
         sources.push({ ...element, name: `${variant}.heads.${headIndex}.Q`, row: row, col: -1, highlightRow: true });
@@ -4892,16 +5434,14 @@ export const createBackwardHighlight = (element: ElementIdentifier, data: Attent
     else if (['Q', 'K', 'V'].includes(conceptualName)) {
         const type = conceptualName.toLowerCase() as 'q' | 'k' | 'v';
         let weightIndex = 0;
+        const q_heads_per_kv = dims.n_q_heads / dims.n_kv_heads;
 
         if (type === 'q') {
             weightIndex = headIndex;
-        } else {
-            if (variant === 'mha') {
-                weightIndex = headIndex;
-            } else if (variant === 'gqa') {
-                const q_heads_per_kv_gqa = internalDims.n_q_heads / internalDims.n_kv_heads_gqa;
-                weightIndex = Math.floor(headIndex / q_heads_per_kv_gqa);
-            }
+        } else { // K or V
+            if (variant === 'mha') weightIndex = headIndex;
+            else if (variant === 'gqa') weightIndex = Math.floor(headIndex / q_heads_per_kv);
+            // MQA always uses index 0
         }
 
         sources.push({ ...element, name: `${variant}.input`, row: row, col: -1, highlightRow: true });
@@ -5758,17 +6298,22 @@ import { Controls } from './components/Controls';
 import { Viz } from './components/Viz';
 import { Explanation } from './components/Explanation';
 import { CalculationTooltip } from '../../components/CalculationTooltip/CalculationTooltip';
+import { AnimationPanel } from './components/AnimationPanel';
 import { TooltipState } from '../../components/CalculationTooltip/types';
 import { useTransformer } from './hooks/useTransformer';
 import { useSplitPane } from '../../hooks/useSplitPane';
 import { ElementIdentifier, HighlightState, TransformerData } from './types';
 import { generateTooltipData, createBackwardHighlight } from './lib/tracing';
+import { ViewToggle, ViewMode } from '../../components/ViewToggle/ViewToggle';
 
 export const TransformerExplorerTopic: React.FC = () => {
     const [dims, setDims] = useState({ d_model: 8, h: 2, seq_len: 2, n_layers: 1, d_ff: 32 });
     const [inputText, setInputText] = useState("I am a student");
     const [highlight, setHighlight] = useState<HighlightState>({ target: null, sources: [], destinations: [], activeComponent: null, activeResidual: null });
     const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+    const [animationData, setAnimationData] = useState<TooltipState | null>(null);
+    const [viewMode, setViewMode] = useState<ViewMode>('none');
+    const [activeElement, setActiveElement] = useState<ElementIdentifier | null>(null);
 
     const { primarySize, separatorProps, containerProps } = useSplitPane(window.innerWidth * 0.55);
 
@@ -5783,15 +6328,37 @@ export const TransformerExplorerTopic: React.FC = () => {
               }, 100);
           }
         }
-      }, [highlight.activeComponent]);
+    }, [highlight.activeComponent]);
+
+    useEffect(() => {
+        if (viewMode !== 'none' && activeElement && transformerData) {
+            const { highlight: newHighlight } = createBackwardHighlight(activeElement, transformerData, dims);
+            const newCalculationData = generateTooltipData(activeElement, transformerData, newHighlight.sources);
+
+            if (viewMode === 'decomposition') {
+                setTooltip(newCalculationData);
+                setAnimationData(null);
+            } else { // animation mode
+                if (newCalculationData && newCalculationData.opType !== 'info') {
+                    setAnimationData(newCalculationData);
+                    setTooltip(null);
+                } else {
+                    setAnimationData(null);
+                    setTooltip(newCalculationData);
+                }
+            }
+        } else {
+            setTooltip(null);
+            setAnimationData(null);
+        }
+    }, [viewMode, activeElement, transformerData, dims]);
+
 
     const handleInteraction = useCallback((element: ElementIdentifier, event: React.MouseEvent) => {
         if (!transformerData) return;
         const { highlight: newHighlight } = createBackwardHighlight(element, transformerData, dims);
         setHighlight(newHighlight);
-
-        const newTooltip = generateTooltipData(element, transformerData, newHighlight.sources);
-        setTooltip(newTooltip);
+        setActiveElement(element);
     }, [transformerData, dims]);
 
     const handleComponentClick = useCallback((componentId: string) => {
@@ -5799,9 +6366,22 @@ export const TransformerExplorerTopic: React.FC = () => {
           target: null, sources: [], destinations: [], activeComponent: componentId, activeResidual: null
       }));
       setTooltip(null);
+      setAnimationData(null);
+      setActiveElement(null);
+      setViewMode('none');
     }, []);
 
-    const closeTooltip = useCallback(() => setTooltip(null), []);
+    const closeTooltip = useCallback(() => {
+        setTooltip(null);
+        setViewMode('none');
+        setActiveElement(null);
+    }, []);
+
+    const closeAnimationPanel = useCallback(() => {
+        setAnimationData(null);
+        setViewMode('none');
+        setActiveElement(null);
+    }, []);
 
     if (!transformerData) {
         return <div style={{padding: "20px", textAlign: "center"}}>正在加载或维度设置无效... (d_model 必须能被 h 整除)</div>
@@ -5817,12 +6397,15 @@ export const TransformerExplorerTopic: React.FC = () => {
     return (
         <div className="main-layout" {...containerProps} style={{padding: '0', gap: '0', height: '100%'}}>
             {tooltip && <CalculationTooltip tooltip={tooltip} onClose={closeTooltip} />}
+            {animationData && <AnimationPanel animationData={animationData} onClose={closeAnimationPanel} />}
             <Controls dims={dims} setDims={setDims} inputText={inputText} setInputText={setInputText}/>
+            <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
+
             <div className="column left-column" style={{width: primarySize, flex: 'none', borderRadius: '0', boxShadow: 'none'}}>
                 <div className="column-content">
                     <h2>模型结构与数据流</h2>
                     <p style={{textAlign: 'center', margin: '-10px 0 15px 0', fontSize: '0.9em', color: '#555'}}>
-                        提示: 点击任何计算结果 (红色高亮) 的单元格,即可查看其详细计算过程.
+                        提示: 点击任何矩阵单元格进行联动高亮。选择左上角视图模式后再次点击，可查看计算详情。
                     </p>
                     <Viz
                         data={transformerData}
@@ -5857,18 +6440,17 @@ export const TransformerExplorerTopic: React.FC = () => {
 import { SymbolInfo } from '../../components/visualizers/types';
 import { ElementIdentifier as GenericElementIdentifier, CalculationComponent as GenericCalculationComponent } from '../../components/CalculationTooltip/types';
 
-// [FIXED] Define Vector and Matrix locally to avoid import conflicts, consistent with other topics.
 export type Matrix = number[][];
 export type Vector = number[];
 export type CalculationComponent = GenericCalculationComponent;
 
 // Extend the generic ElementIdentifier with topic-specific fields
 export interface ElementIdentifier extends GenericElementIdentifier {
-  matrixSymbol?: string; // e.g., "Z"
-  matrixDims?: string; // e.g., "3x8"
-  tokenId?: number; // e.g., 10 for "I"
-  tokenStr?: string; // e.g., "I"
-  probValue?: number; // For decoding, the probability of the chosen token
+  matrixSymbol?: string;
+  matrixDims?: string;
+  tokenId?: number;
+  tokenStr?: string;
+  probValue?: number;
 }
 
 export interface HighlightSource extends ElementIdentifier {
@@ -5878,11 +6460,11 @@ export interface HighlightSource extends ElementIdentifier {
 }
 
 export interface HighlightState {
-  activeComponent: string | null; // e.g., "mha", "ffn"
-  activeResidual: string | null; // e.g., "res1"
+  activeComponent: string | null;
+  activeResidual: string | null;
   target: ElementIdentifier | null;
   sources: HighlightSource[];
-  destinations?: HighlightSource[]; // For forward tracing
+  destinations?: HighlightSource[];
 }
 
 export interface AttentionHeadData {
@@ -5906,11 +6488,11 @@ export interface MultiHeadAttentionData {
 
 export interface FFNData {
     W1: Matrix;
-    b1: Vector; // bias is part of FFN data
+    b1: Vector;
     Intermediate: Matrix;
     Activated: Matrix;
     W2: Matrix;
-    b2: Vector; // bias is part of FFN data
+    b2: Vector;
     Output: Matrix;
 }
 
@@ -5943,30 +6525,23 @@ export interface DecoderLayerData {
 }
 
 export interface TransformerData {
-    // Input Stage
     inputText: string[];
     tokenizedInput: number[];
     embeddingMatrix: Matrix;
     vocab: { [key: number]: string };
-
-    // Encoder
     inputEmbeddings: Matrix;
     posEncodings: Matrix;
     encoderInput: Matrix;
     encoderLayers: EncoderLayerData[];
     finalEncoderOutput: Matrix;
-
-    // Decoder
     outputEmbeddings: Matrix;
     decoderPosEncodings: Matrix;
     decoderInput: Matrix;
     decoderLayers: DecoderLayerData[];
     finalDecoderOutput: Matrix;
-    finalLinear: Matrix; // Weights for the final linear layer
+    finalLinear: Matrix;
     logits: Matrix;
     outputProbabilities: Matrix;
-
-    // Output Stage
     decodedTokens: number[];
     outputText: string[];
 }
@@ -6044,6 +6619,162 @@ export const AddNorm: React.FC<AddNormProps> = ({
     );
 };
 // END OF FILE: src/components/AddNorm.tsx
+
+
+================================================================================
+### 文件路径: src/topics/transformer-explorer/components/AnimationPanel.tsx
+================================================================================
+
+// FILE: src/topics/transformer-explorer/components/AnimationPanel.tsx
+import React, { useRef } from 'react';
+import { TooltipState } from '../../../components/CalculationTooltip/types';
+import { useDraggableAndResizable } from '../../../hooks/useDraggableAndResizable';
+import { InteractiveMatMulVisualizer } from '../../../components/visualizers/InteractiveMatMulVisualizer';
+import { SoftmaxVisualizer } from '../../../components/visualizers/SoftmaxVisualizer';
+import { ActivationFunctionVisualizer } from '../../../components/visualizers/ActivationFunctionVisualizer';
+import { ElementWiseOpVisualizer } from '../../../components/visualizers/ElementWiseOpVisualizer';
+import { LayerNormVisualizer } from '../../../components/visualizers/LayerNormVisualizer';
+import { WxPlusBVisualizer } from '../../../components/visualizers/WxPlusBVisualizer'; // [NEW]
+import { getSymbolParts } from '../lib/symbolMapping';
+import '../../../components/CalculationTooltip/CalculationTooltip.css';
+import {InlineMath} from "react-katex";
+
+interface AnimationPanelProps {
+  animationData: TooltipState | null;
+  onClose: () => void;
+}
+
+export const AnimationPanel: React.FC<AnimationPanelProps> = ({ animationData, onClose }) => {
+    const panelRef = useRef<HTMLDivElement>(null);
+
+    const { position, size, dragHandleProps, resizeHandleProps } = useDraggableAndResizable({
+        x: 100,
+        y: 100,
+        width: 900,
+        height: 650,
+    }, panelRef);
+
+    if (!animationData) {
+        return null;
+    }
+
+    const styles: { [key: string]: React.CSSProperties } = {
+        panel: {
+            top: position.y,
+            left: position.x,
+            width: size.width,
+            height: size.height,
+            zIndex: 1010,
+        },
+        panelHeader: {
+            backgroundColor: '#f0f8ff',
+            borderBottom: '1px solid #cce5ff',
+        },
+        panelTitle: {
+            color: '#004085',
+        },
+        panelContentWrapper: {
+            flexGrow: 1,
+            overflowY: 'auto',
+            padding: '10px',
+            backgroundColor: '#ffffff',
+        },
+        visualizerContainer: {
+            height: '100%',
+        },
+        visualizerRoot: {
+            border: 'none',
+            boxShadow: 'none',
+            width: '100%',
+            height: '100%',
+            boxSizing: 'border-box',
+        },
+    };
+
+    const renderVisualizer = () => {
+        const step = animationData.steps[0];
+        const op = step.op === '·' ? '×' : step.op;
+
+        // [NEW] Specific handling for 'wx-plus-b'
+        if (animationData.opType === 'wx-plus-b' && animationData.steps.length === 2) {
+             const matmulStep = animationData.steps[0];
+             const addStep = animationData.steps[1];
+             return <WxPlusBVisualizer
+                sourceVectorsA={matmulStep.aSources!}
+                sourceVectorB={matmulStep.bSources![0]}
+                biasVector={addStep.bSources![0]}
+                resultSymbolInfo={getSymbolParts(animationData.target.name)}
+             />;
+        }
+
+
+        switch (animationData.opType) {
+            case 'matmul':
+                const matmulStep = animationData.steps.find(s => s.op === '·' || s.op === '×') || step;
+                return <InteractiveMatMulVisualizer
+                    sourceVectorsA={matmulStep.aSources!}
+                    sourceVectorB={matmulStep.bSources![0]}
+                    resultSymbolInfo={getSymbolParts(animationData.target.name)}
+                    operation={op as '×' | '+'}
+                />;
+            case 'add':
+                const addStep = animationData.steps.find(s => s.op === '+') || step;
+                return <ElementWiseOpVisualizer
+                    matrixA={[addStep.a]}
+                    matrixB={[addStep.b]}
+                    operation="+"
+                    labelA={addStep.aLabel || addStep.aSymbolInfo.base}
+                    labelB={addStep.bLabel || addStep.bSymbolInfo.base}
+                    labelC={addStep.resultLabel || 'Sum'}
+                />;
+            case 'layernorm':
+                return <LayerNormVisualizer
+                    inputVector={step.a}
+                    inputLabel={step.aLabel}
+                    outputLabel={step.resultLabel}
+                />;
+            case 'softmax':
+                return <SoftmaxVisualizer
+                    inputVector={step.a}
+                    inputLabel={step.aLabel}
+                    outputLabel={step.resultLabel}
+                />;
+            case 'relu':
+                return <ActivationFunctionVisualizer
+                    functionType="relu"
+                    inputVector={step.a}
+                    inputLabel={step.aLabel}
+                    outputLabel={step.resultLabel}
+                />;
+            default:
+                return <div style={{ padding: '20px' }}>此操作类型没有可用的动画。</div>;
+        }
+    };
+
+    return (
+        <div ref={panelRef} style={styles.panel} className="animation-panel resizable-panel">
+            <div className="panel-header" {...dragHandleProps} style={styles.panelHeader}>
+                <span className="panel-title" style={styles.panelTitle}>
+                     <InlineMath>{`Calculation for ${animationData.target.symbol || ''}[${animationData.target.row},${animationData.target.col}]`}</InlineMath>
+                </span>
+                <button onClick={onClose} className="tooltip-close-btn">&times;</button>
+            </div>
+            <div className="panel-content-wrapper" style={styles.panelContentWrapper}>
+                <div style={styles.visualizerContainer}>
+                    <div style={styles.visualizerRoot}>
+                        {renderVisualizer()}
+                    </div>
+                </div>
+            </div>
+            <div className="resize-handle br" {...resizeHandleProps.br}></div>
+            <div className="resize-handle t" {...resizeHandleProps.t}></div>
+            <div className="resize-handle r" {...resizeHandleProps.r}></div>
+            <div className="resize-handle b" {...resizeHandleProps.b}></div>
+            <div className="resize-handle l" {...resizeHandleProps.l}></div>
+        </div>
+    );
+};
+// END OF FILE: src/topics/transformer-explorer/components/AnimationPanel.tsx
 
 
 ================================================================================
@@ -6167,14 +6898,14 @@ export const Controls: React.FC<ControlsProps> = ({ dims, setDims, inputText, se
 ### 文件路径: src/topics/transformer-explorer/components/DecoderLayer.tsx
 ================================================================================
 
-// FILE: src/components/DecoderLayer.tsx
+// FILE: src/topics/transformer-explorer/components/DecoderLayer.tsx
 import React from 'react';
 import { DecoderLayerData, HighlightState, ElementIdentifier, Matrix as MatrixType } from '../types';
 import { AddNorm } from './AddNorm';
 import { FeedForward } from './FeedForward';
 import { MATRIX_NAMES } from '../config/matrixNames';
 import { ResidualBlock } from './ResidualBlock';
-import { getSymbolParts } from '../config/symbolMapping';
+import { getSymbolParts } from '../lib/symbolMapping';
 import { Matrix } from './Matrix';
 import { MaskedMultiHeadAttention } from './MaskedMultiHeadAttention';
 import { EncoderDecoderAttention } from './EncoderDecoderAttention';
@@ -6185,7 +6916,7 @@ interface DecoderLayerProps {
   highlight: HighlightState;
   onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
   onComponentClick: (componentId: string) => void;
-  finalEncoderOutput: MatrixType; // [ADDED]
+  finalEncoderOutput: MatrixType;
 }
 
 export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, highlight, onElementClick, onComponentClick, finalEncoderOutput }) => {
@@ -6211,7 +6942,6 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
             <div className="component-header" style={{backgroundColor: '#ede7f6'}}>解码器层 (Decoder Layer) {layerIndex + 1}</div>
             <div className="component-body">
 
-                {/* --- Masked MHA Sub-layer --- */}
                 <Matrix name={LN.decoder_input} data={data.decoder_input} highlight={highlight} onElementClick={onElementClick} />
                 <ResidualBlock id={`res-l${layerIndex}-d1`} type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes1} matrixDims={dimsRes1} />
                 <MaskedMultiHeadAttention
@@ -6238,7 +6968,6 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
                 />
                 <div className="arrow-down">↓</div>
 
-                {/* --- Encoder-Decoder Attention Sub-layer --- */}
                 <ResidualBlock id={`res-l${layerIndex}-d2`} type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes2} matrixDims={dimsRes2} />
                 <EncoderDecoderAttention
                     baseName={`${baseName}.enc_dec_mha`}
@@ -6246,6 +6975,7 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
                     highlight={highlight}
                     onElementClick={onElementClick}
                     onComponentClick={onComponentClick}
+                    decoderAddNorm1Output={data.add_norm_1_output}
                     finalEncoderOutput={finalEncoderOutput}
                 />
                 <AddNorm
@@ -6265,7 +6995,6 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
                 />
                 <div className="arrow-down">↓</div>
 
-                {/* --- FFN Sub-layer --- */}
                 <ResidualBlock id={`res-l${layerIndex}-d3`} type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes3} matrixDims={dimsRes3} />
                 <FeedForward
                     baseName={`${baseName}.ffn`}
@@ -6296,7 +7025,7 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
     </div>
   );
 };
-// END OF FILE: src/components/DecoderLayer.tsx
+// END OF FILE: src/topics/transformer-explorer/components/DecoderLayer.tsx
 
 
 ================================================================================
@@ -6578,7 +7307,7 @@ export const ElementwiseCalculation: React.FC<ElementwiseCalculationProps> = ({
 ### 文件路径: src/topics/transformer-explorer/components/ElementwiseOperation.tsx
 ================================================================================
 
-// FILE: src/components/ElementwiseOperation.tsx
+// FILE: src/topics/transformer-explorer/components/ElementwiseOperation.tsx
 import React from 'react';
 import { Matrix, HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
@@ -6587,7 +7316,7 @@ import { ElementwiseCalculation } from './ElementwiseCalculation';
 interface ElementwiseOperationProps {
     opType: 'softmax' | 'relu';
     inputMatrix: Matrix;
-    inputMatrixName: string; // [FIXED] Added required prop
+    inputMatrixName: string;
     outputMatrix: Matrix;
     outputMatrixName: string;
     highlight: HighlightState;
@@ -6599,7 +7328,7 @@ interface ElementwiseOperationProps {
 export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
     opType,
     inputMatrix,
-    inputMatrixName, // [FIXED] Destructure prop
+    inputMatrixName,
     outputMatrix,
     outputMatrixName,
     highlight,
@@ -6609,7 +7338,6 @@ export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
 }) => {
     let targetRowIndex = 0;
 
-    // [FIXED] Use the passed inputMatrixName for correct highlight detection
     if (highlight.target) {
         if (highlight.target.name === inputMatrixName || highlight.target.name === outputMatrixName) {
             targetRowIndex = highlight.target.row;
@@ -6642,7 +7370,7 @@ export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
         </div>
     );
 };
-// END OF FILE: src/components/ElementwiseOperation.tsx
+// END OF FILE: src/topics/transformer-explorer/components/ElementwiseOperation.tsx
 
 
 ================================================================================
@@ -6807,26 +7535,26 @@ export const EmbeddingLookup: React.FC<EmbeddingLookupProps> = ({
 ### 文件路径: src/topics/transformer-explorer/components/EncoderDecoderAttention.tsx
 ================================================================================
 
-// FILE: src/components/EncoderDecoderAttention.tsx
+// FILE: src/topics/transformer-explorer/components/EncoderDecoderAttention.tsx
 import React from 'react';
 import { MultiHeadAttentionData, HighlightState, ElementIdentifier, Matrix as MatrixType } from '../types';
 import { Matrix } from './Matrix';
 import { InlineMath } from 'react-katex';
 import { MATRIX_NAMES } from '../config/matrixNames';
-import { ElementwiseOperation } from './ElementwiseOperation';
 
 interface EncDecAttentionProps {
-    baseName: string; // e.g., decoder.0.enc_dec_mha
+    baseName: string;
     data: MultiHeadAttentionData;
     highlight: HighlightState;
     onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
     onComponentClick: (componentId: string) => void;
-    finalEncoderOutput: MatrixType; // [ADDED]
+    decoderAddNorm1Output: MatrixType;
+    finalEncoderOutput: MatrixType;
 }
 
-export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseName, data, highlight, onElementClick, onComponentClick, finalEncoderOutput }) => {
+export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseName, data, highlight, onElementClick, onComponentClick, decoderAddNorm1Output, finalEncoderOutput }) => {
     const layerIndex = parseInt(baseName.split('.')[1], 10);
-    const headIndex = 0; // Assume we visualize head 0
+    const headIndex = 0;
     const headData = data.heads[headIndex];
     const isActive = highlight.activeComponent === 'enc_dec_mha';
     const numHeads = data.heads.length;
@@ -6852,7 +7580,7 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
                      <div className="viz-formula-row">
                         <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px'}}>
                            <span style={{fontWeight: 'bold'}}>Q Input (from Decoder)</span>
-                           <Matrix name={MATRIX_NAMES.decoderLayer(layerIndex).add_norm_1_output} data={finalEncoderOutput} highlight={highlight} onElementClick={onElementClick} />
+                           <Matrix name={MATRIX_NAMES.decoderLayer(layerIndex).add_norm_1_output} data={decoderAddNorm1Output} highlight={highlight} onElementClick={onElementClick} />
                         </div>
                         <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px'}}>
                            <span style={{fontWeight: 'bold'}}>K & V Input (from Encoder)</span>
@@ -6864,7 +7592,7 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
                 <div className="arrow-down">↓</div>
 
                 <div className="viz-formula-group">
-                    <div className="viz-step-title">2. Generate Q, K, V (Head 1)</div>
+                    <div className="viz-step-title">2. Generate Q, K, V (Head 0)</div>
                      <div className="viz-formula-row">
                        <span>(Q Input) ×</span>
                        <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
@@ -6888,7 +7616,7 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
                 <div className="arrow-down">↓</div>
 
                 <div className="viz-formula-group">
-                    <div className="viz-step-title">3. Scaled Dot-Product Attention (Head 1)</div>
+                    <div className="viz-step-title">3. Scaled Dot-Product Attention (Head 0)</div>
                      <div className="viz-formula-row">
                         <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                         <InlineMath math="\times" />
@@ -6899,18 +7627,7 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
                          <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Scores} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Scale by } / \sqrt{d_k}}" /></div>
-
-                    <ElementwiseOperation
-                        opType="softmax"
-                        inputMatrix={headData.ScaledScores}
-                        inputMatrixName={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).ScaledScores}
-                        outputMatrix={headData.AttentionWeights}
-                        outputMatrixName={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).AttentionWeights}
-                        highlight={highlight}
-                        onElementClick={onElementClick}
-                        layerIndex={layerIndex}
-                        headIndex={headIndex}
-                    />
+                    <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Softmax}}" /></div>
 
                     <div className="viz-formula-row">
                         <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
@@ -6943,7 +7660,7 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
         </div>
     );
 };
-// END OF FILE: src/components/EncoderDecoderAttention.tsx
+// END OF FILE: src/topics/transformer-explorer/components/EncoderDecoderAttention.tsx
 
 
 ================================================================================
@@ -6958,7 +7675,7 @@ import { AddNorm } from './AddNorm';
 import { FeedForward } from './FeedForward';
 import { MATRIX_NAMES } from '../config/matrixNames';
 import { ResidualBlock } from './ResidualBlock';
-import { getSymbolParts } from '../config/symbolMapping';
+import { getSymbolParts } from '../lib/symbolMapping';
 import { Matrix } from './Matrix';
 
 interface EncoderLayerProps {
@@ -7101,7 +7818,6 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
     const shouldBreakFFN2 = dims.d_ff + dims.d_model > 8;
     const shouldBreakFinalOutput = dims.d_model + dims.vocab_size > 8;
 
-    // [FIXED] Specific breaking logic for Enc-Dec Attention
     const shouldBreakEncDecScores = d_k + dims.encoder_seq_len > 8;
     const shouldBreakEncDecHeadOutput = dims.encoder_seq_len + d_k > 8;
 
@@ -7116,7 +7832,6 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 <p>在2017年的原始论文《Attention Is All You Need》中,编码器和解码器都由 N 个相同的层堆叠而成. 这种堆叠结构允许模型在不同层次上学习从简单到复杂的抽象特征。此可视化工具将带您深入探索其内部的数据流动和数学原理。</p>
             </div>
 
-            {/* --- ENCODER EXPLANATIONS --- */}
             <h2 style={{textAlign: 'center', margin: '30px 0'}}>编码器 (Encoder)</h2>
              <MathBlock id="token_embed" title="编码器第0步:分词与词嵌入" highlight={highlight}>
                 <h5>做什么？</h5>
@@ -7175,9 +7890,11 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                     <div className="viz-formula-row"><InlineMath math="Z" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.Wv} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
                 <p>然后计算注意力分数, 进行缩放和Softmax得到权重, 最后加权求和。 <InlineMath math="Q"/> 和 <InlineMath math="K"/> 的点积计算了每个词的“查询”与所有词的“标签”之间的相似度。除以 <InlineMath math="\sqrt{d_k}"/> 是为了在训练中保持梯度稳定。Softmax则将这些原始的相似度分数转换成一个和为1的概率分布，即“注意力权重”。最后，将这些权重与 <InlineMath math="V"/> 相乘，相当于对所有词的信息进行加权求和，得到一个融合了全句上下文信息的新向量。</p>
-                <BlockMath math={`A = \\text{Softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)`} />
+                <BlockMath math={`S' = \\frac{QK^T}{\\sqrt{d_k}}`} />
+                <BlockMath math={`A = \\text{Softmax}(S')`} />
                 <BlockMath math={`H = A V`} />
                  <div className="formula-display vertical">
+                    <div className="viz-formula-row"><InteractiveSymbolicMatrix name={HNe.ScaledScores} rows={dims.encoder_seq_len} cols={dims.encoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/><BlockMath math="\xrightarrow{\text{Softmax}}"/> <InteractiveSymbolicMatrix name={HNe.AttentionWeights} rows={dims.encoder_seq_len} cols={dims.encoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <div className="viz-formula-row"><InteractiveSymbolicMatrix name={HNe.AttentionWeights} rows={dims.encoder_seq_len} cols={dims.encoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.HeadOutput} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
                 <h5>拼接与最终投影</h5>
@@ -7194,8 +7911,12 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 <p>在每个子层之后,都会跟随一个“Add & Norm”模块. 它包含两个关键步骤:<b>残差连接 (Residual Connection)</b> 和 <b>层归一化 (Layer Normalization)</b>。这是训练深度神经网络的关键技巧。</p>
                 <ul>
                     <li><b>残差连接:</b> 将子层的输入与输出直接相加。这创建了一条信息的“高速公路”，允许梯度在反向传播时直接流过，极大地缓解了深度网络中的梯度消失问题，使得训练更深的模型成为可能。它也保证了即使子层（如注意力）的输出为零，原始信息也能得以保留。</li>
-                    <li><b>层归一化:</b> 对残差连接后的结果进行归一化，使其均值为0，方差为1。这有助于稳定每一层的输入分布，减少所谓的“内部协变量偏移”(Internal Covariate Shift)，从而加速训练过程并提高模型的泛化能力。</li>
+                    <li><b>层归一化:</b> 对残差连接后的结果进行归一化处理。它独立地对每个样本的特征进行归一化，使其均值为0，方差为1。这有助于稳定每一层的输入分布，减少所谓的“内部协变量偏移”(Internal Covariate Shift)，从而加速训练过程并提高模型的泛化能力。</li>
                 </ul>
+                <BlockMath math={`\\mu = \\frac{1}{d_{model}} \\sum_{i=1}^{d_{model}} x_i`} />
+                <BlockMath math={`\\sigma^2 = \\frac{1}{d_{model}} \\sum_{i=1}^{d_{model}} (x_i - \\mu)^2`} />
+                <BlockMath math={`\\text{LayerNorm}(x) = \\gamma \\frac{x - \\mu}{\\sqrt{\\sigma^2 + \\epsilon}} + \\beta`} />
+                <p>其中 <InlineMath math="\gamma"/> (gamma) 和 <InlineMath math="\beta"/> (beta) 是可学习的缩放和平移参数，<InlineMath math="\epsilon"/> (epsilon) 是一个很小的常数以防止除零。在这个可视化中，我们简化了 <InlineMath math="\gamma=1, \beta=0"/>。</p>
                 <BlockMath math={`Z' = \\text{LayerNorm}(Z + \\text{MultiHeadAttention}(Z))`} />
                  <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.encoder_input} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
@@ -7245,7 +7966,6 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 </div>
             </MathBlock>
 
-            {/* --- DECODER EXPLANATIONS --- */}
             <h2 style={{textAlign: 'center', margin: '30px 0'}}>解码器 (Decoder)</h2>
             <MathBlock id="output_embed" title="解码器第1步:输出预处理" highlight={highlight}>
                  <h5>做什么？</h5>
@@ -7309,6 +8029,12 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                     <li><b>Query (<InlineMath math="Q"/>)</b>: 来自解码器前一层的输出 (<InlineMath math="Y'"/>). 它代表了“我当前需要什么信息来生成下一个词？”。这个查询是基于解码器已经生成的内容。</li>
                     <li><b>Key (<InlineMath math="K"/>) 和 Value (<InlineMath math="V"/>)</b>: <b>均来自编码器的最终输出 (<InlineMath math="Z_{final}"/>)</b>. 它们代表了整个输入序列的、经过深度处理的上下文信息。</li>
                 </ol>
+                <h5>为什么Q和K/V的序列长度可以不同？</h5>
+                <p>
+                    这是交叉注意力的核心特征。Query 来自解码器，它的序列长度等于当前已生成的 token 数量（例如 {dims.decoder_seq_len}）。Key 和 Value 来自编码器，它们的序列长度等于完整的输入句子长度（例如 {dims.encoder_seq_len}）。
+                    计算 <InlineMath math={`Q \\cdot K^T`}/> 时，矩阵维度为 <InlineMath math={`(${dims.decoder_seq_len} \\times d_k) \\cdot (d_k \\times ${dims.encoder_seq_len})`}/>，最终得到的注意力分数矩阵维度为 <InlineMath math={`(${dims.decoder_seq_len} \\times ${dims.encoder_seq_len})`}/>。
+                    这个分数矩阵的每一行 `i` 代表解码器的第 `i` 个 token 对编码器所有 `j` 个 token 的关注度分布。这使得解码器在生成每个新词时，都能“回顾”整个输入句子，并决定重点关注哪些部分。
+                </p>
                  <div className="formula-display vertical">
                     <div className="viz-formula-row"><InlineMath math="Y'" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_encdec.Wq} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_encdec.Q} rows={dims.decoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <div className="viz-formula-row"><InlineMath math="Z_{final}" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_encdec.Wk} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_encdec.K} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
@@ -7552,7 +8278,7 @@ export const InteractiveSymbolicElement: React.FC<InteractiveSymbolicElementProp
 import React from 'react';
 import { HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
-import { getSymbolParts } from '../config/symbolMapping';
+import { getSymbolParts } from '../lib/symbolMapping';
 import { InteractiveSymbolicElement } from './InteractiveSymbolicElement';
 import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 
@@ -7659,7 +8385,7 @@ import React from 'react';
 import { HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
 import { Vector as VectorType } from '../types';
-import { getSymbolParts } from '../config/symbolMapping';
+import { getSymbolParts } from '../lib/symbolMapping';
 import { InteractiveSymbolicElement } from './InteractiveSymbolicElement';
 import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 
@@ -7854,7 +8580,7 @@ import React from 'react';
 import { Element } from './Element';
 import { Matrix as MatrixType, HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
-import { getSymbolParts } from '../config/symbolMapping';
+import { getSymbolParts } from '../lib/symbolMapping';
 import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 
 interface MatrixProps {
@@ -8010,23 +8736,16 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
 
     const renderConcatHeads = () => {
         const headsToShow = [];
-        // First head
         headsToShow.push(<Matrix key={0} name={MATRIX_NAMES.head(layerIndex, 0).HeadOutput} data={data.heads[0].HeadOutput} highlight={highlight} onElementClick={onElementClick} />);
-
         if (numHeads > 2) {
-             // Middle ellipsis
             headsToShow.push(<div key="ellipsis-start" className="op-symbol">...</div>);
-            // Last head
             headsToShow.push(<Matrix key={numHeads-1} name={MATRIX_NAMES.head(layerIndex, numHeads-1).HeadOutput} data={data.heads[numHeads-1].HeadOutput} highlight={highlight} onElementClick={onElementClick} />);
         } else if (numHeads === 2) {
-            // Second head
             headsToShow.push(<Matrix key={1} name={MATRIX_NAMES.head(layerIndex, 1).HeadOutput} data={data.heads[1].HeadOutput} highlight={highlight} onElementClick={onElementClick} />);
         }
         return headsToShow;
     };
 
-
-    // --- Layout Breaking Logic ---
     const inputCols = data.heads[0].Wq.length;
     const wqCols = headData.Wq[0]?.length || 0;
     const breakQ = inputCols > 8 || wqCols > 8 || (inputCols + wqCols > 15);
@@ -8056,7 +8775,7 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
             <div className="component-body">
 
                 <div className="viz-formula-group">
-                    <div className="viz-step-title">1. Generate Q, K, V (Head 1)</div>
+                    <div className="viz-step-title">1. Generate Q, K, V (Showing Head 0 as example)</div>
                     <div className={`viz-formula-row ${breakQ ? 'vertical' : ''}`}>
                        <span>(Input) ×</span>
                        <Matrix name={HNe.Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
@@ -8080,7 +8799,7 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                 <div className="arrow-down">↓</div>
 
                 <div className="viz-formula-group">
-                    <div className="viz-step-title">2. Scaled Dot-Product Attention (Head 1)</div>
+                    <div className="viz-step-title">2. Scaled Dot-Product Attention (Head 0)</div>
                     <div className={`viz-formula-row ${breakScores ? 'vertical' : ''}`}>
                         <Matrix name={HNe.Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                         <InlineMath math="\times" />
@@ -8095,7 +8814,6 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                     <div className="viz-formula-row">
                         <Matrix name={HNe.ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
-                    {/* [REMOVED] ElementwiseOperation for Softmax is now handled in tooltip */}
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Softmax}}" /></div>
                     <div className="viz-formula-row">
                         <Matrix name={HNe.AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
@@ -8324,7 +9042,7 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick, onCom
 
     return (
         <div style={{ position: 'relative' }}>
-            {/* Tooltip is now managed in App.tsx to sit on top of the entire layout */}
+            {/* Tooltip and AnimationPanel are now managed in TransformerExplorerTopic.tsx */}
 
             {/* --- Input Stage --- */}
             <TokenizationEmbedding
@@ -8445,7 +9163,7 @@ export const Viz: React.FC<VizProps> = ({ data, highlight, onElementClick, onCom
 ### 文件路径: src/topics/transformer-explorer/config/matrixNames.ts
 ================================================================================
 
-// FILE: src/config/matrixNames.ts
+// FILE: src/topics/transformer-explorer/config/matrixNames.ts
 // This file is the single source of truth for all matrix and vector names.
 
 const generateHeadNames = (base: string) => ({
@@ -8512,106 +9230,7 @@ export const MATRIX_NAMES = {
     logits: 'logits',
     outputProbabilities: 'outputProbabilities',
 };
-// END OF FILE: src/config/matrixNames.ts
-
-
-================================================================================
-### 文件路径: src/topics/transformer-explorer/config/symbolMapping.ts
-================================================================================
-
-// FILE: src/config/symbolMapping.ts
-
-// This file is the single source of truth for mapping a matrix's unique name
-// to its mathematical symbol parts for consistent rendering.
-
-interface SymbolParts {
-    base: string;
-    superscript?: string;
-    subscript?: string;
-}
-
-const SYMBOL_CONFIG: { [key: string]: SymbolParts } = {
-    // Input
-    inputEmbeddings: { base: 'E' },
-    posEncodings: { base: 'PE' },
-    encoderInput: { base: 'Z' }, // Z_0
-    encoder_input: { base: 'Z' },
-
-    // MHA Weights
-    Wq: { base: 'W', superscript: 'Q' },
-    Wk: { base: 'W', superscript: 'K' },
-    Wv: { base: 'W', superscript: 'V' },
-    Wo: { base: 'W', superscript: 'O' },
-
-    // MHA Tensors
-    Q: { base: 'Q' },
-    K: { base: 'K' },
-    V: { base: 'V' },
-    Scores: { base: 'S' },
-    ScaledScores: { base: "S'" },
-    AttentionWeights: { base: 'A' },
-    HeadOutput: { base: 'H' },
-    ConcatOutput: { base: 'H', subscript: 'cat'},
-    output: { base: 'M' },
-    mha_output: { base: 'M' },
-
-    // Add & Norm (Context-dependent, see getSymbolParts)
-    add_norm_1_output: { base: "Z'" }, // Default for Encoder
-    add_norm_2_output: { base: "Z''" }, // Default for Encoder
-    add_norm_3_output: { base: "Y", subscript: "final" }, // Default for Decoder
-
-    // FFN
-    W1: { base: 'W', subscript: '1' },
-    b1: { base: 'b', subscript: '1' },
-    Intermediate: { base: 'H', subscript: 'ffn' },
-    Activated: { base: 'H', subscript: 'act' },
-    W2: { base: 'W', subscript: '2' },
-    b2: { base: 'b', subscript: '2' },
-    ffn_output: { base: 'F' },
-
-    // --- Decoder Specific ---
-    outputEmbeddings: { base: 'E', subscript: 'out' },
-    decoderPosEncodings: { base: 'PE', subscript: 'dec' },
-    decoderInput: { base: 'Y' }, // Y_0
-    decoder_input: { base: 'Y' },
-
-    masked_mha_output: { base: 'M', subscript: 'mmha' },
-    Wo_masked: { base: 'W', superscript: 'O' },
-
-    enc_dec_mha_output: { base: 'M', subscript: 'ed' },
-    Wo_enc_dec: { base: 'W', superscript: 'O' },
-
-    // Final Output
-    finalLinear: { base: 'W', subscript: 'proj' },
-    logits: { base: 'L' },
-    outputProbabilities: { base: 'P' },
-};
-
-/**
- * Gets the consistent mathematical symbol parts for a given matrix name.
- * @param name The full, unique name of the matrix (e.g., "encoder.0.add_norm_1_output").
- * @returns An object with base, superscript, and subscript parts.
- */
-export const getSymbolParts = (name: string): SymbolParts => {
-    const conceptualName = name.split('.').pop() || '';
-    const isDecoderContext = name.includes('decoder');
-
-    // [MODIFIED] Handle context-sensitive Add & Norm symbols
-    if (isDecoderContext) {
-        if (conceptualName === 'add_norm_1_output') return { base: "Y'" };
-        if (conceptualName === 'add_norm_2_output') return { base: "Y''" };
-        if (conceptualName === 'add_norm_3_output') return { base: "Y", subscript: "final" };
-    } else { // Encoder context
-        if (conceptualName === 'add_norm_1_output') return { base: "Z'" };
-        if (conceptualName === 'add_norm_2_output') return { base: "Z", subscript: "final" };
-    }
-
-    if (conceptualName.startsWith('Wq') || conceptualName.startsWith('Wk') || conceptualName.startsWith('Wv') || conceptualName.startsWith('Wo')) {
-        return SYMBOL_CONFIG[conceptualName.substring(0,2)];
-    }
-    return SYMBOL_CONFIG[conceptualName] || { base: 'X' }; // Default to 'X' if not found
-};
-// END OF FILE: src/config/symbolMapping.ts
+// END OF FILE: src/topics/transformer-explorer/config/matrixNames.ts
 
 
 ================================================================================
@@ -8859,6 +9478,90 @@ export const fixedWeights = (dims: Dims) => {
 
 
 ================================================================================
+### 文件路径: src/topics/transformer-explorer/lib/symbolMapping.ts
+================================================================================
+
+// FILE: src/topics/transformer-explorer/lib/symbolMapping.ts
+interface SymbolParts {
+    base: string;
+    superscript?: string;
+    subscript?: string;
+}
+
+export const getSymbolParts = (name: string): SymbolParts => {
+    const conceptualName = name.split('.').pop() || '';
+    const nameParts = name.split('.');
+
+    const baseMap: { [key: string]: string } = {
+        inputEmbeddings: 'E', posEncodings: 'PE',
+        Wq: 'W', Wk: 'W', Wv: 'W', Wo: 'W',
+        Q: 'Q', K: 'K', V: 'V',
+        Scores: 'S', ScaledScores: "S'", AttentionWeights: 'A', HeadOutput: 'H',
+        W1: 'W', b1: 'b', Intermediate: 'H_{ffn}', Activated: 'H_{act}',
+        W2: 'W', b2: 'b', ffn_output: 'F',
+        outputEmbeddings: 'E_{out}', decoderPosEncodings: 'PE_{dec}',
+        finalLinear: 'W_{proj}', logits: 'L', outputProbabilities: 'P',
+        embeddingMatrix: 'E_{table}'
+    };
+
+    let base = baseMap[conceptualName] || 'X';
+    let superscript: string | undefined = undefined;
+    let newSubscripts: (string | number)[] = [];
+
+    // Extract existing subscript from base, e.g., H_{ffn} -> base: H, newSubscripts: ['ffn']
+    const baseMatch = base.match(/([A-Za-z']+)_\{(.*)\}/);
+    if (baseMatch) {
+        base = baseMatch[1];
+        newSubscripts.push(baseMatch[2]);
+    }
+
+
+    const layerMatch = name.match(/\.(encoder|decoder)\.(\d+)/);
+    const headMatch = name.match(/\.h(\d+)\./);
+    const layerIndex = layerMatch ? parseInt(layerMatch[2], 10) : undefined;
+    const headIndex = headMatch ? parseInt(headMatch[1], 10) : undefined;
+    const isDecoder = name.includes('decoder');
+
+    if (conceptualName.startsWith('W')) {
+        if (['Wq', 'Wk', 'Wv'].includes(conceptualName)) superscript = conceptualName.charAt(1).toUpperCase();
+        else if (conceptualName.includes('Wo')) superscript = 'O';
+        else if (conceptualName === 'W1') newSubscripts.push('1');
+        else if (conceptualName === 'W2') newSubscripts.push('2');
+    } else if (conceptualName.startsWith('b')) {
+        newSubscripts.push(conceptualName.charAt(1));
+    }
+
+    if (['Q', 'K', 'V', 'Scores', 'ScaledScores', 'AttentionWeights', 'HeadOutput'].includes(conceptualName)) {
+        if (headIndex !== undefined) newSubscripts.push(headIndex);
+    }
+
+    if (['encoder_input', 'decoder_input'].includes(conceptualName)) {
+        base = isDecoder ? 'Y' : 'Z';
+        if (layerIndex !== undefined) newSubscripts.push(layerIndex);
+    }
+
+    if (conceptualName.startsWith('add_norm_')) {
+        const num = conceptualName.split('_').pop()![0];
+        base = isDecoder ? 'Y' : 'Z';
+        superscript = "'".repeat(parseInt(num, 10));
+        if (layerIndex !== undefined) newSubscripts.push(`l${layerIndex}`);
+    }
+
+    if (['mha_output', 'masked_mha_output', 'enc_dec_mha_output'].includes(conceptualName)) {
+        base = 'M';
+        if (conceptualName.includes('masked')) newSubscripts.push('mmha');
+        else if (conceptualName.includes('enc_dec')) newSubscripts.push('ed');
+        if (layerIndex !== undefined) newSubscripts.push(`l${layerIndex}`);
+    }
+
+    const subscript = newSubscripts.length > 0 ? newSubscripts.join(',') : undefined;
+
+    return { base, superscript, subscript };
+};
+// END OF FILE: src/topics/transformer-explorer/lib/symbolMapping.ts
+
+
+================================================================================
 ### 文件路径: src/topics/transformer-explorer/lib/tokenizer.ts
 ================================================================================
 
@@ -8882,15 +9585,10 @@ export const whitespaceTokenizer = (text: string): string[] => {
 
 // FILE: src/topics/transformer-explorer/lib/tracing.ts
 
-import { ElementIdentifier, HighlightSource, HighlightState, TransformerData, Matrix, CalculationComponent, Vector } from '../types';
+import { ElementIdentifier, HighlightSource, HighlightState, TransformerData, Matrix } from '../types';
 import { TooltipState } from '../../../components/CalculationTooltip/types';
 import { MATRIX_NAMES } from '../config/matrixNames';
-import { getSymbolParts } from '../config/symbolMapping';
-
-
-// ============================================================================
-// Helper functions for tracing logic
-// ============================================================================
+import { getSymbolParts } from '../lib/symbolMapping';
 
 const getLayerAndHeadIndices = (name: string): [number, number] => {
     const layerIdxMatch = name.match(/\.(encoder|decoder)\.(\d+)/);
@@ -9008,30 +9706,27 @@ export const generateTooltipData = (element: ElementIdentifier, transformerData:
     const matmulSourceCol = sources.find(s => s.highlightCol && !s.highlightRow);
     const addSources = sources.filter(s => !s.highlightRow && !s.highlightCol && !s.isInternal);
 
-    // MHA Concat + Final Projection
     if (['mha_output', 'masked_mha_output', 'enc_dec_mha_output'].includes(conceptualName)) {
         opType = 'matmul';
         const headOutputSources = sources.filter(s => s.name.includes('.HeadOutput'));
         const woSource = sources.find(s => s.highlightCol);
         if (headOutputSources.length > 0 && woSource) {
             const aSources = headOutputSources.sort((a,b) => getLayerAndHeadIndices(a.name)[1] - getLayerAndHeadIndices(b.name)[1])
-              .map(source => {
-                const [l, h] = getLayerAndHeadIndices(source.name);
-                return {
-                    data: getMatrixByName(source.name, transformerData, l, h)![source.row],
+              .map(source => ({
+                    data: getMatrixByName(source.name, transformerData, source.layerIndex!, source.headIndex!)![source.row],
                     symbolInfo: getSymbolParts(source.name)
-                };
-            });
+                }));
             const [l, h] = getLayerAndHeadIndices(woSource.name);
             const bSources = [{
                 data: getMatrixByName(woSource.name, transformerData, l, h)!.map(r => r[woSource.col]),
                 symbolInfo: getSymbolParts(woSource.name)
             }];
-            steps.push({ a: [], b: [], op: '·', result: targetValue, aSources, bSources, aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts("") });
+            const vecA = aSources.flatMap(s => s.data);
+            const vecB = bSources[0].data;
+            steps.push({ a: vecA, b: vecB, op: '·', result: targetValue, aSources, bSources, aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts("") });
         }
-    // Wx+b (FFN)
     } else if (['Intermediate', 'ffn_output'].includes(conceptualName)) {
-        opType = 'matmul'; // Treat as a multi-step matmul in the visualizer
+        opType = 'wx-plus-b';
         const matmulMatrixA = getMatrixByName(matmulSourceRow!.name, transformerData, layerIdx, headIdx)!;
         const matmulMatrixB = getMatrixByName(matmulSourceCol!.name, transformerData, layerIdx, headIdx)!;
         const biasSource = addSources[0];
@@ -9039,32 +9734,35 @@ export const generateTooltipData = (element: ElementIdentifier, transformerData:
 
         const aSources = [{ data: matmulMatrixA[row], symbolInfo: getSymbolParts(matmulSourceRow!.name) }];
         const bSources = [{ data: matmulMatrixB.map(r => r[col]), symbolInfo: getSymbolParts(matmulSourceCol!.name) }];
-        const biasVectorSource = { data: biasMatrix[0], symbolInfo: getSymbolParts(biasSource.name) };
+        const biasVectorSource = { data: [biasMatrix[0][col]], symbolInfo: getSymbolParts(biasSource.name) };
         const matmulResult = aSources[0].data.reduce((sum, val, i) => sum + val * bSources[0].data[i], 0);
 
         steps.push({ title: "Step 1: Matmul (Wx)", op: '·', result: matmulResult, a: aSources[0].data, b: bSources[0].data, aSources, bSources, aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts("") });
-        steps.push({ title: "Step 2: Add Bias (+b)", op: '+', result: targetValue, a: [matmulResult], b: biasVectorSource.data, aSources: [{data: [matmulResult], symbolInfo: {base: "Wx"}}], bSources: [biasVectorSource], aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts("") });
-    // Pure Matmul
+        steps.push({ title: "Step 2: Add Bias (+b)", op: '+', result: targetValue, a: [matmulResult], b: [biasVectorSource.data[0]], aSources: [{data: [matmulResult], symbolInfo: {base: "Wx", subscript: `[${row},${col}]`}}], bSources: [biasVectorSource], aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts(""), aLabel: "Wx", bLabel: "b", resultLabel: "Wx+b" });
     } else if (matmulSourceRow && matmulSourceCol) {
         opType = 'matmul';
         const aSources = [{ data: getMatrixByName(matmulSourceRow.name, transformerData, layerIdx, headIdx)![row], symbolInfo: getSymbolParts(matmulSourceRow.name) }];
         const bSources = [{ data: getMatrixByName(matmulSourceCol.name, transformerData, layerIdx, headIdx)!.map(r => r[col]), symbolInfo: getSymbolParts(matmulSourceCol.name) }];
         steps.push({ a: aSources[0].data, b: bSources[0].data, op: '·', result: targetValue, aSources, bSources, aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts("") });
-    // Add & Norm / Positional Encoding
-    } else if (conceptualName.includes('add_norm') || conceptualName.endsWith('_input')) {
-        opType = 'add';
-        if (addSources.length >= 2) {
-            const matrixA = getMatrixByName(addSources[0].name, transformerData, layerIdx, headIdx)!;
-            const matrixB = getMatrixByName(addSources[1].name, transformerData, layerIdx, headIdx)!;
-            const addResult = matrixA[row][col] + matrixB[row][col];
-            steps.push({ a: matrixA[row], b: matrixB[row], op: '+', result: addResult, aSymbolInfo: getSymbolParts(addSources[0].name), bSymbolInfo: getSymbolParts(addSources[1].name), aLabel: getSymbolParts(addSources[0].name).base, bLabel: getSymbolParts(addSources[1].name).base, resultLabel: "Sum" });
+    } else if (addSources.length >= 2) {
+        const matrixA = getMatrixByName(addSources[0].name, transformerData, layerIdx, headIdx)!;
+        const matrixB = getMatrixByName(addSources[1].name, transformerData, layerIdx, headIdx)!;
+        if (conceptualName.includes('add_norm')) {
+            opType = 'layernorm';
+            const vecA = matrixA[row];
+            const vecB = matrixB[row];
+            const addedVector = vecA.map((val, i) => val + vecB[i]);
+            const aLabel = `${getSymbolParts(addSources[0].name).base}${getSymbolParts(addSources[0].name).subscript ? `_{${getSymbolParts(addSources[0].name).subscript}}` : ''} + ${getSymbolParts(addSources[1].name).base}${getSymbolParts(addSources[1].name).subscript ? `_{${getSymbolParts(addSources[1].name).subscript}}` : ''}`;
+            steps.push({ a: addedVector, b: [], op: 'layernorm', result: targetValue, aSymbolInfo: getSymbolParts(name), bSymbolInfo: { base: '' }, aLabel: aLabel, resultLabel: getSymbolParts(name).base });
+        } else {
+             opType = 'add';
+             const addResult = matrixA[row][col] + matrixB[row][col];
+             steps.push({ a: matrixA[row], b: matrixB[row], op: '+', result: addResult, aSymbolInfo: getSymbolParts(addSources[0].name), bSymbolInfo: getSymbolParts(addSources[1].name), aLabel: getSymbolParts(addSources[0].name).base, bLabel: getSymbolParts(addSources[1].name).base, resultLabel: "Sum" });
         }
-    // ReLU Activation
     } else if (conceptualName === 'Activated') {
         opType = 'relu';
         const sourceMatrix = getMatrixByName(sources[0].name, transformerData, layerIdx, headIdx)!;
         steps.push({ a: sourceMatrix[row], b: [], op: 'relu', result: targetValue, aSymbolInfo: getSymbolParts(sources[0].name), bSymbolInfo: { base: '' }, aLabel: getSymbolParts(sources[0].name).base, resultLabel: getSymbolParts(name).base });
-    // Softmax
     } else if (conceptualName === 'AttentionWeights' || conceptualName === 'outputProbabilities') {
         opType = 'softmax';
         const sourceMatrix = getMatrixByName(sources[0].name, transformerData, layerIdx, headIdx)!;
@@ -9073,8 +9771,13 @@ export const generateTooltipData = (element: ElementIdentifier, transformerData:
 
     if (steps.length === 0) return null;
 
-    const symbol = getSymbolParts(name);
-    element.symbol = `${symbol.base}${symbol.subscript ? `_{${symbol.subscript}}` : ''}${symbol.superscript ? `^{${symbol.superscript}}` : ''}`;
+    const finalSymbol = getSymbolParts(name);
+    let subscript = finalSymbol.subscript;
+    // Special handling for title, merging multiple subscripts
+    const titleSymbolParts = [finalSymbol.base];
+    if (finalSymbol.subscript) titleSymbolParts.push(`_{${finalSymbol.subscript}}`);
+    if (finalSymbol.superscript) titleSymbolParts.push(`^{${finalSymbol.superscript}}`);
+    element.symbol = titleSymbolParts.join('');
 
     return { target: element, opType, steps, title: `Calculation for ${element.symbol}[${row},${col}]` };
 };
@@ -9082,29 +9785,44 @@ export const generateTooltipData = (element: ElementIdentifier, transformerData:
 export const createBackwardHighlight = (element: ElementIdentifier, transformerData: TransformerData, dims: any): { highlight: HighlightState } => {
     const { name, row, col, isInternal } = element;
     let newSources: HighlightSource[] = [];
-    let newTarget: ElementIdentifier | null = element;
     let activeComponent: string | null = null;
     let activeResidual: string | null = null;
+
+    const [layerIdx, headIdx] = getLayerAndHeadIndices(name);
+    element.layerIndex = layerIdx;
+    element.headIndex = headIdx;
+
+    const addSource = (src: Partial<HighlightSource>) => {
+        const [srcLayer, srcHead] = getLayerAndHeadIndices(src.name!);
+        const newSource = Object.assign(
+            {},
+            element,
+            { row: -1, col: -1 },
+            src,
+            { layerIndex: srcLayer, headIndex: srcHead }
+        );
+        newSources.push(newSource);
+    };
+
 
     if (name.startsWith('residual.')) {
         const [, resId] = name.split('.');
         activeResidual = resId;
-        const layerIdx = parseInt(resId.match(/l(\d+)/)?.[1] || '0', 10);
+        const resLayerIdx = parseInt(resId.match(/l(\d+)/)?.[1] || '0', 10);
         const part = parseInt(resId.match(/(\d+)$/)?.[1] || '1', 10);
         if (resId.includes('-d')) {
-            const LN = MATRIX_NAMES.decoderLayer(layerIdx);
-            if (part === 1) { activeComponent = 'add_norm_1_dec'; newSources.push({ name: LN.decoder_input, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.masked_mha_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
-            else if (part === 2) { activeComponent = 'add_norm_2_dec'; newSources.push({ name: LN.add_norm_1_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.enc_dec_mha_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
-            else if (part === 3) { activeComponent = 'add_norm_3_dec'; newSources.push({ name: LN.add_norm_2_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.ffn_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
+            const LN = MATRIX_NAMES.decoderLayer(resLayerIdx);
+            if (part === 1) { activeComponent = 'add_norm_1_dec'; addSource({ name: LN.decoder_input, highlightRow: true, highlightCol: true }); addSource({ name: LN.masked_mha_output, highlightRow: true, highlightCol: true }); }
+            else if (part === 2) { activeComponent = 'add_norm_2_dec'; addSource({ name: LN.add_norm_1_output, highlightRow: true, highlightCol: true }); addSource({ name: LN.enc_dec_mha_output, highlightRow: true, highlightCol: true }); }
+            else if (part === 3) { activeComponent = 'add_norm_3_dec'; addSource({ name: LN.add_norm_2_output, highlightRow: true, highlightCol: true }); addSource({ name: LN.ffn_output, highlightRow: true, highlightCol: true }); }
         } else {
-            const LN = MATRIX_NAMES.layer(layerIdx);
-            if (part === 1) { activeComponent = 'add_norm_1'; newSources.push({ name: LN.encoder_input, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.mha_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
-            else if (part === 2) { activeComponent = 'add_norm_2'; newSources.push({ name: LN.add_norm_1_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.ffn_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
+            const LN = MATRIX_NAMES.layer(resLayerIdx);
+            if (part === 1) { activeComponent = 'add_norm_1'; addSource({ name: LN.encoder_input, highlightRow: true, highlightCol: true }); addSource({ name: LN.mha_output, highlightRow: true, highlightCol: true }); }
+            else if (part === 2) { activeComponent = 'add_norm_2'; addSource({ name: LN.add_norm_1_output, highlightRow: true, highlightCol: true }); addSource({ name: LN.ffn_output, highlightRow: true, highlightCol: true }); }
         }
         return { highlight: { target: null, sources: newSources, activeComponent, activeResidual, destinations: [] } };
     }
 
-    const [layerIdx, headIdx] = getLayerAndHeadIndices(name);
     const LNe = MATRIX_NAMES.layer(layerIdx);
     const HNe = MATRIX_NAMES.head(layerIdx, headIdx);
     const LNd = MATRIX_NAMES.decoderLayer(layerIdx);
@@ -9136,60 +9854,52 @@ export const createBackwardHighlight = (element: ElementIdentifier, transformerD
         activeComponent = 'decoding';
     }
 
-    if (name === 'inputToken') { newSources.push({ name: MATRIX_NAMES.inputEmbeddings, row, col: -1, highlightRow: true }) }
-    else if (name === MATRIX_NAMES.inputEmbeddings) { newSources.push({ name: 'inputToken', row, col: -1 }); newSources.push({ name: 'embeddingMatrix', row: transformerData.tokenizedInput[row], col: -1, highlightRow: true }) }
+    if (name === 'inputToken') { addSource({ name: MATRIX_NAMES.inputEmbeddings, row, col: -1, highlightRow: true }) }
+    else if (name === MATRIX_NAMES.inputEmbeddings) { addSource({ name: 'inputToken', row }); addSource({ name: 'embeddingMatrix', row: transformerData.tokenizedInput[row], col: -1, highlightRow: true }) }
     else if (name === LNe.encoder_input) {
-        if (layerIdx === 0) {
-            newSources.push({ name: MATRIX_NAMES.inputEmbeddings, row, col });
-            newSources.push({ name: MATRIX_NAMES.posEncodings, row, col });
-        } else {
-            newSources.push({ name: MATRIX_NAMES.layer(layerIdx - 1).add_norm_2_output, row, col });
-        }
+        if (layerIdx === 0) { addSource({ name: MATRIX_NAMES.inputEmbeddings, row, col }); addSource({ name: MATRIX_NAMES.posEncodings, row, col }); }
+        else { addSource({ name: MATRIX_NAMES.layer(layerIdx - 1).add_norm_2_output, row, col }); }
     }
-    else if (name === HNe.Q || name === HNe.K || name === HNe.V) { const type = name.split('.').pop()!; newSources.push({ name: LNe.encoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: HNe[`W${type.toLowerCase()}` as 'Wq' | 'Wk' | 'Wv'], row: -1, col, highlightCol: true }); }
-    else if (name === HNe.Scores) { newSources.push({ name: HNe.Q, row, col: -1, highlightRow: true }); newSources.push({ name: HNe.K, row: col, col: -1, highlightRow: true }); }
-    else if (name === HNe.ScaledScores) { newSources.push({ name: HNe.Scores, row, col }); }
-    else if (name === HNe.AttentionWeights) { newSources.push({ name: HNe.ScaledScores, row, col: -1, highlightRow: true });}
-    else if (name === HNe.HeadOutput) { newSources.push({ name: HNe.AttentionWeights, row, col: -1, highlightRow: true }); newSources.push({ name: HNe.V, row: -1, col, highlightCol: true }); }
-    else if (name === LNe.mha_output) { for (let h = 0; h < dims.h; h++) { newSources.push({ name: MATRIX_NAMES.head(layerIdx, h).HeadOutput, row: row, col: -1, highlightRow: true }); } newSources.push({ name: LNe.Wo, row: -1, col, highlightCol: true }); }
-    else if (name === LNe.add_norm_1_output) { newSources.push({ name: LNe.encoder_input, row, col }); newSources.push({ name: LNe.mha_output, row, col }); }
-    else if (name === LNe.Intermediate) { newSources.push({ name: LNe.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.W1, row: -1, col, highlightCol: true }); newSources.push({ name: LNe.b1, row: 0, col }); }
-    else if (name === LNe.Activated) { newSources.push({ name: LNe.Intermediate, row, col }); }
-    else if (name === LNe.ffn_output) { newSources.push({ name: LNe.Activated, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.W2, row: -1, col, highlightCol: true }); newSources.push({ name: LNe.b2, row: 0, col }); }
-    else if (name === LNe.add_norm_2_output) { newSources.push({ name: LNe.add_norm_1_output, row, col }); newSources.push({ name: LNe.ffn_output, row, col }); }
+    else if (name === HNe.Q || name === HNe.K || name === HNe.V) { const type = name.split('.').pop()!; addSource({ name: LNe.encoder_input, row, col: -1, highlightRow: true }); addSource({ name: HNe[`W${type.toLowerCase()}` as 'Wq' | 'Wk' | 'Wv'], row: -1, col, highlightCol: true }); }
+    else if (name === HNe.Scores) { addSource({ name: HNe.Q, row, col: -1, highlightRow: true }); addSource({ name: HNe.K, row: col, col: -1, highlightRow: true }); }
+    else if (name === HNe.ScaledScores) { addSource({ name: HNe.Scores, row, col }); }
+    else if (name === HNe.AttentionWeights) { addSource({ name: HNe.ScaledScores, row, col: -1, highlightRow: true });}
+    else if (name === HNe.HeadOutput) { addSource({ name: HNe.AttentionWeights, row, col: -1, highlightRow: true }); addSource({ name: HNe.V, row: -1, col, highlightCol: true }); }
+    else if (name === LNe.mha_output) { for (let h = 0; h < dims.h; h++) { addSource({ name: MATRIX_NAMES.head(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true, headIndex: h }); } addSource({ name: LNe.Wo, row: -1, col, highlightCol: true }); }
+    else if (name === LNe.add_norm_1_output) { addSource({ name: LNe.encoder_input, row, col }); addSource({ name: LNe.mha_output, row, col }); }
+    else if (name === LNe.Intermediate) { addSource({ name: LNe.add_norm_1_output, row, col: -1, highlightRow: true }); addSource({ name: LNe.W1, row: -1, col, highlightCol: true }); addSource({ name: LNe.b1, row: 0, col }); }
+    else if (name === LNe.Activated) { addSource({ name: LNe.Intermediate, row, col }); }
+    else if (name === LNe.ffn_output) { addSource({ name: LNe.Activated, row, col: -1, highlightRow: true }); addSource({ name: LNe.W2, row: -1, col, highlightCol: true }); addSource({ name: LNe.b2, row: 0, col }); }
+    else if (name === LNe.add_norm_2_output) { addSource({ name: LNe.add_norm_1_output, row, col }); addSource({ name: LNe.ffn_output, row, col }); }
     else if (name === LNd.decoder_input) {
-        if (layerIdx === 0) {
-            newSources.push({ name: MATRIX_NAMES.outputEmbeddings, row, col });
-            newSources.push({ name: MATRIX_NAMES.decoderPosEncodings, row, col });
-        } else {
-            newSources.push({ name: MATRIX_NAMES.decoderLayer(layerIdx - 1).add_norm_3_output, row, col });
-        }
+        if (layerIdx === 0) { addSource({ name: MATRIX_NAMES.outputEmbeddings, row, col }); addSource({ name: MATRIX_NAMES.decoderPosEncodings, row, col }); }
+        else { addSource({ name: MATRIX_NAMES.decoderLayer(layerIdx - 1).add_norm_3_output, row, col }); }
     }
-    else if (name === HNd_masked.Q || name === HNd_masked.K || name === HNd_masked.V) { const type = name.split('.').pop()!; newSources.push({ name: LNd.decoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked[`W${type.toLowerCase()}` as 'Wq' | 'Wk' | 'Wv'], row: -1, col, highlightCol: true }); }
-    else if (name === HNd_masked.Scores) { newSources.push({ name: HNd_masked.Q, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked.K, row: col, col: -1, highlightRow: true }); }
-    else if (name === HNd_masked.ScaledScores) { newSources.push({ name: HNd_masked.Scores, row, col }); }
-    else if (name === HNd_masked.AttentionWeights) { newSources.push({ name: HNd_masked.ScaledScores, row, col: -1, highlightRow: true }); }
-    else if (name === HNd_masked.HeadOutput) { newSources.push({ name: HNd_masked.AttentionWeights, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked.V, row: -1, col, highlightCol: true }); }
-    else if (name === LNd.masked_mha_output) { for (let h = 0; h < dims.h; h++) { newSources.push({ name: MATRIX_NAMES.maskedMhaHead(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true }); } newSources.push({ name: LNd.Wo_masked, row: -1, col, highlightCol: true }); }
-    else if (name === LNd.add_norm_1_output) { newSources.push({ name: LNd.decoder_input, row, col }); newSources.push({ name: LNd.masked_mha_output, row, col }); }
-    else if (name === HNd_encdec.Q) { newSources.push({ name: LNd.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_encdec.Wq, row: -1, col, highlightCol: true }); }
-    else if (name === HNd_encdec.K) { newSources.push({ name: MATRIX_NAMES.finalEncoderOutput, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: HNd_encdec.Wk, row: -1, col, highlightCol: true }); }
-    else if (name === HNd_encdec.V) { newSources.push({ name: MATRIX_NAMES.finalEncoderOutput, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: HNd_encdec.Wv, row: -1, col, highlightCol: true }); }
-    else if (name === HNd_encdec.Scores) { newSources.push({ name: HNd_encdec.Q, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_encdec.K, row: col, col: -1, highlightRow: true }); }
-    else if (name === HNd_encdec.ScaledScores) { newSources.push({ name: HNd_encdec.Scores, row, col }); }
-    else if (name === HNd_encdec.AttentionWeights) { newSources.push({ name: HNd_encdec.ScaledScores, row, col: -1, highlightRow: true }); }
-    else if (name === HNd_encdec.HeadOutput) { newSources.push({ name: HNd_encdec.AttentionWeights, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_encdec.V, row: -1, col, highlightCol: true }); }
-    else if (name === LNd.enc_dec_mha_output) { for (let h = 0; h < dims.h; h++) { newSources.push({ name: MATRIX_NAMES.encDecMhaHead(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true }); } newSources.push({ name: LNd.Wo_enc_dec, row: -1, col, highlightCol: true }); }
-    else if (name === LNd.add_norm_2_output) { newSources.push({ name: LNd.add_norm_1_output, row, col }); newSources.push({ name: LNd.enc_dec_mha_output, row, col }); }
-    else if (name === LNd.Intermediate) { newSources.push({ name: LNd.add_norm_2_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.W1, row: -1, col, highlightCol: true }); newSources.push({ name: LNd.b1, row: 0, col }); }
-    else if (name === LNd.Activated) { newSources.push({ name: LNd.Intermediate, row, col }); }
-    else if (name === LNd.ffn_output) { newSources.push({ name: LNd.Activated, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.W2, row: -1, col, highlightCol: true }); newSources.push({ name: LNd.b2, row: 0, col }); }
-    else if (name === LNd.add_norm_3_output) { newSources.push({ name: LNd.add_norm_2_output, row, col }); newSources.push({ name: LNd.ffn_output, row, col }); }
-    else if (name === MATRIX_NAMES.logits) { newSources.push({ name: MATRIX_NAMES.decoderLayer(dims.n_layers - 1).add_norm_3_output, row, col: -1, highlightRow: true }); newSources.push({ name: MATRIX_NAMES.finalLinear, row: -1, col, highlightCol: true }) }
-    else if (name === MATRIX_NAMES.outputProbabilities) { newSources.push({ name: MATRIX_NAMES.logits, row, col: -1, highlightRow: true }) }
-    else if (name === 'outputToken') { newSources.push({ name: MATRIX_NAMES.outputProbabilities, row, col: -1, highlightRow: true, highlightProbCol: true }) }
+    else if (name === HNd_masked.Q || name === HNd_masked.K || name === HNd_masked.V) { const type = name.split('.').pop()!; addSource({ name: LNd.decoder_input, row, col: -1, highlightRow: true }); addSource({ name: HNd_masked[`W${type.toLowerCase()}` as 'Wq' | 'Wk' | 'Wv'], row: -1, col, highlightCol: true }); }
+    else if (name === HNd_masked.Scores) { addSource({ name: HNd_masked.Q, row, col: -1, highlightRow: true }); addSource({ name: HNd_masked.K, row: col, col: -1, highlightRow: true }); }
+    else if (name === HNd_masked.ScaledScores) { addSource({ name: HNd_masked.Scores, row, col }); }
+    else if (name === HNd_masked.AttentionWeights) { addSource({ name: HNd_masked.ScaledScores, row, col: -1, highlightRow: true }); }
+    else if (name === HNd_masked.HeadOutput) { addSource({ name: HNd_masked.AttentionWeights, row, col: -1, highlightRow: true }); addSource({ name: HNd_masked.V, row: -1, col, highlightCol: true }); }
+    else if (name === LNd.masked_mha_output) { for (let h = 0; h < dims.h; h++) { addSource({ name: MATRIX_NAMES.maskedMhaHead(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true, headIndex: h }); } addSource({ name: LNd.Wo_masked, row: -1, col, highlightCol: true }); }
+    else if (name === LNd.add_norm_1_output) { addSource({ name: LNd.decoder_input, row, col }); addSource({ name: LNd.masked_mha_output, row, col }); }
+    else if (name === HNd_encdec.Q) { addSource({ name: LNd.add_norm_1_output, row, col: -1, highlightRow: true }); addSource({ name: HNd_encdec.Wq, row: -1, col, highlightCol: true }); }
+    else if (name === HNd_encdec.K) { addSource({ name: MATRIX_NAMES.finalEncoderOutput, row: -1, col: -1, highlightRow: true, highlightCol: true }); addSource({ name: HNd_encdec.Wk, row: -1, col, highlightCol: true }); }
+    else if (name === HNd_encdec.V) { addSource({ name: MATRIX_NAMES.finalEncoderOutput, row: -1, col: -1, highlightRow: true, highlightCol: true }); addSource({ name: HNd_encdec.Wv, row: -1, col, highlightCol: true }); }
+    else if (name === HNd_encdec.Scores) { addSource({ name: HNd_encdec.Q, row, col: -1, highlightRow: true }); addSource({ name: HNd_encdec.K, row: col, col: -1, highlightRow: true }); }
+    else if (name === HNd_encdec.ScaledScores) { addSource({ name: HNd_encdec.Scores, row, col }); }
+    else if (name === HNd_encdec.AttentionWeights) { addSource({ name: HNd_encdec.ScaledScores, row, col: -1, highlightRow: true }); }
+    else if (name === HNd_encdec.HeadOutput) { addSource({ name: HNd_encdec.AttentionWeights, row, col: -1, highlightRow: true }); addSource({ name: HNd_encdec.V, row: -1, col, highlightCol: true }); }
+    else if (name === LNd.enc_dec_mha_output) { for (let h = 0; h < dims.h; h++) { addSource({ name: MATRIX_NAMES.encDecMhaHead(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true, headIndex: h }); } addSource({ name: LNd.Wo_enc_dec, row: -1, col, highlightCol: true }); }
+    else if (name === LNd.add_norm_2_output) { addSource({ name: LNd.add_norm_1_output, row, col }); addSource({ name: LNd.enc_dec_mha_output, row, col }); }
+    else if (name === LNd.Intermediate) { addSource({ name: LNd.add_norm_2_output, row, col: -1, highlightRow: true }); addSource({ name: LNd.W1, row: -1, col, highlightCol: true }); addSource({ name: LNd.b1, row: 0, col }); }
+    else if (name === LNd.Activated) { addSource({ name: LNd.Intermediate, row, col }); }
+    else if (name === LNd.ffn_output) { addSource({ name: LNd.Activated, row, col: -1, highlightRow: true }); addSource({ name: LNd.W2, row: -1, col, highlightCol: true }); addSource({ name: LNd.b2, row: 0, col }); }
+    else if (name === LNd.add_norm_3_output) { addSource({ name: LNd.add_norm_2_output, row, col }); addSource({ name: LNd.ffn_output, row, col }); }
+    else if (name === MATRIX_NAMES.logits) { addSource({ name: MATRIX_NAMES.decoderLayer(dims.n_layers - 1).add_norm_3_output, row, col: -1, highlightRow: true }); addSource({ name: MATRIX_NAMES.finalLinear, row: -1, col, highlightCol: true }) }
+    else if (name === MATRIX_NAMES.outputProbabilities) { addSource({ name: MATRIX_NAMES.logits, row, col: -1, highlightRow: true }) }
+    else if (name === 'outputToken') { addSource({ name: MATRIX_NAMES.outputProbabilities, row, col: -1, highlightRow: true, highlightProbCol: true }) }
 
-    const highlight = { target: newTarget, sources: newSources, activeComponent, activeResidual, destinations: [] };
+    const highlight = { target: element, sources: newSources, activeComponent, activeResidual, destinations: [] };
     return { highlight };
 };
 // END OF FILE: src/topics/transformer-explorer/lib/tracing.ts
@@ -9199,7 +9909,7 @@ export const createBackwardHighlight = (element: ElementIdentifier, transformerD
 ### 文件路径: src/topics/transformer-explorer/lib/transformer.ts
 ================================================================================
 
-// FILE: lib/transformer.ts
+// FILE: src/topics/transformer-explorer/lib/transformer.ts
 import { Matrix, TransformerData, EncoderLayerData, FFNData, MultiHeadAttentionData, AttentionHeadData, Vector, DecoderLayerData } from '../types';
 import { fixedWeights } from './fixedWeights';
 import { whitespaceTokenizer } from './tokenizer';
@@ -9460,7 +10170,7 @@ export const calculateTransformer = (inputText: string, dims: Dims): Transformer
         outputText,
     };
 };
-// END OF FILE: lib/transformer.ts
+// END OF FILE: src/topics/transformer-explorer/lib/transformer.ts
 
 
 ================================================================================

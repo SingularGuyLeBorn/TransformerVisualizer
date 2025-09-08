@@ -1,11 +1,11 @@
-// FILE: src/components/DecoderLayer.tsx
+// FILE: src/topics/transformer-explorer/components/DecoderLayer.tsx
 import React from 'react';
 import { DecoderLayerData, HighlightState, ElementIdentifier, Matrix as MatrixType } from '../types';
 import { AddNorm } from './AddNorm';
 import { FeedForward } from './FeedForward';
 import { MATRIX_NAMES } from '../config/matrixNames';
 import { ResidualBlock } from './ResidualBlock';
-import { getSymbolParts } from '../config/symbolMapping';
+import { getSymbolParts } from '../lib/symbolMapping';
 import { Matrix } from './Matrix';
 import { MaskedMultiHeadAttention } from './MaskedMultiHeadAttention';
 import { EncoderDecoderAttention } from './EncoderDecoderAttention';
@@ -16,7 +16,7 @@ interface DecoderLayerProps {
   highlight: HighlightState;
   onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
   onComponentClick: (componentId: string) => void;
-  finalEncoderOutput: MatrixType; // [ADDED]
+  finalEncoderOutput: MatrixType;
 }
 
 export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, highlight, onElementClick, onComponentClick, finalEncoderOutput }) => {
@@ -42,7 +42,6 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
             <div className="component-header" style={{backgroundColor: '#ede7f6'}}>解码器层 (Decoder Layer) {layerIndex + 1}</div>
             <div className="component-body">
 
-                {/* --- Masked MHA Sub-layer --- */}
                 <Matrix name={LN.decoder_input} data={data.decoder_input} highlight={highlight} onElementClick={onElementClick} />
                 <ResidualBlock id={`res-l${layerIndex}-d1`} type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes1} matrixDims={dimsRes1} />
                 <MaskedMultiHeadAttention
@@ -69,7 +68,6 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
                 />
                 <div className="arrow-down">↓</div>
 
-                {/* --- Encoder-Decoder Attention Sub-layer --- */}
                 <ResidualBlock id={`res-l${layerIndex}-d2`} type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes2} matrixDims={dimsRes2} />
                 <EncoderDecoderAttention
                     baseName={`${baseName}.enc_dec_mha`}
@@ -77,6 +75,7 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
                     highlight={highlight}
                     onElementClick={onElementClick}
                     onComponentClick={onComponentClick}
+                    decoderAddNorm1Output={data.add_norm_1_output}
                     finalEncoderOutput={finalEncoderOutput}
                 />
                 <AddNorm
@@ -96,7 +95,6 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
                 />
                 <div className="arrow-down">↓</div>
 
-                {/* --- FFN Sub-layer --- */}
                 <ResidualBlock id={`res-l${layerIndex}-d3`} type="start" highlight={highlight} onElementClick={onElementClick} matrixSymbol={mathSymbolRes3} matrixDims={dimsRes3} />
                 <FeedForward
                     baseName={`${baseName}.ffn`}
@@ -127,4 +125,4 @@ export const DecoderLayer: React.FC<DecoderLayerProps> = ({ layerIndex, data, hi
     </div>
   );
 };
-// END OF FILE: src/components/DecoderLayer.tsx
+// END OF FILE: src/topics/transformer-explorer/components/DecoderLayer.tsx

@@ -1,14 +1,9 @@
 // FILE: src/topics/transformer-explorer/lib/tracing.ts
 
-import { ElementIdentifier, HighlightSource, HighlightState, TransformerData, Matrix, CalculationComponent, Vector } from '../types';
+import { ElementIdentifier, HighlightSource, HighlightState, TransformerData, Matrix } from '../types';
 import { TooltipState } from '../../../components/CalculationTooltip/types';
 import { MATRIX_NAMES } from '../config/matrixNames';
-import { getSymbolParts } from '../config/symbolMapping';
-
-
-// ============================================================================
-// Helper functions for tracing logic
-// ============================================================================
+import { getSymbolParts } from '../lib/symbolMapping';
 
 const getLayerAndHeadIndices = (name: string): [number, number] => {
     const layerIdxMatch = name.match(/\.(encoder|decoder)\.(\d+)/);
@@ -126,30 +121,27 @@ export const generateTooltipData = (element: ElementIdentifier, transformerData:
     const matmulSourceCol = sources.find(s => s.highlightCol && !s.highlightRow);
     const addSources = sources.filter(s => !s.highlightRow && !s.highlightCol && !s.isInternal);
 
-    // MHA Concat + Final Projection
     if (['mha_output', 'masked_mha_output', 'enc_dec_mha_output'].includes(conceptualName)) {
         opType = 'matmul';
         const headOutputSources = sources.filter(s => s.name.includes('.HeadOutput'));
         const woSource = sources.find(s => s.highlightCol);
         if (headOutputSources.length > 0 && woSource) {
             const aSources = headOutputSources.sort((a,b) => getLayerAndHeadIndices(a.name)[1] - getLayerAndHeadIndices(b.name)[1])
-              .map(source => {
-                const [l, h] = getLayerAndHeadIndices(source.name);
-                return {
-                    data: getMatrixByName(source.name, transformerData, l, h)![source.row],
+              .map(source => ({
+                    data: getMatrixByName(source.name, transformerData, source.layerIndex!, source.headIndex!)![source.row],
                     symbolInfo: getSymbolParts(source.name)
-                };
-            });
+                }));
             const [l, h] = getLayerAndHeadIndices(woSource.name);
             const bSources = [{
                 data: getMatrixByName(woSource.name, transformerData, l, h)!.map(r => r[woSource.col]),
                 symbolInfo: getSymbolParts(woSource.name)
             }];
-            steps.push({ a: [], b: [], op: '·', result: targetValue, aSources, bSources, aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts("") });
+            const vecA = aSources.flatMap(s => s.data);
+            const vecB = bSources[0].data;
+            steps.push({ a: vecA, b: vecB, op: '·', result: targetValue, aSources, bSources, aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts("") });
         }
-    // Wx+b (FFN)
     } else if (['Intermediate', 'ffn_output'].includes(conceptualName)) {
-        opType = 'matmul'; // Treat as a multi-step matmul in the visualizer
+        opType = 'wx-plus-b';
         const matmulMatrixA = getMatrixByName(matmulSourceRow!.name, transformerData, layerIdx, headIdx)!;
         const matmulMatrixB = getMatrixByName(matmulSourceCol!.name, transformerData, layerIdx, headIdx)!;
         const biasSource = addSources[0];
@@ -157,32 +149,35 @@ export const generateTooltipData = (element: ElementIdentifier, transformerData:
 
         const aSources = [{ data: matmulMatrixA[row], symbolInfo: getSymbolParts(matmulSourceRow!.name) }];
         const bSources = [{ data: matmulMatrixB.map(r => r[col]), symbolInfo: getSymbolParts(matmulSourceCol!.name) }];
-        const biasVectorSource = { data: biasMatrix[0], symbolInfo: getSymbolParts(biasSource.name) };
+        const biasVectorSource = { data: [biasMatrix[0][col]], symbolInfo: getSymbolParts(biasSource.name) };
         const matmulResult = aSources[0].data.reduce((sum, val, i) => sum + val * bSources[0].data[i], 0);
 
         steps.push({ title: "Step 1: Matmul (Wx)", op: '·', result: matmulResult, a: aSources[0].data, b: bSources[0].data, aSources, bSources, aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts("") });
-        steps.push({ title: "Step 2: Add Bias (+b)", op: '+', result: targetValue, a: [matmulResult], b: biasVectorSource.data, aSources: [{data: [matmulResult], symbolInfo: {base: "Wx"}}], bSources: [biasVectorSource], aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts("") });
-    // Pure Matmul
+        steps.push({ title: "Step 2: Add Bias (+b)", op: '+', result: targetValue, a: [matmulResult], b: [biasVectorSource.data[0]], aSources: [{data: [matmulResult], symbolInfo: {base: "Wx", subscript: `[${row},${col}]`}}], bSources: [biasVectorSource], aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts(""), aLabel: "Wx", bLabel: "b", resultLabel: "Wx+b" });
     } else if (matmulSourceRow && matmulSourceCol) {
         opType = 'matmul';
         const aSources = [{ data: getMatrixByName(matmulSourceRow.name, transformerData, layerIdx, headIdx)![row], symbolInfo: getSymbolParts(matmulSourceRow.name) }];
         const bSources = [{ data: getMatrixByName(matmulSourceCol.name, transformerData, layerIdx, headIdx)!.map(r => r[col]), symbolInfo: getSymbolParts(matmulSourceCol.name) }];
         steps.push({ a: aSources[0].data, b: bSources[0].data, op: '·', result: targetValue, aSources, bSources, aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts("") });
-    // Add & Norm / Positional Encoding
-    } else if (conceptualName.includes('add_norm') || conceptualName.endsWith('_input')) {
-        opType = 'add';
-        if (addSources.length >= 2) {
-            const matrixA = getMatrixByName(addSources[0].name, transformerData, layerIdx, headIdx)!;
-            const matrixB = getMatrixByName(addSources[1].name, transformerData, layerIdx, headIdx)!;
-            const addResult = matrixA[row][col] + matrixB[row][col];
-            steps.push({ a: matrixA[row], b: matrixB[row], op: '+', result: addResult, aSymbolInfo: getSymbolParts(addSources[0].name), bSymbolInfo: getSymbolParts(addSources[1].name), aLabel: getSymbolParts(addSources[0].name).base, bLabel: getSymbolParts(addSources[1].name).base, resultLabel: "Sum" });
+    } else if (addSources.length >= 2) {
+        const matrixA = getMatrixByName(addSources[0].name, transformerData, layerIdx, headIdx)!;
+        const matrixB = getMatrixByName(addSources[1].name, transformerData, layerIdx, headIdx)!;
+        if (conceptualName.includes('add_norm')) {
+            opType = 'layernorm';
+            const vecA = matrixA[row];
+            const vecB = matrixB[row];
+            const addedVector = vecA.map((val, i) => val + vecB[i]);
+            const aLabel = `${getSymbolParts(addSources[0].name).base}${getSymbolParts(addSources[0].name).subscript ? `_{${getSymbolParts(addSources[0].name).subscript}}` : ''} + ${getSymbolParts(addSources[1].name).base}${getSymbolParts(addSources[1].name).subscript ? `_{${getSymbolParts(addSources[1].name).subscript}}` : ''}`;
+            steps.push({ a: addedVector, b: [], op: 'layernorm', result: targetValue, aSymbolInfo: getSymbolParts(name), bSymbolInfo: { base: '' }, aLabel: aLabel, resultLabel: getSymbolParts(name).base });
+        } else {
+             opType = 'add';
+             const addResult = matrixA[row][col] + matrixB[row][col];
+             steps.push({ a: matrixA[row], b: matrixB[row], op: '+', result: addResult, aSymbolInfo: getSymbolParts(addSources[0].name), bSymbolInfo: getSymbolParts(addSources[1].name), aLabel: getSymbolParts(addSources[0].name).base, bLabel: getSymbolParts(addSources[1].name).base, resultLabel: "Sum" });
         }
-    // ReLU Activation
     } else if (conceptualName === 'Activated') {
         opType = 'relu';
         const sourceMatrix = getMatrixByName(sources[0].name, transformerData, layerIdx, headIdx)!;
         steps.push({ a: sourceMatrix[row], b: [], op: 'relu', result: targetValue, aSymbolInfo: getSymbolParts(sources[0].name), bSymbolInfo: { base: '' }, aLabel: getSymbolParts(sources[0].name).base, resultLabel: getSymbolParts(name).base });
-    // Softmax
     } else if (conceptualName === 'AttentionWeights' || conceptualName === 'outputProbabilities') {
         opType = 'softmax';
         const sourceMatrix = getMatrixByName(sources[0].name, transformerData, layerIdx, headIdx)!;
@@ -191,8 +186,13 @@ export const generateTooltipData = (element: ElementIdentifier, transformerData:
 
     if (steps.length === 0) return null;
 
-    const symbol = getSymbolParts(name);
-    element.symbol = `${symbol.base}${symbol.subscript ? `_{${symbol.subscript}}` : ''}${symbol.superscript ? `^{${symbol.superscript}}` : ''}`;
+    const finalSymbol = getSymbolParts(name);
+    let subscript = finalSymbol.subscript;
+    // Special handling for title, merging multiple subscripts
+    const titleSymbolParts = [finalSymbol.base];
+    if (finalSymbol.subscript) titleSymbolParts.push(`_{${finalSymbol.subscript}}`);
+    if (finalSymbol.superscript) titleSymbolParts.push(`^{${finalSymbol.superscript}}`);
+    element.symbol = titleSymbolParts.join('');
 
     return { target: element, opType, steps, title: `Calculation for ${element.symbol}[${row},${col}]` };
 };
@@ -200,29 +200,44 @@ export const generateTooltipData = (element: ElementIdentifier, transformerData:
 export const createBackwardHighlight = (element: ElementIdentifier, transformerData: TransformerData, dims: any): { highlight: HighlightState } => {
     const { name, row, col, isInternal } = element;
     let newSources: HighlightSource[] = [];
-    let newTarget: ElementIdentifier | null = element;
     let activeComponent: string | null = null;
     let activeResidual: string | null = null;
+
+    const [layerIdx, headIdx] = getLayerAndHeadIndices(name);
+    element.layerIndex = layerIdx;
+    element.headIndex = headIdx;
+
+    const addSource = (src: Partial<HighlightSource>) => {
+        const [srcLayer, srcHead] = getLayerAndHeadIndices(src.name!);
+        const newSource = Object.assign(
+            {},
+            element,
+            { row: -1, col: -1 },
+            src,
+            { layerIndex: srcLayer, headIndex: srcHead }
+        );
+        newSources.push(newSource);
+    };
+
 
     if (name.startsWith('residual.')) {
         const [, resId] = name.split('.');
         activeResidual = resId;
-        const layerIdx = parseInt(resId.match(/l(\d+)/)?.[1] || '0', 10);
+        const resLayerIdx = parseInt(resId.match(/l(\d+)/)?.[1] || '0', 10);
         const part = parseInt(resId.match(/(\d+)$/)?.[1] || '1', 10);
         if (resId.includes('-d')) {
-            const LN = MATRIX_NAMES.decoderLayer(layerIdx);
-            if (part === 1) { activeComponent = 'add_norm_1_dec'; newSources.push({ name: LN.decoder_input, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.masked_mha_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
-            else if (part === 2) { activeComponent = 'add_norm_2_dec'; newSources.push({ name: LN.add_norm_1_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.enc_dec_mha_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
-            else if (part === 3) { activeComponent = 'add_norm_3_dec'; newSources.push({ name: LN.add_norm_2_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.ffn_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
+            const LN = MATRIX_NAMES.decoderLayer(resLayerIdx);
+            if (part === 1) { activeComponent = 'add_norm_1_dec'; addSource({ name: LN.decoder_input, highlightRow: true, highlightCol: true }); addSource({ name: LN.masked_mha_output, highlightRow: true, highlightCol: true }); }
+            else if (part === 2) { activeComponent = 'add_norm_2_dec'; addSource({ name: LN.add_norm_1_output, highlightRow: true, highlightCol: true }); addSource({ name: LN.enc_dec_mha_output, highlightRow: true, highlightCol: true }); }
+            else if (part === 3) { activeComponent = 'add_norm_3_dec'; addSource({ name: LN.add_norm_2_output, highlightRow: true, highlightCol: true }); addSource({ name: LN.ffn_output, highlightRow: true, highlightCol: true }); }
         } else {
-            const LN = MATRIX_NAMES.layer(layerIdx);
-            if (part === 1) { activeComponent = 'add_norm_1'; newSources.push({ name: LN.encoder_input, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.mha_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
-            else if (part === 2) { activeComponent = 'add_norm_2'; newSources.push({ name: LN.add_norm_1_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: LN.ffn_output, row: -1, col: -1, highlightRow: true, highlightCol: true }); }
+            const LN = MATRIX_NAMES.layer(resLayerIdx);
+            if (part === 1) { activeComponent = 'add_norm_1'; addSource({ name: LN.encoder_input, highlightRow: true, highlightCol: true }); addSource({ name: LN.mha_output, highlightRow: true, highlightCol: true }); }
+            else if (part === 2) { activeComponent = 'add_norm_2'; addSource({ name: LN.add_norm_1_output, highlightRow: true, highlightCol: true }); addSource({ name: LN.ffn_output, highlightRow: true, highlightCol: true }); }
         }
         return { highlight: { target: null, sources: newSources, activeComponent, activeResidual, destinations: [] } };
     }
 
-    const [layerIdx, headIdx] = getLayerAndHeadIndices(name);
     const LNe = MATRIX_NAMES.layer(layerIdx);
     const HNe = MATRIX_NAMES.head(layerIdx, headIdx);
     const LNd = MATRIX_NAMES.decoderLayer(layerIdx);
@@ -254,60 +269,52 @@ export const createBackwardHighlight = (element: ElementIdentifier, transformerD
         activeComponent = 'decoding';
     }
 
-    if (name === 'inputToken') { newSources.push({ name: MATRIX_NAMES.inputEmbeddings, row, col: -1, highlightRow: true }) }
-    else if (name === MATRIX_NAMES.inputEmbeddings) { newSources.push({ name: 'inputToken', row, col: -1 }); newSources.push({ name: 'embeddingMatrix', row: transformerData.tokenizedInput[row], col: -1, highlightRow: true }) }
+    if (name === 'inputToken') { addSource({ name: MATRIX_NAMES.inputEmbeddings, row, col: -1, highlightRow: true }) }
+    else if (name === MATRIX_NAMES.inputEmbeddings) { addSource({ name: 'inputToken', row }); addSource({ name: 'embeddingMatrix', row: transformerData.tokenizedInput[row], col: -1, highlightRow: true }) }
     else if (name === LNe.encoder_input) {
-        if (layerIdx === 0) {
-            newSources.push({ name: MATRIX_NAMES.inputEmbeddings, row, col });
-            newSources.push({ name: MATRIX_NAMES.posEncodings, row, col });
-        } else {
-            newSources.push({ name: MATRIX_NAMES.layer(layerIdx - 1).add_norm_2_output, row, col });
-        }
+        if (layerIdx === 0) { addSource({ name: MATRIX_NAMES.inputEmbeddings, row, col }); addSource({ name: MATRIX_NAMES.posEncodings, row, col }); }
+        else { addSource({ name: MATRIX_NAMES.layer(layerIdx - 1).add_norm_2_output, row, col }); }
     }
-    else if (name === HNe.Q || name === HNe.K || name === HNe.V) { const type = name.split('.').pop()!; newSources.push({ name: LNe.encoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: HNe[`W${type.toLowerCase()}` as 'Wq' | 'Wk' | 'Wv'], row: -1, col, highlightCol: true }); }
-    else if (name === HNe.Scores) { newSources.push({ name: HNe.Q, row, col: -1, highlightRow: true }); newSources.push({ name: HNe.K, row: col, col: -1, highlightRow: true }); }
-    else if (name === HNe.ScaledScores) { newSources.push({ name: HNe.Scores, row, col }); }
-    else if (name === HNe.AttentionWeights) { newSources.push({ name: HNe.ScaledScores, row, col: -1, highlightRow: true });}
-    else if (name === HNe.HeadOutput) { newSources.push({ name: HNe.AttentionWeights, row, col: -1, highlightRow: true }); newSources.push({ name: HNe.V, row: -1, col, highlightCol: true }); }
-    else if (name === LNe.mha_output) { for (let h = 0; h < dims.h; h++) { newSources.push({ name: MATRIX_NAMES.head(layerIdx, h).HeadOutput, row: row, col: -1, highlightRow: true }); } newSources.push({ name: LNe.Wo, row: -1, col, highlightCol: true }); }
-    else if (name === LNe.add_norm_1_output) { newSources.push({ name: LNe.encoder_input, row, col }); newSources.push({ name: LNe.mha_output, row, col }); }
-    else if (name === LNe.Intermediate) { newSources.push({ name: LNe.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.W1, row: -1, col, highlightCol: true }); newSources.push({ name: LNe.b1, row: 0, col }); }
-    else if (name === LNe.Activated) { newSources.push({ name: LNe.Intermediate, row, col }); }
-    else if (name === LNe.ffn_output) { newSources.push({ name: LNe.Activated, row, col: -1, highlightRow: true }); newSources.push({ name: LNe.W2, row: -1, col, highlightCol: true }); newSources.push({ name: LNe.b2, row: 0, col }); }
-    else if (name === LNe.add_norm_2_output) { newSources.push({ name: LNe.add_norm_1_output, row, col }); newSources.push({ name: LNe.ffn_output, row, col }); }
+    else if (name === HNe.Q || name === HNe.K || name === HNe.V) { const type = name.split('.').pop()!; addSource({ name: LNe.encoder_input, row, col: -1, highlightRow: true }); addSource({ name: HNe[`W${type.toLowerCase()}` as 'Wq' | 'Wk' | 'Wv'], row: -1, col, highlightCol: true }); }
+    else if (name === HNe.Scores) { addSource({ name: HNe.Q, row, col: -1, highlightRow: true }); addSource({ name: HNe.K, row: col, col: -1, highlightRow: true }); }
+    else if (name === HNe.ScaledScores) { addSource({ name: HNe.Scores, row, col }); }
+    else if (name === HNe.AttentionWeights) { addSource({ name: HNe.ScaledScores, row, col: -1, highlightRow: true });}
+    else if (name === HNe.HeadOutput) { addSource({ name: HNe.AttentionWeights, row, col: -1, highlightRow: true }); addSource({ name: HNe.V, row: -1, col, highlightCol: true }); }
+    else if (name === LNe.mha_output) { for (let h = 0; h < dims.h; h++) { addSource({ name: MATRIX_NAMES.head(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true, headIndex: h }); } addSource({ name: LNe.Wo, row: -1, col, highlightCol: true }); }
+    else if (name === LNe.add_norm_1_output) { addSource({ name: LNe.encoder_input, row, col }); addSource({ name: LNe.mha_output, row, col }); }
+    else if (name === LNe.Intermediate) { addSource({ name: LNe.add_norm_1_output, row, col: -1, highlightRow: true }); addSource({ name: LNe.W1, row: -1, col, highlightCol: true }); addSource({ name: LNe.b1, row: 0, col }); }
+    else if (name === LNe.Activated) { addSource({ name: LNe.Intermediate, row, col }); }
+    else if (name === LNe.ffn_output) { addSource({ name: LNe.Activated, row, col: -1, highlightRow: true }); addSource({ name: LNe.W2, row: -1, col, highlightCol: true }); addSource({ name: LNe.b2, row: 0, col }); }
+    else if (name === LNe.add_norm_2_output) { addSource({ name: LNe.add_norm_1_output, row, col }); addSource({ name: LNe.ffn_output, row, col }); }
     else if (name === LNd.decoder_input) {
-        if (layerIdx === 0) {
-            newSources.push({ name: MATRIX_NAMES.outputEmbeddings, row, col });
-            newSources.push({ name: MATRIX_NAMES.decoderPosEncodings, row, col });
-        } else {
-            newSources.push({ name: MATRIX_NAMES.decoderLayer(layerIdx - 1).add_norm_3_output, row, col });
-        }
+        if (layerIdx === 0) { addSource({ name: MATRIX_NAMES.outputEmbeddings, row, col }); addSource({ name: MATRIX_NAMES.decoderPosEncodings, row, col }); }
+        else { addSource({ name: MATRIX_NAMES.decoderLayer(layerIdx - 1).add_norm_3_output, row, col }); }
     }
-    else if (name === HNd_masked.Q || name === HNd_masked.K || name === HNd_masked.V) { const type = name.split('.').pop()!; newSources.push({ name: LNd.decoder_input, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked[`W${type.toLowerCase()}` as 'Wq' | 'Wk' | 'Wv'], row: -1, col, highlightCol: true }); }
-    else if (name === HNd_masked.Scores) { newSources.push({ name: HNd_masked.Q, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked.K, row: col, col: -1, highlightRow: true }); }
-    else if (name === HNd_masked.ScaledScores) { newSources.push({ name: HNd_masked.Scores, row, col }); }
-    else if (name === HNd_masked.AttentionWeights) { newSources.push({ name: HNd_masked.ScaledScores, row, col: -1, highlightRow: true }); }
-    else if (name === HNd_masked.HeadOutput) { newSources.push({ name: HNd_masked.AttentionWeights, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_masked.V, row: -1, col, highlightCol: true }); }
-    else if (name === LNd.masked_mha_output) { for (let h = 0; h < dims.h; h++) { newSources.push({ name: MATRIX_NAMES.maskedMhaHead(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true }); } newSources.push({ name: LNd.Wo_masked, row: -1, col, highlightCol: true }); }
-    else if (name === LNd.add_norm_1_output) { newSources.push({ name: LNd.decoder_input, row, col }); newSources.push({ name: LNd.masked_mha_output, row, col }); }
-    else if (name === HNd_encdec.Q) { newSources.push({ name: LNd.add_norm_1_output, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_encdec.Wq, row: -1, col, highlightCol: true }); }
-    else if (name === HNd_encdec.K) { newSources.push({ name: MATRIX_NAMES.finalEncoderOutput, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: HNd_encdec.Wk, row: -1, col, highlightCol: true }); }
-    else if (name === HNd_encdec.V) { newSources.push({ name: MATRIX_NAMES.finalEncoderOutput, row: -1, col: -1, highlightRow: true, highlightCol: true }); newSources.push({ name: HNd_encdec.Wv, row: -1, col, highlightCol: true }); }
-    else if (name === HNd_encdec.Scores) { newSources.push({ name: HNd_encdec.Q, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_encdec.K, row: col, col: -1, highlightRow: true }); }
-    else if (name === HNd_encdec.ScaledScores) { newSources.push({ name: HNd_encdec.Scores, row, col }); }
-    else if (name === HNd_encdec.AttentionWeights) { newSources.push({ name: HNd_encdec.ScaledScores, row, col: -1, highlightRow: true }); }
-    else if (name === HNd_encdec.HeadOutput) { newSources.push({ name: HNd_encdec.AttentionWeights, row, col: -1, highlightRow: true }); newSources.push({ name: HNd_encdec.V, row: -1, col, highlightCol: true }); }
-    else if (name === LNd.enc_dec_mha_output) { for (let h = 0; h < dims.h; h++) { newSources.push({ name: MATRIX_NAMES.encDecMhaHead(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true }); } newSources.push({ name: LNd.Wo_enc_dec, row: -1, col, highlightCol: true }); }
-    else if (name === LNd.add_norm_2_output) { newSources.push({ name: LNd.add_norm_1_output, row, col }); newSources.push({ name: LNd.enc_dec_mha_output, row, col }); }
-    else if (name === LNd.Intermediate) { newSources.push({ name: LNd.add_norm_2_output, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.W1, row: -1, col, highlightCol: true }); newSources.push({ name: LNd.b1, row: 0, col }); }
-    else if (name === LNd.Activated) { newSources.push({ name: LNd.Intermediate, row, col }); }
-    else if (name === LNd.ffn_output) { newSources.push({ name: LNd.Activated, row, col: -1, highlightRow: true }); newSources.push({ name: LNd.W2, row: -1, col, highlightCol: true }); newSources.push({ name: LNd.b2, row: 0, col }); }
-    else if (name === LNd.add_norm_3_output) { newSources.push({ name: LNd.add_norm_2_output, row, col }); newSources.push({ name: LNd.ffn_output, row, col }); }
-    else if (name === MATRIX_NAMES.logits) { newSources.push({ name: MATRIX_NAMES.decoderLayer(dims.n_layers - 1).add_norm_3_output, row, col: -1, highlightRow: true }); newSources.push({ name: MATRIX_NAMES.finalLinear, row: -1, col, highlightCol: true }) }
-    else if (name === MATRIX_NAMES.outputProbabilities) { newSources.push({ name: MATRIX_NAMES.logits, row, col: -1, highlightRow: true }) }
-    else if (name === 'outputToken') { newSources.push({ name: MATRIX_NAMES.outputProbabilities, row, col: -1, highlightRow: true, highlightProbCol: true }) }
+    else if (name === HNd_masked.Q || name === HNd_masked.K || name === HNd_masked.V) { const type = name.split('.').pop()!; addSource({ name: LNd.decoder_input, row, col: -1, highlightRow: true }); addSource({ name: HNd_masked[`W${type.toLowerCase()}` as 'Wq' | 'Wk' | 'Wv'], row: -1, col, highlightCol: true }); }
+    else if (name === HNd_masked.Scores) { addSource({ name: HNd_masked.Q, row, col: -1, highlightRow: true }); addSource({ name: HNd_masked.K, row: col, col: -1, highlightRow: true }); }
+    else if (name === HNd_masked.ScaledScores) { addSource({ name: HNd_masked.Scores, row, col }); }
+    else if (name === HNd_masked.AttentionWeights) { addSource({ name: HNd_masked.ScaledScores, row, col: -1, highlightRow: true }); }
+    else if (name === HNd_masked.HeadOutput) { addSource({ name: HNd_masked.AttentionWeights, row, col: -1, highlightRow: true }); addSource({ name: HNd_masked.V, row: -1, col, highlightCol: true }); }
+    else if (name === LNd.masked_mha_output) { for (let h = 0; h < dims.h; h++) { addSource({ name: MATRIX_NAMES.maskedMhaHead(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true, headIndex: h }); } addSource({ name: LNd.Wo_masked, row: -1, col, highlightCol: true }); }
+    else if (name === LNd.add_norm_1_output) { addSource({ name: LNd.decoder_input, row, col }); addSource({ name: LNd.masked_mha_output, row, col }); }
+    else if (name === HNd_encdec.Q) { addSource({ name: LNd.add_norm_1_output, row, col: -1, highlightRow: true }); addSource({ name: HNd_encdec.Wq, row: -1, col, highlightCol: true }); }
+    else if (name === HNd_encdec.K) { addSource({ name: MATRIX_NAMES.finalEncoderOutput, row: -1, col: -1, highlightRow: true, highlightCol: true }); addSource({ name: HNd_encdec.Wk, row: -1, col, highlightCol: true }); }
+    else if (name === HNd_encdec.V) { addSource({ name: MATRIX_NAMES.finalEncoderOutput, row: -1, col: -1, highlightRow: true, highlightCol: true }); addSource({ name: HNd_encdec.Wv, row: -1, col, highlightCol: true }); }
+    else if (name === HNd_encdec.Scores) { addSource({ name: HNd_encdec.Q, row, col: -1, highlightRow: true }); addSource({ name: HNd_encdec.K, row: col, col: -1, highlightRow: true }); }
+    else if (name === HNd_encdec.ScaledScores) { addSource({ name: HNd_encdec.Scores, row, col }); }
+    else if (name === HNd_encdec.AttentionWeights) { addSource({ name: HNd_encdec.ScaledScores, row, col: -1, highlightRow: true }); }
+    else if (name === HNd_encdec.HeadOutput) { addSource({ name: HNd_encdec.AttentionWeights, row, col: -1, highlightRow: true }); addSource({ name: HNd_encdec.V, row: -1, col, highlightCol: true }); }
+    else if (name === LNd.enc_dec_mha_output) { for (let h = 0; h < dims.h; h++) { addSource({ name: MATRIX_NAMES.encDecMhaHead(layerIdx, h).HeadOutput, row, col: -1, highlightRow: true, headIndex: h }); } addSource({ name: LNd.Wo_enc_dec, row: -1, col, highlightCol: true }); }
+    else if (name === LNd.add_norm_2_output) { addSource({ name: LNd.add_norm_1_output, row, col }); addSource({ name: LNd.enc_dec_mha_output, row, col }); }
+    else if (name === LNd.Intermediate) { addSource({ name: LNd.add_norm_2_output, row, col: -1, highlightRow: true }); addSource({ name: LNd.W1, row: -1, col, highlightCol: true }); addSource({ name: LNd.b1, row: 0, col }); }
+    else if (name === LNd.Activated) { addSource({ name: LNd.Intermediate, row, col }); }
+    else if (name === LNd.ffn_output) { addSource({ name: LNd.Activated, row, col: -1, highlightRow: true }); addSource({ name: LNd.W2, row: -1, col, highlightCol: true }); addSource({ name: LNd.b2, row: 0, col }); }
+    else if (name === LNd.add_norm_3_output) { addSource({ name: LNd.add_norm_2_output, row, col }); addSource({ name: LNd.ffn_output, row, col }); }
+    else if (name === MATRIX_NAMES.logits) { addSource({ name: MATRIX_NAMES.decoderLayer(dims.n_layers - 1).add_norm_3_output, row, col: -1, highlightRow: true }); addSource({ name: MATRIX_NAMES.finalLinear, row: -1, col, highlightCol: true }) }
+    else if (name === MATRIX_NAMES.outputProbabilities) { addSource({ name: MATRIX_NAMES.logits, row, col: -1, highlightRow: true }) }
+    else if (name === 'outputToken') { addSource({ name: MATRIX_NAMES.outputProbabilities, row, col: -1, highlightRow: true, highlightProbCol: true }) }
 
-    const highlight = { target: newTarget, sources: newSources, activeComponent, activeResidual, destinations: [] };
+    const highlight = { target: element, sources: newSources, activeComponent, activeResidual, destinations: [] };
     return { highlight };
 };
 // END OF FILE: src/topics/transformer-explorer/lib/tracing.ts

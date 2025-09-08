@@ -1,4 +1,4 @@
-// FILE: lib/transformer.ts
+// FILE: src/topics/transformer-explorer/lib/transformer.ts
 import { Matrix, TransformerData, EncoderLayerData, FFNData, MultiHeadAttentionData, AttentionHeadData, Vector, DecoderLayerData } from '../types';
 import { fixedWeights } from './fixedWeights';
 import { whitespaceTokenizer } from './tokenizer';
@@ -259,4 +259,4 @@ export const calculateTransformer = (inputText: string, dims: Dims): Transformer
         outputText,
     };
 };
-// END OF FILE: lib/transformer.ts
+// END OF FILE: src/topics/transformer-explorer/lib/transformer.ts

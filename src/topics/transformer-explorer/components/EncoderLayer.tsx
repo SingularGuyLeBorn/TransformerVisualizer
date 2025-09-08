@@ -6,7 +6,7 @@ import { AddNorm } from './AddNorm';
 import { FeedForward } from './FeedForward';
 import { MATRIX_NAMES } from '../config/matrixNames';
 import { ResidualBlock } from './ResidualBlock';
-import { getSymbolParts } from '../config/symbolMapping';
+import { getSymbolParts } from '../lib/symbolMapping';
 import { Matrix } from './Matrix';
 
 interface EncoderLayerProps {

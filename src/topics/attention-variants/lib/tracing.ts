@@ -1,11 +1,8 @@
 // FILE: src/topics/attention-variants/lib/tracing.ts
 import { TooltipState } from '../../../components/CalculationTooltip/types';
-import { HighlightState, ElementIdentifier, AttentionData, HighlightSource, AttentionVariantData, CalculationComponent, Vector } from '../types';
+import { HighlightState, ElementIdentifier, AttentionData, HighlightSource, AttentionVariantData } from '../types';
 import { getSymbolParts } from './symbolMapping';
 
-// =======================
-//   TOOLTIP LOGIC
-// =======================
 const getMatrixByName = (name: string, data: AttentionData): number[][] | undefined => {
     const parts = name.split('.');
     if (parts.length < 2) return undefined;
@@ -24,7 +21,6 @@ const getMatrixByName = (name: string, data: AttentionData): number[][] | undefi
     if (name.includes('.heads.')) {
         const headData = variantData.heads[headIndex];
         if (!headData) return undefined;
-        // This is a type assertion, be careful with it.
         return headData[conceptualName as keyof typeof headData] as number[][] | undefined;
     }
 
@@ -33,15 +29,13 @@ const getMatrixByName = (name: string, data: AttentionData): number[][] | undefi
     if (conceptualName === 'combined') return variantData.CombinedOutput;
     if (conceptualName === 'output') return variantData.FinalOutput;
 
-    // For weights like mha.wq.0
     if(parts[1]?.startsWith('w')) {
-        const type = parts[1].charAt(1); // q, k, v
+        const type = parts[1].charAt(1);
         const index = parseInt(parts[2] || '0', 10);
         if (type === 'q') return data.Wq[index];
         if (type === 'k') return data.Wk[index];
         if (type === 'v') return data.Wv[index];
     }
-
 
     return undefined;
 };
@@ -58,7 +52,38 @@ export const generateTooltipData = (element: ElementIdentifier, data: AttentionD
 
     const conceptualName = name.split('.').pop() || '';
 
-    if (['Q', 'K', 'V', 'Scores', 'Output', 'combined', 'output'].includes(conceptualName)) {
+    if (conceptualName === 'output' || conceptualName === 'combined') {
+        opType = 'matmul';
+        const headOutputSources = sources.filter(s => s.name.includes('.Output'));
+        const woSource = sources.find(s => s.name.endsWith('.wo'));
+
+        if (headOutputSources.length > 0 && woSource) {
+            const aSources = headOutputSources
+                .sort((a, b) => parseInt(a.name.match(/heads\.(\d+)/)![1]) - parseInt(b.name.match(/heads\.(\d+)/)![1]))
+                .map(source => {
+                    const headIndex = parseInt(source.name.match(/heads\.(\d+)/)![1]);
+                    const symbol = getSymbolParts(source.name);
+                    symbol.subscript = headIndex.toString(); // Ensure subscript is correct
+                    return {
+                        data: getMatrixByName(source.name, data)![source.row],
+                        symbolInfo: symbol
+                    };
+                });
+            const bSources = [{
+                data: getMatrixByName(woSource.name, data)!.map(r => r[woSource.col]),
+                symbolInfo: getSymbolParts(woSource.name)
+            }];
+            const vecA = aSources.flatMap(s => s.data);
+            const vecB = bSources[0].data;
+
+            steps.push({
+                a: vecA, b: vecB, op: '·', result: targetValue,
+                aSources, bSources,
+                aSymbolInfo: getSymbolParts(name),
+                bSymbolInfo: getSymbolParts(woSource.name),
+            });
+        }
+    } else if (['Q', 'K', 'V', 'Scores', 'Output'].includes(conceptualName)) {
         opType = 'matmul';
         const source1 = sources.find(s => s.highlightRow);
         const source2 = sources.find(s => s.highlightCol);
@@ -68,19 +93,17 @@ export const generateTooltipData = (element: ElementIdentifier, data: AttentionD
              if (matrixA && matrixB) {
                  const vecA = matrixA[source1.row];
                  const vecB = matrixB.map(r => r[source2.col]);
-                 const components: CalculationComponent[] = vecA.map((val, i) => ({ a: val, b: vecB[i] }));
+                 const aSources = [{ data: vecA, symbolInfo: getSymbolParts(source1.name) }];
+                 const bSources = [{ data: vecB, symbolInfo: getSymbolParts(source2.name) }];
                  steps.push({
-                     a: vecA,
-                     b: vecB,
-                     op: '·',
-                     result: targetValue,
+                     a: vecA, b: vecB, op: '·', result: targetValue,
+                     aSources, bSources,
                      aSymbolInfo: getSymbolParts(source1.name),
-                     bSymbolInfo: getSymbolParts(source2.name),
-                     components
+                     bSymbolInfo: getSymbolParts(source2.name)
                  });
              }
         }
-    } else if (conceptualName === 'Weights') { // [MODIFIED] Trigger softmax tooltip on Weights click
+    } else if (conceptualName === 'Weights') {
         opType = 'softmax';
         const scoresName = sources.find(s => s.name.endsWith('.Scores'))?.name;
         if(scoresName){
@@ -88,14 +111,9 @@ export const generateTooltipData = (element: ElementIdentifier, data: AttentionD
             if(matrixA) {
                 const vecA = matrixA[row];
                 steps.push({
-                    a: vecA,
-                    b: [],
-                    op: 'softmax',
-                    result: targetValue,
-                    aSymbolInfo: getSymbolParts(scoresName),
-                    bSymbolInfo: { base: '' },
-                    aLabel: 'Scores',
-                    resultLabel: 'Weights'
+                    a: vecA, b: [], op: 'softmax', result: targetValue,
+                    aSymbolInfo: getSymbolParts(scoresName), bSymbolInfo: { base: '' },
+                    aLabel: 'Scores', resultLabel: 'Weights'
                 });
             }
         }
@@ -109,9 +127,6 @@ export const generateTooltipData = (element: ElementIdentifier, data: AttentionD
     return { target: element, opType, steps, title: `Calculation for ${element.symbol}[${row},${col}]` };
 };
 
-// =======================
-//   HIGHLIGHTING LOGIC
-// =======================
 export const createBackwardHighlight = (element: ElementIdentifier, data: AttentionData, dims: any): HighlightState => {
     const { variant, name, row, col, isInternal } = element;
     const sources: HighlightSource[] = [];
@@ -119,12 +134,6 @@ export const createBackwardHighlight = (element: ElementIdentifier, data: Attent
     if (variant === 'mla') {
         return { target: element, sources: [] };
     }
-
-    const internalDims = {
-        d_head: data.mha.heads[0].Q[0].length,
-        n_q_heads: data.gqa.heads.length,
-        n_kv_heads_gqa: data.gqa.K_proj ? (data.gqa.K_proj[0].length / data.mha.heads[0].Q[0].length) : dims.n_kv_heads,
-    };
 
     const conceptualName = name.split('.').pop() || '';
     const headIndexMatch = name.match(/heads\.(\d+)/);
@@ -143,21 +152,20 @@ export const createBackwardHighlight = (element: ElementIdentifier, data: Attent
 
 
     if (conceptualName === 'output') {
-        sources.push({ ...element, name: `${variant}.combined`, row: row, col: -1, highlightRow: true });
-        sources.push({ ...element, name: `${variant}.wo`, row: -1, col: col, highlightCol: true });
+        sources.push({ ...element, variant, name: `${variant}.combined`, row: row, col: -1, highlightRow: true });
+        sources.push({ ...element, variant, name: `${variant}.wo`, row: -1, col: col, highlightCol: true });
     }
     else if (conceptualName === 'combined') {
-        const headIndexForCol = Math.floor(col / internalDims.d_head);
-        sources.push({ ...element, name: `${variant}.heads.${headIndexForCol}.Output`, row: row, col: col % internalDims.d_head });
+        const d_head = data.mha.heads[0].Output[0].length;
+        const headIndexForCol = Math.floor(col / d_head);
+        sources.push({ ...element, name: `${variant}.heads.${headIndexForCol}.Output`, row: row, col: col % d_head });
     }
     else if (conceptualName === 'Output') {
         sources.push({ ...element, name: `${variant}.heads.${headIndex}.Weights`, row: row, col: -1, highlightRow: true });
         sources.push({ ...element, name: `${variant}.heads.${headIndex}.V`, row: -1, col: col, highlightCol: true });
     }
     else if (conceptualName === 'Weights') {
-        // [MODIFIED] Source for a Weight element is the entire corresponding row of Scores.
         sources.push({ ...element, name: `${variant}.heads.${headIndex}.Scores`, row: row, col: -1, highlightRow: true });
-        // The isInternal flag is now set in the tooltip generation, not needed for highlighting.
     }
     else if (conceptualName === 'Scores') {
         sources.push({ ...element, name: `${variant}.heads.${headIndex}.Q`, row: row, col: -1, highlightRow: true });
@@ -166,16 +174,14 @@ export const createBackwardHighlight = (element: ElementIdentifier, data: Attent
     else if (['Q', 'K', 'V'].includes(conceptualName)) {
         const type = conceptualName.toLowerCase() as 'q' | 'k' | 'v';
         let weightIndex = 0;
+        const q_heads_per_kv = dims.n_q_heads / dims.n_kv_heads;
 
         if (type === 'q') {
             weightIndex = headIndex;
-        } else {
-            if (variant === 'mha') {
-                weightIndex = headIndex;
-            } else if (variant === 'gqa') {
-                const q_heads_per_kv_gqa = internalDims.n_q_heads / internalDims.n_kv_heads_gqa;
-                weightIndex = Math.floor(headIndex / q_heads_per_kv_gqa);
-            }
+        } else { // K or V
+            if (variant === 'mha') weightIndex = headIndex;
+            else if (variant === 'gqa') weightIndex = Math.floor(headIndex / q_heads_per_kv);
+            // MQA always uses index 0
         }
 
         sources.push({ ...element, name: `${variant}.input`, row: row, col: -1, highlightRow: true });

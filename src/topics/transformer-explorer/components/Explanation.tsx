@@ -46,7 +46,6 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
     const shouldBreakFFN2 = dims.d_ff + dims.d_model > 8;
     const shouldBreakFinalOutput = dims.d_model + dims.vocab_size > 8;
 
-    // [FIXED] Specific breaking logic for Enc-Dec Attention
     const shouldBreakEncDecScores = d_k + dims.encoder_seq_len > 8;
     const shouldBreakEncDecHeadOutput = dims.encoder_seq_len + d_k > 8;
 
@@ -61,7 +60,6 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 <p>在2017年的原始论文《Attention Is All You Need》中,编码器和解码器都由 N 个相同的层堆叠而成. 这种堆叠结构允许模型在不同层次上学习从简单到复杂的抽象特征。此可视化工具将带您深入探索其内部的数据流动和数学原理。</p>
             </div>
 
-            {/* --- ENCODER EXPLANATIONS --- */}
             <h2 style={{textAlign: 'center', margin: '30px 0'}}>编码器 (Encoder)</h2>
              <MathBlock id="token_embed" title="编码器第0步:分词与词嵌入" highlight={highlight}>
                 <h5>做什么？</h5>
@@ -120,9 +118,11 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                     <div className="viz-formula-row"><InlineMath math="Z" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.Wv} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
                 <p>然后计算注意力分数, 进行缩放和Softmax得到权重, 最后加权求和。 <InlineMath math="Q"/> 和 <InlineMath math="K"/> 的点积计算了每个词的“查询”与所有词的“标签”之间的相似度。除以 <InlineMath math="\sqrt{d_k}"/> 是为了在训练中保持梯度稳定。Softmax则将这些原始的相似度分数转换成一个和为1的概率分布，即“注意力权重”。最后，将这些权重与 <InlineMath math="V"/> 相乘，相当于对所有词的信息进行加权求和，得到一个融合了全句上下文信息的新向量。</p>
-                <BlockMath math={`A = \\text{Softmax}\\left(\\frac{QK^T}{\\sqrt{d_k}}\\right)`} />
+                <BlockMath math={`S' = \\frac{QK^T}{\\sqrt{d_k}}`} />
+                <BlockMath math={`A = \\text{Softmax}(S')`} />
                 <BlockMath math={`H = A V`} />
                  <div className="formula-display vertical">
+                    <div className="viz-formula-row"><InteractiveSymbolicMatrix name={HNe.ScaledScores} rows={dims.encoder_seq_len} cols={dims.encoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick}/><BlockMath math="\xrightarrow{\text{Softmax}}"/> <InteractiveSymbolicMatrix name={HNe.AttentionWeights} rows={dims.encoder_seq_len} cols={dims.encoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <div className="viz-formula-row"><InteractiveSymbolicMatrix name={HNe.AttentionWeights} rows={dims.encoder_seq_len} cols={dims.encoder_seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNe.V} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNe.HeadOutput} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                 </div>
                 <h5>拼接与最终投影</h5>
@@ -139,8 +139,12 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 <p>在每个子层之后,都会跟随一个“Add & Norm”模块. 它包含两个关键步骤:<b>残差连接 (Residual Connection)</b> 和 <b>层归一化 (Layer Normalization)</b>。这是训练深度神经网络的关键技巧。</p>
                 <ul>
                     <li><b>残差连接:</b> 将子层的输入与输出直接相加。这创建了一条信息的“高速公路”，允许梯度在反向传播时直接流过，极大地缓解了深度网络中的梯度消失问题，使得训练更深的模型成为可能。它也保证了即使子层（如注意力）的输出为零，原始信息也能得以保留。</li>
-                    <li><b>层归一化:</b> 对残差连接后的结果进行归一化，使其均值为0，方差为1。这有助于稳定每一层的输入分布，减少所谓的“内部协变量偏移”(Internal Covariate Shift)，从而加速训练过程并提高模型的泛化能力。</li>
+                    <li><b>层归一化:</b> 对残差连接后的结果进行归一化处理。它独立地对每个样本的特征进行归一化，使其均值为0，方差为1。这有助于稳定每一层的输入分布，减少所谓的“内部协变量偏移”(Internal Covariate Shift)，从而加速训练过程并提高模型的泛化能力。</li>
                 </ul>
+                <BlockMath math={`\\mu = \\frac{1}{d_{model}} \\sum_{i=1}^{d_{model}} x_i`} />
+                <BlockMath math={`\\sigma^2 = \\frac{1}{d_{model}} \\sum_{i=1}^{d_{model}} (x_i - \\mu)^2`} />
+                <BlockMath math={`\\text{LayerNorm}(x) = \\gamma \\frac{x - \\mu}{\\sqrt{\\sigma^2 + \\epsilon}} + \\beta`} />
+                <p>其中 <InlineMath math="\gamma"/> (gamma) 和 <InlineMath math="\beta"/> (beta) 是可学习的缩放和平移参数，<InlineMath math="\epsilon"/> (epsilon) 是一个很小的常数以防止除零。在这个可视化中，我们简化了 <InlineMath math="\gamma=1, \beta=0"/>。</p>
                 <BlockMath math={`Z' = \\text{LayerNorm}(Z + \\text{MultiHeadAttention}(Z))`} />
                  <div className={`formula-display ${shouldBreakAddNorm ? 'vertical' : ''}`}>
                     <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={LNe.encoder_input} rows={dims.encoder_seq_len} cols={dims.d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
@@ -190,7 +194,6 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                 </div>
             </MathBlock>
 
-            {/* --- DECODER EXPLANATIONS --- */}
             <h2 style={{textAlign: 'center', margin: '30px 0'}}>解码器 (Decoder)</h2>
             <MathBlock id="output_embed" title="解码器第1步:输出预处理" highlight={highlight}>
                  <h5>做什么？</h5>
@@ -254,6 +257,12 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
                     <li><b>Query (<InlineMath math="Q"/>)</b>: 来自解码器前一层的输出 (<InlineMath math="Y'"/>). 它代表了“我当前需要什么信息来生成下一个词？”。这个查询是基于解码器已经生成的内容。</li>
                     <li><b>Key (<InlineMath math="K"/>) 和 Value (<InlineMath math="V"/>)</b>: <b>均来自编码器的最终输出 (<InlineMath math="Z_{final}"/>)</b>. 它们代表了整个输入序列的、经过深度处理的上下文信息。</li>
                 </ol>
+                <h5>为什么Q和K/V的序列长度可以不同？</h5>
+                <p>
+                    这是交叉注意力的核心特征。Query 来自解码器，它的序列长度等于当前已生成的 token 数量（例如 {dims.decoder_seq_len}）。Key 和 Value 来自编码器，它们的序列长度等于完整的输入句子长度（例如 {dims.encoder_seq_len}）。
+                    计算 <InlineMath math={`Q \\cdot K^T`}/> 时，矩阵维度为 <InlineMath math={`(${dims.decoder_seq_len} \\times d_k) \\cdot (d_k \\times ${dims.encoder_seq_len})`}/>，最终得到的注意力分数矩阵维度为 <InlineMath math={`(${dims.decoder_seq_len} \\times ${dims.encoder_seq_len})`}/>。
+                    这个分数矩阵的每一行 `i` 代表解码器的第 `i` 个 token 对编码器所有 `j` 个 token 的关注度分布。这使得解码器在生成每个新词时，都能“回顾”整个输入句子，并决定重点关注哪些部分。
+                </p>
                  <div className="formula-display vertical">
                     <div className="viz-formula-row"><InlineMath math="Y'" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_encdec.Wq} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_encdec.Q} rows={dims.decoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
                     <div className="viz-formula-row"><InlineMath math="Z_{final}" /><BlockMath math="\times" /><InteractiveSymbolicMatrix name={HNd_encdec.Wk} rows={dims.d_model} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /><BlockMath math="=" /><InteractiveSymbolicMatrix name={HNd_encdec.K} rows={dims.encoder_seq_len} cols={d_k} highlight={highlight} onSymbolClick={onSymbolClick} /></div>

@@ -46,10 +46,10 @@ export const ActivationFunctionVisualizer: React.FC<ActivationFunctionVisualizer
     vectorScroll: { overflowX: 'auto', padding: '5px' },
     vectorContainer: { display: 'flex', flexDirection: 'column', gap: '2px' },
     vector: { display: 'flex', gap: '5px', width: 'max-content' },
-    vectorIndices: { display: 'flex', gap: '5px', paddingLeft: '2px' },
-    indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace' },
-    element: { width: '60px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
-    highlight: { transform: 'scale(1.15)', borderColor: '#e63946', backgroundColor: 'rgba(230, 57, 70, 0.1)' },
+    vectorIndices: { display: 'flex', gap: '5px' },
+    indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace', boxSizing: 'border-box' },
+    element: { width: '60px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease', boxSizing: 'border-box' },
+    highlight: { transform: 'scale(1.15)', borderColor: '#4a90e2', backgroundColor: 'rgba(74, 144, 226, 0.1)' },
     calculationBox: { height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', border: '1px solid #dee2e6', borderRadius: '8px', padding: '10px 20px', fontSize: '1.2em', transition: 'opacity 0.3s', fontFamily: 'monospace' },
     controls: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '10px' },
     button: { padding: '8px 16px', fontSize: '1em', cursor: 'pointer', border: '1px solid #6c757d', borderRadius: '4px', backgroundColor: '#fff' },
@@ -66,7 +66,6 @@ export const ActivationFunctionVisualizer: React.FC<ActivationFunctionVisualizer
     <div style={styles.container}>
       <h3 style={styles.title}>{functionType} Activation</h3>
       <div style={styles.mainArea}>
-        {/* Input Vector */}
         <div style={styles.vectorSection}>
           <div style={styles.label}><InlineMath>{inputLabel}</InlineMath></div>
           <div style={styles.vectorGroup}>
@@ -87,12 +86,10 @@ export const ActivationFunctionVisualizer: React.FC<ActivationFunctionVisualizer
           </div>
         </div>
 
-        {/* Calculation Box */}
         <div style={{ ...styles.calculationBox, opacity: activeIndex > -1 ? 1 : 0.2 }}>
             {calculationString}
         </div>
 
-        {/* Output Vector */}
         <div style={styles.vectorSection}>
           <div style={styles.label}><InlineMath>{outputLabel}</InlineMath></div>
           <div style={styles.vectorGroup}>

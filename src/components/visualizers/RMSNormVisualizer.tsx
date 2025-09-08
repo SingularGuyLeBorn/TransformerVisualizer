@@ -56,11 +56,12 @@ export const RMSNormVisualizer: React.FC<RMSNormVisualizerProps> = ({ inputVecto
     'calculate-rms': `然后，计算均方根 (Root Mean Square)。公式: √ (Σ(x²) / n + ε)`,
     normalize: `最后，将每个原始元素除以 RMS 值进行归一化。公式: x / RMS(x)`,
     finish: '计算完成！(注意：这里省略了可学习的 gamma 缩放步骤)',
+    idle: '准备开始RMSNorm计算。',
   };
 
   const getActiveDescription = () => {
-    if (currentAnimState.type in descriptions) return descriptions[currentAnimState.type];
-    return descriptions['start'];
+    const key = currentAnimState.type as keyof typeof descriptions;
+    return descriptions[key] || descriptions['start'];
   }
 
   const isSumCalculated = currentStep >= steps.findIndex(s => s.type === 'sum-squares');

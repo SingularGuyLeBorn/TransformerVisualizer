@@ -13,6 +13,8 @@ export interface ElementIdentifier {
   col: number;
   isInternal?: boolean;
   symbol?: string; // The full LaTeX string for the element, e.g., "Z_{final}[1,2]"
+  layerIndex?: number;
+  headIndex?: number;
 }
 
 /**
@@ -38,10 +40,9 @@ export interface CalculationStep {
     aLabel?: string;
     bLabel?: string;
     resultLabel?: string;
-    // [NEW] For multi-vector sources like in concatenated matmul
     aSources?: { data: Vector, symbolInfo: SymbolInfo }[];
     bSources?: { data: Vector, symbolInfo: SymbolInfo }[];
-    components?: CalculationComponent[]; // [FIXED] Re-added for backward compatibility
+    components?: CalculationComponent[];
 }
 
 /**
@@ -49,7 +50,7 @@ export interface CalculationStep {
  */
 export interface TooltipState {
     target: ElementIdentifier;
-    opType: 'matmul' | 'add' | 'softmax' | 'relu' | 'info';
+    opType: 'matmul' | 'add' | 'softmax' | 'relu' | 'layernorm' | 'wx-plus-b' | 'info';
     steps: CalculationStep[];
     title: string;
 }

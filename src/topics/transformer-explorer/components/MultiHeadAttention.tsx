@@ -25,23 +25,16 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
 
     const renderConcatHeads = () => {
         const headsToShow = [];
-        // First head
         headsToShow.push(<Matrix key={0} name={MATRIX_NAMES.head(layerIndex, 0).HeadOutput} data={data.heads[0].HeadOutput} highlight={highlight} onElementClick={onElementClick} />);
-
         if (numHeads > 2) {
-             // Middle ellipsis
             headsToShow.push(<div key="ellipsis-start" className="op-symbol">...</div>);
-            // Last head
             headsToShow.push(<Matrix key={numHeads-1} name={MATRIX_NAMES.head(layerIndex, numHeads-1).HeadOutput} data={data.heads[numHeads-1].HeadOutput} highlight={highlight} onElementClick={onElementClick} />);
         } else if (numHeads === 2) {
-            // Second head
             headsToShow.push(<Matrix key={1} name={MATRIX_NAMES.head(layerIndex, 1).HeadOutput} data={data.heads[1].HeadOutput} highlight={highlight} onElementClick={onElementClick} />);
         }
         return headsToShow;
     };
 
-
-    // --- Layout Breaking Logic ---
     const inputCols = data.heads[0].Wq.length;
     const wqCols = headData.Wq[0]?.length || 0;
     const breakQ = inputCols > 8 || wqCols > 8 || (inputCols + wqCols > 15);
@@ -71,7 +64,7 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
             <div className="component-body">
 
                 <div className="viz-formula-group">
-                    <div className="viz-step-title">1. Generate Q, K, V (Head 1)</div>
+                    <div className="viz-step-title">1. Generate Q, K, V (Showing Head 0 as example)</div>
                     <div className={`viz-formula-row ${breakQ ? 'vertical' : ''}`}>
                        <span>(Input) ×</span>
                        <Matrix name={HNe.Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
@@ -95,7 +88,7 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                 <div className="arrow-down">↓</div>
 
                 <div className="viz-formula-group">
-                    <div className="viz-step-title">2. Scaled Dot-Product Attention (Head 1)</div>
+                    <div className="viz-step-title">2. Scaled Dot-Product Attention (Head 0)</div>
                     <div className={`viz-formula-row ${breakScores ? 'vertical' : ''}`}>
                         <Matrix name={HNe.Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                         <InlineMath math="\times" />
@@ -110,7 +103,6 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                     <div className="viz-formula-row">
                         <Matrix name={HNe.ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
-                    {/* [REMOVED] ElementwiseOperation for Softmax is now handled in tooltip */}
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Softmax}}" /></div>
                     <div className="viz-formula-row">
                         <Matrix name={HNe.AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>

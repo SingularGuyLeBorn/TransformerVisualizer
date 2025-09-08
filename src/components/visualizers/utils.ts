@@ -1,6 +1,6 @@
 // FILE: src/components/visualizers/utils.ts
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * 格式化数字以便显示
@@ -26,27 +26,44 @@ export const formatNumber = (num: number, precision: number = 3): string => {
 export const useAnimationController = (totalSteps: number, delay: number = 500) => {
     const [step, setStep] = useState<number>(-1); // -1表示未开始
     const [isPlaying, setIsPlaying] = useState<boolean>(false);
+    const intervalRef = useRef<number | null>(null);
+
+    const stopInterval = useCallback(() => {
+        if (intervalRef.current !== null) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+    }, []);
 
     useEffect(() => {
-        if (!isPlaying || step >= totalSteps - 1) {
+        if (isPlaying) {
             if (step >= totalSteps - 1) {
                 setIsPlaying(false);
+                stopInterval();
+                return;
             }
-            return;
+            intervalRef.current = window.setInterval(() => {
+                setStep(prev => {
+                    if (prev >= totalSteps - 1) {
+                        stopInterval();
+                        setIsPlaying(false);
+                        return prev;
+                    }
+                    return prev + 1;
+                });
+            }, delay);
+        } else {
+            stopInterval();
         }
 
-        const timer = setTimeout(() => {
-            setStep(prev => prev + 1);
-        }, delay);
-
-        return () => clearTimeout(timer);
-    }, [isPlaying, step, totalSteps, delay]);
+        return () => stopInterval();
+    }, [isPlaying, step, totalSteps, delay, stopInterval]);
 
     const play = useCallback(() => {
         if (step >= totalSteps - 1) {
-            setStep(0); // 如果已完成，则从头播放
+            setStep(0);
         } else if (step === -1) {
-            setStep(0); // 首次播放
+            setStep(0);
         }
         setIsPlaying(true);
     }, [step, totalSteps]);
@@ -61,7 +78,7 @@ export const useAnimationController = (totalSteps: number, delay: number = 500) 
     }, []);
 
     const setStepManually = useCallback((newStep: number) => {
-        setIsPlaying(false);
+        setIsPlaying(false); // Stop playback when user interacts with slider
         if (newStep >= -1 && newStep < totalSteps) {
             setStep(newStep);
         }

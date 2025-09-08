@@ -1,23 +1,23 @@
-// FILE: src/components/EncoderDecoderAttention.tsx
+// FILE: src/topics/transformer-explorer/components/EncoderDecoderAttention.tsx
 import React from 'react';
 import { MultiHeadAttentionData, HighlightState, ElementIdentifier, Matrix as MatrixType } from '../types';
 import { Matrix } from './Matrix';
 import { InlineMath } from 'react-katex';
 import { MATRIX_NAMES } from '../config/matrixNames';
-import { ElementwiseOperation } from './ElementwiseOperation';
 
 interface EncDecAttentionProps {
-    baseName: string; // e.g., decoder.0.enc_dec_mha
+    baseName: string;
     data: MultiHeadAttentionData;
     highlight: HighlightState;
     onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
     onComponentClick: (componentId: string) => void;
-    finalEncoderOutput: MatrixType; // [ADDED]
+    decoderAddNorm1Output: MatrixType;
+    finalEncoderOutput: MatrixType;
 }
 
-export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseName, data, highlight, onElementClick, onComponentClick, finalEncoderOutput }) => {
+export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseName, data, highlight, onElementClick, onComponentClick, decoderAddNorm1Output, finalEncoderOutput }) => {
     const layerIndex = parseInt(baseName.split('.')[1], 10);
-    const headIndex = 0; // Assume we visualize head 0
+    const headIndex = 0;
     const headData = data.heads[headIndex];
     const isActive = highlight.activeComponent === 'enc_dec_mha';
     const numHeads = data.heads.length;
@@ -43,7 +43,7 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
                      <div className="viz-formula-row">
                         <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px'}}>
                            <span style={{fontWeight: 'bold'}}>Q Input (from Decoder)</span>
-                           <Matrix name={MATRIX_NAMES.decoderLayer(layerIndex).add_norm_1_output} data={finalEncoderOutput} highlight={highlight} onElementClick={onElementClick} />
+                           <Matrix name={MATRIX_NAMES.decoderLayer(layerIndex).add_norm_1_output} data={decoderAddNorm1Output} highlight={highlight} onElementClick={onElementClick} />
                         </div>
                         <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px'}}>
                            <span style={{fontWeight: 'bold'}}>K & V Input (from Encoder)</span>
@@ -55,7 +55,7 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
                 <div className="arrow-down">↓</div>
 
                 <div className="viz-formula-group">
-                    <div className="viz-step-title">2. Generate Q, K, V (Head 1)</div>
+                    <div className="viz-step-title">2. Generate Q, K, V (Head 0)</div>
                      <div className="viz-formula-row">
                        <span>(Q Input) ×</span>
                        <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
@@ -79,7 +79,7 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
                 <div className="arrow-down">↓</div>
 
                 <div className="viz-formula-group">
-                    <div className="viz-step-title">3. Scaled Dot-Product Attention (Head 1)</div>
+                    <div className="viz-step-title">3. Scaled Dot-Product Attention (Head 0)</div>
                      <div className="viz-formula-row">
                         <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                         <InlineMath math="\times" />
@@ -90,18 +90,7 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
                          <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Scores} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Scale by } / \sqrt{d_k}}" /></div>
-
-                    <ElementwiseOperation
-                        opType="softmax"
-                        inputMatrix={headData.ScaledScores}
-                        inputMatrixName={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).ScaledScores}
-                        outputMatrix={headData.AttentionWeights}
-                        outputMatrixName={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).AttentionWeights}
-                        highlight={highlight}
-                        onElementClick={onElementClick}
-                        layerIndex={layerIndex}
-                        headIndex={headIndex}
-                    />
+                    <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Softmax}}" /></div>
 
                     <div className="viz-formula-row">
                         <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
@@ -134,4 +123,4 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
         </div>
     );
 };
-// END OF FILE: src/components/EncoderDecoderAttention.tsx
+// END OF FILE: src/topics/transformer-explorer/components/EncoderDecoderAttention.tsx

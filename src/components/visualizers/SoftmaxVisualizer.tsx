@@ -10,14 +10,15 @@ interface SoftmaxVisualizerProps {
   outputLabel?: string;
 }
 
-export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVector, inputLabel = "Logits", outputLabel = "Probabilities" }) => {
+export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVector, inputLabel = "L", outputLabel = "P" }) => {
 
   const calculations = useMemo(() => {
-    const maxVal = inputVector.length > 0 ? Math.max(...inputVector.filter(isFinite)) : 0;
+    const finiteInputs = inputVector.filter(isFinite);
+    const maxVal = finiteInputs.length > 0 ? Math.max(...finiteInputs) : 0;
     const shifted = inputVector.map(v => v - maxVal);
-    const exps = shifted.map(v => Math.exp(v));
+    const exps = shifted.map(v => isFinite(v) ? Math.exp(v) : 0);
     const sumExps = exps.reduce((a, b) => a + b, 0);
-    const result = exps.map(v => v / sumExps);
+    const result = sumExps > 0 ? exps.map(v => v / sumExps) : exps.map(()=> 1 / exps.length);
     return { maxVal, shifted, exps, sumExps, result };
   }, [inputVector]);
 
@@ -46,10 +47,10 @@ export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVecto
     vectorScroll: { overflowX: 'auto', padding: '5px' },
     vectorContainer: { display: 'flex', flexDirection: 'column', gap: '2px' },
     vector: { display: 'flex', gap: '5px', width: 'max-content' },
-    vectorIndices: { display: 'flex', gap: '5px', paddingLeft: '2px' },
-    indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace' },
+    vectorIndices: { display: 'flex', gap: '5px' },
+    indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace', boxSizing: 'border-box' },
     element: { minWidth: '60px', padding: '5px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
-    highlight: { borderColor: '#e63946', backgroundColor: 'rgba(230, 57, 70, 0.1)', transform: 'scale(1.1)' },
+    highlight: { borderColor: '#4a90e2', backgroundColor: 'rgba(74, 144, 226, 0.1)', transform: 'scale(1.1)' },
     connector: { fontSize: '1.5em', color: '#6c757d', margin: '5px 0', transition: 'opacity 0.3s ease' },
     scalar: { padding: '8px 15px', fontSize: '1.1em', fontWeight: 'bold', border: '1px solid #ced4da', borderRadius: '8px', backgroundColor: '#e9ecef', transition: 'all 0.3s ease' },
     controls: { display: 'flex', gap: '10px', marginTop: '10px' },
@@ -58,18 +59,19 @@ export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVecto
   };
 
   const descriptions: Record<string, string> = {
-    start: `初始输入向量 (${inputLabel})。点击 "Play" 开始计算。`,
-    'highlight-max': `为了数值稳定性，首先找到最大值 (${formatNumber(calculations.maxVal, 2)})。`,
-    'subtract-max': `从每个元素中减去最大值。`,
-    exponentiate: '对每个新元素应用指数函数 e^x。',
-    'sum-exps': `将所有指数结果相加，得到归一化因子。`,
-    normalize: `将每个指数结果除以总和，得到最终的概率分布 (${outputLabel})。`,
-    finish: '计算完成！这是一个有效的概率分布，所有元素之和为1。',
+    start: `初始输入向量 (Logits / ${inputLabel})。点击 "Play" 开始计算。`,
+    'highlight-max': `1. 为保证数值稳定性, 计算最大值: max(${inputLabel}) = ${formatNumber(calculations.maxVal, 2)}。`,
+    'subtract-max': `2. 从每个元素中减去最大值, 得到 L'。这可以防止计算指数时溢出。`,
+    exponentiate: `3. 对 L' 中每个元素应用指数函数 e^x, 得到 E。`,
+    'sum-exps': `4. 将 E 中所有元素相加, 得到归一化因子 ΣE = ${formatNumber(calculations.sumExps, 4)}。`,
+    normalize: `5. 将 E 中每个元素除以总和 ΣE, 得到最终的概率分布 ${outputLabel}。`,
+    finish: '计算完成！这是一个有效的概率分布, 所有元素之和为1。',
+    idle: '准备开始Softmax计算。',
   };
 
   const getActiveDescription = () => {
-    if (currentAnimState.type in descriptions) return descriptions[currentAnimState.type];
-    return descriptions['start'];
+    const key = currentAnimState.type as keyof typeof descriptions;
+    return descriptions[key] || descriptions['start'];
   }
 
   const isShiftedVisible = (index: number) => currentStep >= steps.findIndex(s => s.type === 'subtract-max' && s.index === index);
@@ -118,16 +120,16 @@ export const SoftmaxVisualizer: React.FC<SoftmaxVisualizerProps> = ({ inputVecto
         <p style={styles.description}>{getActiveDescription()}</p>
 
         {renderVector(inputVector, inputLabel, 'input')}
-        <div style={{...styles.connector, opacity: currentStep >= 1 ? 1 : 0.2 }}>↓ <InlineMath>{"- max(x) = -" + formatNumber(calculations.maxVal, 2)}</InlineMath></div>
-        {renderVector(calculations.shifted, 'x - max(x)', 'shifted')}
+        <div style={{...styles.connector, opacity: currentStep >= 1 ? 1 : 0.2 }}>↓ <InlineMath>{"- max(" + inputLabel + ") = -" + formatNumber(calculations.maxVal, 2)}</InlineMath></div>
+        {renderVector(calculations.shifted, "L' = " + inputLabel + " - max(" + inputLabel + ")", 'shifted')}
         <div style={{...styles.connector, opacity: isShiftedVisible(inputVector.length - 1) ? 1 : 0.2 }}>↓ <InlineMath>e^x</InlineMath></div>
-        {renderVector(calculations.exps, 'e^{(x - max(x))}', 'exp')}
+        {renderVector(calculations.exps, "E = e^{L'}", 'exp')}
         <div style={{...styles.connector, opacity: isExpVisible(inputVector.length - 1) ? 1 : 0.2 }}>↓ <InlineMath>\\sum</InlineMath></div>
         <div style={{...styles.scalar, ...(currentAnimState.type === 'sum-exps' ? styles.highlight : {}), opacity: isSumVisible ? 1 : 0.2 }}>
-            {isSumVisible ? formatNumber(calculations.sumExps) : '?'}
+           <InlineMath>{"\\sum E ="}</InlineMath> {isSumVisible ? formatNumber(calculations.sumExps, 4) : '?'}
         </div>
         <div style={{...styles.connector, opacity: isSumVisible ? 1 : 0.2 }}>↓ Normalize</div>
-        {renderVector(calculations.result, outputLabel, 'result')}
+        {renderVector(calculations.result, "P = E / \\sum E", 'result')}
       </div>
       <div style={styles.controls}>
         <button onClick={play} style={{ ...styles.button, ...(isPlaying ? styles.playingButton : {}) }}>Play</button>

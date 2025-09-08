@@ -2,7 +2,7 @@
 import React from 'react';
 import { HighlightState, ElementIdentifier } from '../types';
 import { InlineMath } from 'react-katex';
-import { getSymbolParts } from '../config/symbolMapping';
+import { getSymbolParts } from '../lib/symbolMapping';
 import { InteractiveSymbolicElement } from './InteractiveSymbolicElement';
 import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 

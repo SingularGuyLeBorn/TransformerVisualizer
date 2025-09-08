@@ -7,12 +7,14 @@ import { SoftmaxVisualizer } from '../visualizers/SoftmaxVisualizer';
 import { ActivationFunctionVisualizer } from '../visualizers/ActivationFunctionVisualizer';
 import { ElementWiseOpVisualizer } from '../visualizers/ElementWiseOpVisualizer';
 import { InlineMath } from 'react-katex';
-import { getSymbolParts } from '../../topics/transformer-explorer/config/symbolMapping';
+import { getSymbolParts } from '../../topics/transformer-explorer/lib/symbolMapping';
 import './CalculationTooltip.css';
+import { LayerNormVisualizer } from '../visualizers/LayerNormVisualizer';
 
 interface CalculationTooltipProps {
   tooltip: TooltipState;
   onClose: () => void;
+  initialViewMode?: 'compact' | 'detailed';
 }
 
 const formatNumber = (num: number, precision = 4) => {
@@ -55,9 +57,9 @@ const getVisibleIndices = (
   return result;
 };
 
-export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip, onClose }) => {
+export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip, onClose, initialViewMode = 'compact' }) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
-    const [viewMode, setViewMode] = useState<'compact' | 'detailed'>('detailed');
+    const [viewMode, setViewMode] = useState<'compact' | 'detailed'>(initialViewMode);
     const [hoveredComponentIndex, setHoveredComponentIndex] = useState<number | null>(null);
     const panelRef = useRef<HTMLDivElement>(null);
 
@@ -70,9 +72,9 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
 
     useEffect(() => {
         setIsCollapsed(false);
-        setViewMode('detailed');
+        setViewMode(initialViewMode);
         setHoveredComponentIndex(null);
-    }, [tooltip]);
+    }, [tooltip, initialViewMode]);
 
     const renderVector = (vec: number[], symbolInfo: TooltipState['steps'][0]['aSymbolInfo'], direction: 'row' | 'column' = 'row') => {
         let mathSymbol = symbolInfo.base;
@@ -96,36 +98,11 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
     const renderBody = () => {
         if (!tooltip.steps || tooltip.steps.length === 0) return null;
 
-        // DETAILED (ANIMATION) VIEW
         if (viewMode === 'detailed') {
-            return tooltip.steps.map((step, stepIndex) => (
-                <div className="tooltip-step-container" key={stepIndex}>
-                    {step.title && <h3 style={{textAlign: 'center'}}>{step.title}</h3>}
-                    {(() => {
-                        const op = step.op === '·' ? '×' : step.op;
-                        switch(tooltip.opType) {
-                            case 'matmul':
-                                return <InteractiveMatMulVisualizer
-                                    sourceVectorsA={step.aSources!}
-                                    sourceVectorB={step.bSources![0]}
-                                    resultSymbolInfo={getSymbolParts(tooltip.target.name)}
-                                    operation={op as '×' | '+'}
-                                />;
-                            case 'softmax':
-                                return <SoftmaxVisualizer inputVector={step.a} inputLabel={step.aLabel} outputLabel={step.resultLabel} />;
-                            case 'relu':
-                                return <ActivationFunctionVisualizer functionType="relu" inputVector={step.a} inputLabel={step.aLabel} outputLabel={step.resultLabel} />;
-                            case 'add':
-                                return <ElementWiseOpVisualizer matrixA={[step.a]} matrixB={[step.b]} operation="+" labelA={step.aLabel} labelB={step.bLabel} labelC={step.resultLabel} />;
-                            default:
-                                return <div>此操作没有详细动画视图。</div>;
-                        }
-                    })()}
-                </div>
-            ));
+            return null;
         }
 
-        // COMPACT (BREAKDOWN) VIEW
+        // COMPACT (DECOMPOSITION) VIEW
         return tooltip.steps.map((step, stepIndex) => {
             let content;
             const focusIndex = tooltip.target.col;
@@ -174,14 +151,15 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
                     );
                     break;
                 case 'add':
+                     const addStep = tooltip.steps.find(s => s.op === '+') || step;
                     content = (
                         <div className="tooltip-add-container">
-                             {renderVector(step.a, step.aSymbolInfo, 'row')}
+                             {renderVector(addStep.a, addStep.aSymbolInfo, 'row')}
                              <div className="tooltip-op-symbol">+</div>
-                             {renderVector(step.b, step.bSymbolInfo, 'row')}
+                             {renderVector(addStep.b, addStep.bSymbolInfo, 'row')}
                              <div className="tooltip-result-line">
                                  <span className="tooltip-op-symbol">=</span>
-                                 <span className="tooltip-result">{formatNumber(step.result, 4)}</span>
+                                 <span className="tooltip-result">{formatNumber(addStep.result, 4)}</span>
                              </div>
                         </div>
                     );
@@ -219,6 +197,23 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
                         </>
                     );
                     break;
+                 case 'layernorm':
+                    const mean = step.a.reduce((a, b) => a + b, 0) / step.a.length;
+                    const variance = step.a.map(x => Math.pow(x - mean, 2)).reduce((a,b) => a+b, 0) / step.a.length;
+                    content = (
+                         <>
+                            {renderVector(step.a, step.aSymbolInfo, 'row')}
+                            <div className="tooltip-calculation-detail">
+                                <div className="tooltip-calc-title">LayerNorm 计算分解:</div>
+                                 <div className="tooltip-calc-equation-multi">
+                                    <div>1. 计算均值 μ: <span>{formatNumber(mean, 4)}</span></div>
+                                    <div>2. 计算方差 σ²: <span>{formatNumber(variance, 4)}</span></div>
+                                    <div>3. 归一化 (for index {focusIndex}): <span>({formatNumber(step.a[focusIndex], 2)} - {formatNumber(mean, 2)}) / √({formatNumber(variance, 2)} + ε) = <span className="result">{formatNumber(step.result, 4)}</span></span></div>
+                                </div>
+                            </div>
+                        </>
+                    );
+                    break;
                 default:
                     content = <div>未知操作类型。</div>;
             }
@@ -238,23 +233,13 @@ export const CalculationTooltip: React.FC<CalculationTooltipProps> = ({ tooltip,
         height: typeof size.height === 'number' && !isCollapsed ? size.height : 'auto',
     };
 
-    const hasDetailedView = ['matmul', 'softmax', 'relu', 'add'].includes(tooltip.opType);
-
     return (
         <div ref={panelRef} style={panelStyle} className={`calculation-tooltip ${isCollapsed ? 'collapsed' : ''} resizable-panel`}>
             <div className="panel-header" {...dragHandleProps}>
-                <span className="panel-title">{tooltip.title}</span>
+                <span className="panel-title">
+                     <InlineMath>{`Calculation for ${tooltip.target.symbol || ''}[${tooltip.target.row},${tooltip.target.col}]`}</InlineMath>
+                </span>
                 <div className="tooltip-controls">
-                    {hasDetailedView && (
-                        <button
-                            className="view-toggle-btn"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setViewMode(prev => prev === 'compact' ? 'detailed' : 'compact');
-                            }}>
-                            {viewMode === 'compact' ? '动画视图' : '分解视图'}
-                        </button>
-                    )}
                     <button onClick={() => setIsCollapsed(!isCollapsed)} className="tooltip-toggle-btn">
                         {isCollapsed ? '⊕' : '⊖'}
                     </button>

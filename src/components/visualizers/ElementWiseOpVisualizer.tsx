@@ -1,5 +1,5 @@
 // FILE: src/components/visualizers/ElementWiseOpVisualizer.tsx
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { Matrix, ElementWiseOpStep } from './types';
 import { formatNumber, useAnimationController } from './utils';
 import { InlineMath } from 'react-katex';
@@ -14,6 +14,9 @@ interface ElementWiseOpVisualizerProps {
 }
 
 export const ElementWiseOpVisualizer: React.FC<ElementWiseOpVisualizerProps> = ({ matrixA, matrixB, operation, labelA = 'A', labelB = 'B', labelC = 'C' }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const elementsARef = useRef<(HTMLDivElement | null)[]>([]);
+  const elementsBRef = useRef<(HTMLDivElement | null)[]>([]);
 
   const vectorA = matrixA[0];
   const vectorB = matrixB[0];
@@ -47,31 +50,47 @@ export const ElementWiseOpVisualizer: React.FC<ElementWiseOpVisualizerProps> = (
       ? (currentAnimState as any).col
       : -1;
   const lastCalculatedIndex = (currentAnimState.type === 'finish')
-      ? numCols -1
-      : (currentAnimState.type === 'calculate' ? (currentAnimState as any).col : activeCol -1);
+      ? numCols - 1
+      : (currentAnimState.type === 'calculate' ? (currentAnimState as any).col : activeCol - 1);
 
+  const [opPosition, setOpPosition] = useState<{ top: number, left: number } | null>(null);
+
+  useEffect(() => {
+    if (activeCol !== -1 && containerRef.current && elementsARef.current[activeCol] && elementsBRef.current[activeCol]) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const elARect = elementsARef.current[activeCol]!.getBoundingClientRect();
+      const elBRect = elementsBRef.current[activeCol]!.getBoundingClientRect();
+
+      const top = (elARect.bottom - containerRect.top + (elBRect.top - elARect.bottom) / 2);
+      const left = (elARect.left - containerRect.left + elARect.width / 2);
+
+      setOpPosition({ top, left });
+    }
+  }, [activeCol]);
 
   const styles: { [key: string]: React.CSSProperties } = {
-    container: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', padding: '15px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6', width: '100%', boxSizing: 'border-box' },
+    container: { position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', padding: '15px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6', width: '100%', boxSizing: 'border-box' },
     row: { display: 'flex', alignItems: 'center', gap: '15px', width: '100%' },
     label: { fontWeight: 'bold', color: '#495057', fontSize: '1.5em', width: '60px', textAlign: 'right' },
     vectorGroup: { flex: 1, minWidth: 0 },
     vectorScroll: { overflowX: 'auto', padding: '10px 5px' },
     vector: { display: 'flex', flexDirection: 'column', gap: '5px', width: 'max-content' },
     vectorElements: { display: 'flex', gap: '5px' },
-    vectorIndices: { display: 'flex', gap: '5px', paddingLeft: '2px' },
-    indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace' },
+    vectorIndices: { display: 'flex', gap: '5px' },
+    indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace', boxSizing: 'border-box' },
     element: { width: '60px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease' },
-    highlight: { transform: 'scale(1.15)', borderColor: '#e63946', backgroundColor: 'rgba(230, 57, 70, 0.1)', fontWeight: 'bold' },
-    opRow: { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '80px', height: '40px' },
-    opSymbol: { fontSize: '2em', fontWeight: 'bold', color: '#e63946', opacity: 0, transition: 'opacity 0.3s ease', transform: 'scale(0.8)' },
-    opVisible: { opacity: 1, transform: 'scale(1)' },
+    sourceHighlight: { transform: 'scale(1.15)', borderColor: '#4a90e2', backgroundColor: 'rgba(74, 144, 226, 0.1)', fontWeight: 'bold' },
+    resultHighlight: { transform: 'scale(1.15)', borderColor: '#28a745', backgroundColor: 'rgba(40, 167, 69, 0.1)', fontWeight: 'bold' },
+    opSymbol: { position: 'absolute', fontSize: '2em', fontWeight: 'bold', color: '#e63946', opacity: 0, transition: 'opacity 0.3s ease, transform 0.3s ease', transform: 'translate(-50%, -50%) scale(0.8)', pointerEvents: 'none' },
+    opVisible: { opacity: 1, transform: 'translate(-50%, -50%) scale(1)' },
     controls: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '10px' },
     button: { padding: '8px 16px', fontSize: '1em', cursor: 'pointer', border: '1px solid #6c757d', borderRadius: '4px', backgroundColor: '#fff' },
     playingButton: { backgroundColor: '#6c757d', color: '#fff' },
+    equalSignRow: { display: 'flex', alignItems: 'center', justifyContent: 'flex-start', paddingLeft: '80px', height: '30px' },
+    equalSign: { fontSize: '2em', fontWeight: 'bold', color: '#6c757d' },
   };
 
-  const renderVector = (vec: number[], label: string, isResult: boolean = false) => (
+  const renderVector = (vec: number[], label: string, isResult: boolean = false, refs?: React.MutableRefObject<(HTMLDivElement | null)[]>) => (
       <div style={styles.row}>
           <div style={styles.label}><InlineMath>{label}</InlineMath></div>
           <div style={styles.vectorGroup}>
@@ -79,7 +98,15 @@ export const ElementWiseOpVisualizer: React.FC<ElementWiseOpVisualizerProps> = (
                   <div style={styles.vector}>
                       <div style={styles.vectorElements}>
                           {vec.map((val, i) => (
-                              <div key={i} style={{ ...styles.element, ...(activeCol === i ? styles.highlight : {}), opacity: (isResult && i > lastCalculatedIndex && currentStep > 0) ? 0.3 : 1 }}>
+                              <div
+                                key={i}
+                                ref={refs ? el => refs.current[i] = el : undefined}
+                                style={{
+                                    ...styles.element,
+                                    ...(activeCol === i ? (isResult ? styles.resultHighlight : styles.sourceHighlight) : {}),
+                                    opacity: (isResult && i > lastCalculatedIndex && currentStep > 0) ? 0.3 : 1
+                                }}
+                              >
                                   {(isResult && i > lastCalculatedIndex && currentStep > 0) ? '?' : formatNumber(val, 2)}
                               </div>
                           ))}
@@ -94,14 +121,21 @@ export const ElementWiseOpVisualizer: React.FC<ElementWiseOpVisualizerProps> = (
   );
 
   return (
-    <div style={styles.container}>
-      {renderVector(vectorA, labelA)}
-      <div style={styles.opRow}>
-         <div style={{...styles.opSymbol, ...(currentAnimState.type === 'show-op' ? styles.opVisible : {})}}>{operation}</div>
-      </div>
-      {renderVector(vectorB, labelB)}
-      <div style={styles.opRow}>
-          <div style={{...styles.opSymbol, ...styles.opVisible}}>=</div>
+    <div style={styles.container} ref={containerRef}>
+      {renderVector(vectorA, labelA, false, elementsARef)}
+      {renderVector(vectorB, labelB, false, elementsBRef)}
+      {opPosition && (
+          <div style={{
+              ...styles.opSymbol,
+              top: opPosition.top,
+              left: opPosition.left,
+              ...(currentAnimState.type === 'show-op' ? styles.opVisible : {})
+          }}>
+              {operation}
+          </div>
+      )}
+      <div style={styles.equalSignRow}>
+          <div style={styles.equalSign}>=</div>
       </div>
       {renderVector(resultVector, labelC, true)}
 

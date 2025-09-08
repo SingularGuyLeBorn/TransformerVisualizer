@@ -1,4 +1,4 @@
-// FILE: src/config/matrixNames.ts
+// FILE: src/topics/transformer-explorer/config/matrixNames.ts
 // This file is the single source of truth for all matrix and vector names.
 
 const generateHeadNames = (base: string) => ({
@@ -65,4 +65,4 @@ export const MATRIX_NAMES = {
     logits: 'logits',
     outputProbabilities: 'outputProbabilities',
 };
-// END OF FILE: src/config/matrixNames.ts
+// END OF FILE: src/topics/transformer-explorer/config/matrixNames.ts

@@ -12,41 +12,6 @@
   position: relative;
 }
 
-/* [NEW] Style for the Play Animation button container */
-.animation-button-container {
-    position: absolute;
-    top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1005; /* Above columns but below panels */
-}
-
-.play-animation-button {
-    padding: 12px 24px;
-    font-size: 1.1em;
-    font-weight: bold;
-    color: #fff;
-    background-color: #e63946; /* A strong call-to-action color */
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(230, 57, 70, 0.4);
-    transition: all 0.2s ease-in-out;
-}
-
-.play-animation-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(230, 57, 70, 0.5);
-}
-
-.play-animation-button:disabled {
-    background-color: #adb5bd;
-    cursor: not-allowed;
-    box-shadow: none;
-    transform: none;
-}
-
-
 .column {
   flex: 1;
   background: var(--component-bg);
