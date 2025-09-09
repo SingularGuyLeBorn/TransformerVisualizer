@@ -1,5 +1,5 @@
 // FILE: src/topics/attention-variants/lib/attention.ts
-import { AttentionData, AttentionVariantData, Matrix, Vector } from '../types';
+import { AttentionData, AttentionVariantData, Matrix, Vector, MLAData } from '../types';
 
 // ----------------- 辅助数学函数 -----------------
 
@@ -17,18 +17,18 @@ const createSeededRandom = (seed: number) => {
 };
 
 const multiplyMatrices = (A: Matrix, B: Matrix): Matrix => {
-  const rowsA = A.length, colsA = A[0].length, colsB = B[0].length;
-  const C: Matrix = Array(rowsA).fill(0).map(() => Array(colsB).fill(0));
-  for (let i = 0; i < rowsA; i++) {
-    for (let j = 0; j < colsB; j++) {
-      let sum = 0;
-      for (let k = 0; k < colsA; k++) {
-        sum += A[i][k] * B[k][j];
-      }
-      C[i][j] = sum;
+    const rowsA = A.length, colsA = A[0].length, colsB = B[0].length;
+    const C: Matrix = Array(rowsA).fill(0).map(() => Array(colsB).fill(0));
+    for (let i = 0; i < rowsA; i++) {
+        for (let j = 0; j < colsB; j++) {
+            let sum = 0;
+            for (let k = 0; k < colsA; k++) {
+                sum += A[i][k] * B[k][j];
+            }
+            C[i][j] = sum;
+        }
     }
-  }
-  return C;
+    return C;
 };
 
 const scaleMatrix = (A: Matrix, scalar: number): Matrix => A.map(row => row.map(val => val * scalar));
@@ -56,11 +56,14 @@ const concatMatricesHorizontally = (...matrices: Matrix[]): Matrix => {
 // ----------------- 核心计算逻辑 -----------------
 
 interface Dims {
-  seq_len: number;
-  d_model: number;
-  d_head: number;
-  n_q_heads: number;
-  n_kv_heads: number;
+    seq_len: number;
+    d_model: number;
+    d_head: number;
+    n_q_heads: number;
+    n_kv_heads: number;
+    d_c: number;
+    d_c_prime: number;
+    d_rope: number;
 }
 
 function calculateAttention(input: Matrix, Wq: Matrix[], Wk: Matrix[], Wv: Matrix[], Wo: Matrix, dims: Dims, n_kv_heads_variant: number): AttentionVariantData {
@@ -94,33 +97,69 @@ function calculateAttention(input: Matrix, Wq: Matrix[], Wk: Matrix[], Wv: Matri
     return { Q_proj, K_proj, V_proj, heads, CombinedOutput, FinalOutput };
 }
 
+function calculateMLA(input: Matrix, Wo: Matrix, Wc: Matrix, Wc_prime: Matrix, W_k_rope: Matrix, W_q_rope: Matrix[], W_v_mla: Matrix[], Wk: Matrix[], Wq: Matrix[], dims: Dims): MLAData {
+    const { seq_len, d_head, n_q_heads, d_c, d_c_prime, d_rope } = dims;
+
+    const C_q_prime = multiplyMatrices(input, Wc_prime);
+    const C_kv = multiplyMatrices(input, Wc);
+    const K_rope = multiplyMatrices(input, W_k_rope); // RoPE part from original input
+
+    const heads = [];
+    for(let i=0; i < n_q_heads; i++) {
+        // Reconstruct Q, K, V from latent vectors
+        const Q_content = multiplyMatrices(C_q_prime, Wq[i]);
+        const Q_rope = multiplyMatrices(C_q_prime, W_q_rope[i]);
+        const Q = concatMatricesHorizontally(Q_content, Q_rope);
+
+        const K_content = multiplyMatrices(C_kv, Wk[i]);
+        const K = concatMatricesHorizontally(K_content, K_rope);
+
+        const V = multiplyMatrices(C_kv, W_v_mla[i]);
+
+        const K_T = K[0].map((_, colIndex) => K.map(row => row[colIndex]));
+
+        const scores = scaleMatrix(multiplyMatrices(Q, K_T), 1 / Math.sqrt(d_head + d_rope));
+        const weights = softmaxByRow(scores);
+        const output = multiplyMatrices(weights, V);
+        heads.push({ Q, K, V, Scores: scores, Weights: weights, Output: output });
+    }
+    const CombinedOutput = concatMatricesHorizontally(...heads.map(h => h.Output));
+    const FinalOutput = multiplyMatrices(CombinedOutput, Wo);
+
+    return { C_q_prime, C_kv, K_rope, heads, CombinedOutput, FinalOutput };
+}
+
+
 export const calculateAttentionVariants = (dims: Dims): AttentionData | null => {
-    const { seq_len, d_model, d_head, n_q_heads, n_kv_heads } = dims;
+    const { seq_len, d_model, d_head, n_q_heads, n_kv_heads, d_c, d_c_prime, d_rope } = dims;
 
-    if (d_model !== n_q_heads * d_head) return null; // 确保维度匹配
+    if (d_model !== n_q_heads * d_head) return null;
 
-    // 1. 生成固定的输入和权重矩阵，确保可复现性
     const input = createMatrix(seq_len, d_model, 1);
     const Wq = Array.from({ length: n_q_heads }, (_, i) => createMatrix(d_model, d_head, 10 + i));
     const Wk = Array.from({ length: n_q_heads }, (_, i) => createMatrix(d_model, d_head, 100 + i));
     const Wv = Array.from({ length: n_q_heads }, (_, i) => createMatrix(d_model, d_head, 200 + i));
     const Wo = createMatrix(d_model, d_model, 999);
 
-    // 2. 计算 MHA, MQA, GQA
     const mha = calculateAttention(input, Wq, Wk, Wv, Wo, dims, n_q_heads);
     const mqa = calculateAttention(input, Wq, Wk, Wv, Wo, dims, 1);
     const gqa = calculateAttention(input, Wq, Wk, Wv, Wo, dims, n_kv_heads);
 
-    // 3. 计算 MLA (简化模拟)
-    // 实际 MLA 复杂得多，这里我们只模拟其最终效果和概念
-    const mla = {
-        C_kv: createMatrix(seq_len, 32, 300), // 低秩潜在向量
-        C_q: createMatrix(seq_len, 32, 400),
-        K_rope: createMatrix(seq_len, 16, 500),
-        FinalOutput: createMatrix(seq_len, d_model, 600)
-    };
+    // MLA specific weights
+    const Wc = createMatrix(d_model, d_c, 300);
+    const Wc_prime = createMatrix(d_model, d_c_prime, 400);
+    const W_k_rope = createMatrix(d_model, d_rope, 500);
+    const W_q_rope = Array.from({ length: n_q_heads }, (_, i) => createMatrix(d_c_prime, d_rope, 600 + i));
+    const W_v_mla = Array.from({ length: n_q_heads }, (_, i) => createMatrix(d_c, d_head, 700 + i));
+    // Re-using Wq and Wk for content projection part of MLA
+    const Wq_mla = Array.from({ length: n_q_heads }, (_, i) => createMatrix(d_c_prime, d_head, 800 + i));
+    const Wk_mla = Array.from({ length: n_q_heads }, (_, i) => createMatrix(d_c, d_head, 900 + i));
+    // Re-using Wo for final projection
+    const Wo_mla = createMatrix(n_q_heads * d_head, d_model, 1000);
 
-    return { input, Wq, Wk, Wv, Wo, mha, mqa, gqa, mla };
+    const mla = calculateMLA(input, Wo_mla, Wc, Wc_prime, W_k_rope, W_q_rope, W_v_mla, Wk_mla, Wq_mla, dims);
+
+
+    return { input, Wq, Wk, Wv, Wo, Wc, Wc_prime, W_k_rope, W_q_rope, W_v_mla, mha, mqa, gqa, mla };
 };
-
 // END OF FILE: src/topics/attention-variants/lib/attention.ts

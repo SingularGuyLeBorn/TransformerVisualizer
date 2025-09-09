@@ -4,16 +4,16 @@
    transformer-explorer topic to maintain visual consistency. */
 
 .main-layout {
-  display: flex;
-  height: 100%;
-  overflow: hidden;
-  position: relative;
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
 }
 
 .column {
-  height: 100%;
-  overflow-y: auto;
-  box-sizing: border-box;
+    height: 100%;
+    overflow-y: auto;
+    box-sizing: border-box;
 }
 .column-content {
     padding: 20px;
@@ -22,14 +22,14 @@
     border-right: 1px solid var(--border-color);
 }
 .column h2 {
-  text-align: center;
-  margin-top: 0;
-  padding-bottom: 15px;
-  border-bottom: 1px solid var(--border-color);
-  position: sticky;
-  top: -20px;
-  background-color: var(--bg-color);
-  z-index: 10;
+    text-align: center;
+    margin-top: 0;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: -21px; /* Slight overlap to hide scrollbar space */
+    background-color: var(--bg-color);
+    z-index: 10;
 }
 
 .attention-variant-section {
@@ -54,6 +54,12 @@
     font-size: 1.3em;
     border-bottom: 1px solid var(--border-color);
     border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.attention-variant-section .component-header:hover {
+    background-color: #e9ecef;
 }
 
 .attention-variant-section .component-body {
@@ -84,10 +90,10 @@
     color: #606266;
 }
 .explanation-subsection code {
-   background-color: #e9ecef;
-   padding: 2px 5px;
-   border-radius: 4px;
-   font-family: monospace;
+    background-color: #e9ecef;
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: monospace;
 }
 .explanation-subsection ul {
     padding-left: 20px;
@@ -130,6 +136,17 @@
     flex-direction: column;
 }
 
+/* [FIXED & CRITICAL] Added scroll wrapper for wide matrices in explanation, following transformer-explorer's pattern. */
+.matrix-scroll-wrapper {
+    overflow-x: auto; /* Enable horizontal scrolling */
+    padding: 5px; /* Add some internal spacing */
+    flex-shrink: 1;  /* Allow the item to shrink */
+    flex-grow: 1;    /* Allow the item to grow and fill space */
+    min-width: 0;    /* CRITICAL: Allows shrinking below content size */
+    display: flex;   /* Use flexbox for internal alignment */
+    flex-direction: column; /* Stack matrix and label vertically */
+    align-items: center;    /* Center them horizontally */
+}
 
 .explanation-row p {
     flex-basis: 100%;
@@ -179,243 +196,27 @@
     display: none;
 }
 
-
-.elementwise-op-container {
-    width: 100%;
-    padding: 10px;
-    margin: 5px 0;
-    border: 1px dashed #ccc;
-    border-radius: 8px;
-    background-color: #f8f9fa;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    box-sizing: border-box;
-}
-.elementwise-op-label {
-    font-weight: bold;
-    font-size: 1.1em;
-}
-
-.elementwise-calc-container {
+.head-group-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    width: 100%;
-    font-size: 0.9em;
-    padding: 10px 0;
+    padding: 10px;
+    border: 2px dashed;
+    border-radius: 8px;
+    margin-top: 10px;
 }
-.calc-step {
+
+.q-heads-grid {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    transition: opacity 0.3s ease;
-}
-.calc-step.hidden {
-    opacity: 0.3;
-    pointer-events: none;
-}
-.calc-label {
-    color: #555;
-    font-size: 1em;
-    font-weight: bold;
-    font-family: sans-serif;
-}
-.elementwise-op-row {
-    display: flex;
-    gap: 5px;
-    border: 1px solid #ddd;
-    padding: 4px;
-    border-radius: 4px;
-    background: #fff;
-    align-items: center;
     flex-wrap: wrap;
     justify-content: center;
+    gap: 15px;
 }
-.elementwise-op-element {
-  width: 50px;
-  height: 28px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 2px;
-  font-family: monospace;
-  font-size: 0.85em;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-.elementwise-op-element.highlight-step {
-    transform: scale(1.1);
-    border-color: var(--highlight-formula-border);
-    background-color: var(--highlight-formula-bg);
-}
-.elementwise-op-element.symbolic-ellipsis {
-    border: none;
-    background-color: transparent;
-    color: #aaa;
-    width: auto;
-}
-.elementwise-op-element.sum {
-    width: auto;
-    padding: 0 10px;
-    font-weight: bold;
-}
-.elementwise-op-element.source, .elementwise-op-element.sum.source {
-    background-color: var(--highlight-source-bg) !important;
-    color: var(--highlight-source-color) !important;
-    border-color: var(--highlight-source-border) !important;
-}
-.elementwise-op-element.target, .elementwise-op-element.sum.target {
-    background-color: var(--highlight-target-bg) !important;
-    color: var(--highlight-target-color) !important;
-    border-color: var(--highlight-target-border) !important;
-}
-.elementwise-controls {
+
+.kv-head-pair {
     display: flex;
     gap: 10px;
     margin-top: 10px;
 }
-.elementwise-controls button {
-    padding: 6px 12px;
-    font-size: 0.9em;
-    cursor: pointer;
-    border: 1px solid #6c757d;
-    border-radius: 4px;
-    background-color: #fff;
-}
-.elementwise-controls button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.tooltip-matmul-container {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
-}
-
-.summary-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-    font-size: 0.95em;
-}
-
-.summary-table th, .summary-table td {
-    border: 1px solid #dcdfe6;
-    padding: 12px 10px;
-    text-align: left;
-    vertical-align: top;
-}
-
-.summary-table th {
-    background-color: #f5f7fa;
-    font-weight: bold;
-    color: #303133;
-}
-
-.summary-table tbody tr:nth-child(even) {
-    background-color: #fdfdfd;
-}
-
-.summary-table td:first-child {
-    font-weight: bold;
-    min-width: 120px;
-}
-
-.controls-container {
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-    padding: 20px;
-    flex-grow: 1;
-    overflow-y: auto;
-}
-
-.control-group {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-}
-
-.control-group label {
-    font-size: 0.95em;
-    color: #495057;
-    font-weight: 500;
-    flex-shrink: 0;
-    padding-right: 15px;
-    text-align: left;
-}
-
-.control-group input[type="number"],
-.control-group .d_k-value {
-    width: 80px;
-    padding: 8px 12px;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    font-size: 1em;
-    text-align: center;
-    box-sizing: border-box;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.control-group input:focus {
-    outline: none;
-    border-color: #409eff;
-    box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.2);
-}
-
-.d_k-value {
-    font-weight: 600;
-    background-color: #f0f2f5;
-    color: #303133;
-    border-color: #e4e7ed;
-}
-
-
-.math-block {
-  margin-bottom: 25px;
-  padding: 20px;
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
-  background: #fff;
-  transition: all 0.3s ease;
-}
-.math-block h3 {
-  margin: -20px -20px 15px -20px;
-  padding: 15px 20px;
-  font-size: 1.25em;
-  color: #000;
-  border-bottom: 1px solid #eee;
-  border-radius: 12px 12px 0 0;
-  background-color: var(--component-header-bg);
-}
-.math-block p, .math-block li {
-    line-height: 1.7;
-    margin-top: 0.5em;
-    margin-bottom: 0.5em;
-}
-.math-block code {
-   background-color: #e9ecef;
-   padding: 2px 5px;
-   border-radius: 4px;
-   font-family: monospace;
-}
-
-.matrix-scroll-wrapper {
-    overflow-x: auto;
-    padding-bottom: 10px;
-    width: 100%;
-}
-
-
 /* END OF FILE: src/topics/attention-variants/AttentionVariantsTopic.css */

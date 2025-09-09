@@ -17,16 +17,16 @@ interface ElementwiseOperationProps {
 }
 
 export const ElementwiseOperation: React.FC<ElementwiseOperationProps> = ({
-    opType,
-    inputMatrix,
-    inputMatrixName,
-    outputMatrix,
-    outputMatrixName,
-    highlight,
-    onElementClick,
-    layerIndex,
-    headIndex,
-}) => {
+                                                                              opType,
+                                                                              inputMatrix,
+                                                                              inputMatrixName,
+                                                                              outputMatrix,
+                                                                              outputMatrixName,
+                                                                              highlight,
+                                                                              onElementClick,
+                                                                              layerIndex,
+                                                                              headIndex,
+                                                                          }) => {
     let targetRowIndex = 0;
 
     if (highlight.target) {

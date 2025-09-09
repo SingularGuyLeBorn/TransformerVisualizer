@@ -34,11 +34,11 @@ const getMatrixByName = (name: string, data: TransformerData, l: number, h: numb
     const encLayer = data.encoderLayers[l];
     if (encLayer) {
         if (name === LNe.encoder_input) return encLayer.encoder_input;
-        if (name === LNe.mha_output) return encLayer.mha_output;
+        if (name === LNe.mha_output) return encLayer.mha.output;
         if (name === LNe.Wo) return encLayer.mha.Wo;
         if (name === LNe.ConcatOutput) return encLayer.mha.ConcatOutput;
         if (name === LNe.add_norm_1_output) return encLayer.add_norm_1_output;
-        if (name === LNe.ffn_output) return encLayer.ffn_output;
+        if (name === LNe.ffn_output) return encLayer.ffn.Output;
         if (name === LNe.add_norm_2_output) return encLayer.add_norm_2_output;
         if (name === LNe.Intermediate) return encLayer.ffn.Intermediate;
         if (name === LNe.Activated) return encLayer.ffn.Activated;
@@ -72,7 +72,7 @@ const getMatrixByName = (name: string, data: TransformerData, l: number, h: numb
         if (name === LNd.Wo_enc_dec) return decLayer.enc_dec_mha.Wo;
         if (name === LNd.ConcatOutput_enc_dec) return decLayer.enc_dec_mha.ConcatOutput;
         if (name === LNd.add_norm_2_output) return decLayer.add_norm_2_output;
-        if (name === LNd.ffn_output) return decLayer.ffn_output;
+        if (name === LNd.ffn_output) return decLayer.ffn.Output;
         if (name === LNd.add_norm_3_output) return decLayer.add_norm_3_output;
         if (name === LNd.Intermediate) return decLayer.ffn.Intermediate;
         if (name === LNd.Activated) return decLayer.ffn.Activated;
@@ -145,18 +145,21 @@ export const generateTooltipData = (element: ElementIdentifier, transformerData:
         }
     } else if (name.includes('.ffn.Intermediate') || name.includes('.ffn.output')) {
         opType = 'wx-plus-b';
-        const matmulMatrixA = getMatrixByName(matmulSourceRow!.name, transformerData, layerIdx, headIdx)!;
-        const matmulMatrixB = getMatrixByName(matmulSourceCol!.name, transformerData, layerIdx, headIdx)!;
-        const biasSource = addSources[0];
-        const biasMatrix = getMatrixByName(biasSource.name, transformerData, layerIdx, headIdx)!;
+        // [FIXED] Add check for addSources existence before finding biasSource.
+        const biasSource = addSources && addSources.find(s => s.name.includes('.b'));
+        if (matmulSourceRow && matmulSourceCol && biasSource) {
+            const matmulMatrixA = getMatrixByName(matmulSourceRow!.name, transformerData, layerIdx, headIdx)!;
+            const matmulMatrixB = getMatrixByName(matmulSourceCol!.name, transformerData, layerIdx, headIdx)!;
+            const biasMatrix = getMatrixByName(biasSource.name, transformerData, layerIdx, headIdx)!;
 
-        const aSources = [{ data: matmulMatrixA[row], symbolInfo: getSymbolParts(matmulSourceRow!.name) }];
-        const bSources = [{ data: matmulMatrixB.map(r => r[col]), symbolInfo: getSymbolParts(matmulSourceCol!.name) }];
-        const biasVectorSource = { data: [biasMatrix[0][col]], symbolInfo: getSymbolParts(biasSource.name) };
-        const matmulResult = aSources[0].data.reduce((sum, val, i) => sum + val * bSources[0].data[i], 0);
+            const aSources = [{ data: matmulMatrixA[row], symbolInfo: getSymbolParts(matmulSourceRow!.name) }];
+            const bSources = [{ data: matmulMatrixB.map(r => r[col]), symbolInfo: getSymbolParts(matmulSourceCol!.name) }];
+            const biasVectorSource = { data: [biasMatrix[0][col]], symbolInfo: getSymbolParts(biasSource.name) };
+            const matmulResult = aSources[0].data.reduce((sum, val, i) => sum + val * bSources[0].data[i], 0);
 
-        steps.push({ title: "Step 1: Matmul (Wx)", op: '·', result: matmulResult, a: aSources[0].data, b: bSources[0].data, aSources, bSources, aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts("") });
-        steps.push({ title: "Step 2: Add Bias (+b)", op: '+', result: targetValue, a: [matmulResult], b: [biasVectorSource.data[0]], aSources: [{data: [matmulResult], symbolInfo: {base: "Wx", subscript: `[${row},${col}]`}}], bSources: [biasVectorSource], aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts(""), aLabel: "Wx", bLabel: "b", resultLabel: "Wx+b" });
+            steps.push({ title: "Step 1: Matmul (Wx)", op: '·', result: matmulResult, a: aSources[0].data, b: bSources[0].data, aSources, bSources, aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts("") });
+            steps.push({ title: "Step 2: Add Bias (+b)", op: '+', result: targetValue, a: [matmulResult], b: [biasVectorSource.data[0]], aSources: [{data: [matmulResult], symbolInfo: {base: "Wx", subscript: `[${row},${col}]`}}], bSources: [biasVectorSource], aSymbolInfo: getSymbolParts(""), bSymbolInfo: getSymbolParts(""), aLabel: "Wx", bLabel: "b", resultLabel: "Wx+b" });
+        }
     } else if (matmulSourceRow && matmulSourceCol) {
         opType = 'matmul';
         const aSources = [{ data: getMatrixByName(matmulSourceRow.name, transformerData, layerIdx, headIdx)![row], symbolInfo: getSymbolParts(matmulSourceRow.name) }];

@@ -7,99 +7,105 @@ import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 import { getSymbolParts } from '../lib/symbolMapping';
 
 interface MatrixProps {
-  name: string;
-  data: MatrixType;
-  highlight: HighlightState;
-  onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
-  sideLabel?: boolean; // For explicit side-labeling when not in a vertical row
+    name: string;
+    data: MatrixType;
+    highlight: HighlightState;
+    onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+    sideLabel?: boolean; // For explicit side-labeling when not in a vertical row
+    isTransposed?: boolean; // [FIXED] Added missing prop
 }
 
-export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick, sideLabel = false }) => {
-  if (!data || data.length === 0 || data[0].length === 0) {
-    return <div>Invalid matrix data for {name}</div>;
-  }
+export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick, sideLabel = false, isTransposed = false }) => {
+    if (!data || data.length === 0 || data[0].length === 0) {
+        return <div>Invalid matrix data for {name}</div>;
+    }
 
-  const numRows = data.length;
-  const numCols = data[0].length;
+    const numRows = data.length;
+    const numCols = data[0].length;
 
-  let focusRow = -1;
-  let focusCol = -1;
+    const displayRows = isTransposed ? numCols : numRows;
+    const displayCols = isTransposed ? numRows : numCols;
 
-  const isTargetMatrix = !!highlight.target && highlight.target.name === name;
-  const isSourceMatrix = highlight.sources.some(s => s.name === name);
-  const shouldShowHeaders = isTargetMatrix || isSourceMatrix;
 
-  if (isTargetMatrix) {
-    focusRow = highlight.target!.row;
-    focusCol = highlight.target!.col;
-  } else if (isSourceMatrix) {
-      const relevantSource = highlight.sources.find(s => s.name === name)!;
-      focusRow = relevantSource.row === -1 ? focusRow : relevantSource.row;
-      focusCol = relevantSource.col === -1 ? focusCol : relevantSource.col;
-  }
+    let focusRow = -1;
+    let focusCol = -1;
 
-  const visibleRowIndices = getVisibleIndices(numRows, focusRow);
-  const visibleColIndices = getVisibleIndices(numCols, focusCol);
+    const isTargetMatrix = !!highlight.target && highlight.target.name === name;
+    const isSourceMatrix = highlight.sources.some(s => s.name === name);
+    const shouldShowHeaders = isTargetMatrix || isSourceMatrix;
 
-  const symbolParts = getSymbolParts(name);
-  let mathSymbol = symbolParts.base;
-  if(symbolParts.superscript) mathSymbol = `${mathSymbol}^{${symbolParts.superscript}}`;
-  if(symbolParts.subscript) mathSymbol = `${mathSymbol}_{${symbolParts.subscript}}`;
+    if (isTargetMatrix) {
+        focusRow = highlight.target!.row;
+        focusCol = highlight.target!.col;
+    } else if (isSourceMatrix) {
+        const relevantSource = highlight.sources.find(s => s.name === name)!;
+        focusRow = relevantSource.row === -1 ? focusRow : relevantSource.row;
+        focusCol = relevantSource.col === -1 ? focusCol : relevantSource.col;
+    }
 
-  const matrixGrid = (
-      <div className="matrix-container">
-        <div className="matrix-grid" style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
-            {/* Top-left corner & Column Headers */}
-            {shouldShowHeaders && <div key="corner" />}
-            {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
-                <div key={`ch-${cIdx}`} className="matrix-header-item">{c}</div>
-            ))}
+    const visibleRowIndices = getVisibleIndices(displayRows, isTransposed ? focusCol : focusRow);
+    const visibleColIndices = getVisibleIndices(displayCols, isTransposed ? focusRow : focusCol);
 
-            {/* Row Headers & Matrix Elements */}
-            {visibleRowIndices.map((r, rIdx) => (
-                <React.Fragment key={`row-frag-${rIdx}`}>
-                    {shouldShowHeaders && <div className="matrix-header-item">{r}</div>}
-                    {visibleColIndices.map((c, cIdx) => {
-                      if (r === ELLIPSIS) {
-                        return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
-                      }
-                      if (c === ELLIPSIS) {
-                        return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
-                      }
-                      return (
-                        <Element
-                          key={`${name}-${r}-${c}`}
-                          name={name}
-                          row={r}
-                          col={c}
-                          value={data[r][c]}
-                          highlight={highlight}
-                          onElementClick={onElementClick}
-                        />
-                      );
-                    })}
-                </React.Fragment>
-            ))}
+    const symbolParts = getSymbolParts(name);
+    let mathSymbol = symbolParts.base;
+    if(symbolParts.superscript) mathSymbol = `${mathSymbol}^{${symbolParts.superscript}}`;
+    if(symbolParts.subscript) mathSymbol = `${mathSymbol}_{${symbolParts.subscript}}`;
+    if(isTransposed) mathSymbol = `${mathSymbol}^T`;
+
+
+    const matrixGrid = (
+        <div className="matrix-container">
+            <div className="matrix-grid" data-name={name} style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
+                {shouldShowHeaders && <div key="corner" />}
+                {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
+                    <div key={`ch-${cIdx}`} className="matrix-header-item">{c}</div>
+                ))}
+                {visibleRowIndices.map((r, rIdx) => (
+                    <React.Fragment key={`row-frag-${rIdx}`}>
+                        {shouldShowHeaders && <div className="matrix-header-item">{r}</div>}
+                        {visibleColIndices.map((c, cIdx) => {
+                            if (r === ELLIPSIS) {
+                                return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
+                            }
+                            if (c === ELLIPSIS) {
+                                return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
+                            }
+                            const originalRow = isTransposed ? c : r;
+                            const originalCol = isTransposed ? r : c;
+                            return (
+                                <Element
+                                    key={`${name}-${originalRow}-${originalCol}`}
+                                    name={name}
+                                    row={originalRow}
+                                    col={originalCol}
+                                    value={data[originalRow][originalCol]}
+                                    highlight={highlight}
+                                    onElementClick={onElementClick}
+                                />
+                            );
+                        })}
+                    </React.Fragment>
+                ))}
+            </div>
         </div>
-      </div>
-  );
+    );
 
-  // [MODIFIED] Always render both label structures and let CSS handle visibility
-  // The `side-label` class here is for explicit override when needed.
-  return (
-    <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`} data-name={name}>
-        {/* Side label (hidden by default, shown via CSS context) */}
-        <div className="matrix-label-side">
-            <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
+    // [MODIFIED] Always render both label structures and let CSS handle visibility
+    // The `side-label` class here is for explicit override when needed.
+    return (
+        <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`} data-name={name}>
+            {/* Side label (hidden by default, shown via CSS context) */}
+            <div className="matrix-label-side">
+                <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
+            </div>
+
+            {matrixGrid}
+
+            {/* Bottom label (shown by default, hidden via CSS context) */}
+            <div className="matrix-label-container">
+                <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
+            </div>
         </div>
-
-        {matrixGrid}
-
-        {/* Bottom label (shown by default, hidden via CSS context) */}
-        <div className="matrix-label-container">
-            <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
-        </div>
-    </div>
-  );
+    );
 };
 // END OF FILE: src/topics/attention-variants/components/Matrix.tsx
