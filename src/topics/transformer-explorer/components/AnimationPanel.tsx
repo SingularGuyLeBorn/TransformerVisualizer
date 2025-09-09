@@ -7,14 +7,14 @@ import { SoftmaxVisualizer } from '../../../components/visualizers/SoftmaxVisual
 import { ActivationFunctionVisualizer } from '../../../components/visualizers/ActivationFunctionVisualizer';
 import { ElementWiseOpVisualizer } from '../../../components/visualizers/ElementWiseOpVisualizer';
 import { LayerNormVisualizer } from '../../../components/visualizers/LayerNormVisualizer';
-import { WxPlusBVisualizer } from '../../../components/visualizers/WxPlusBVisualizer'; // [NEW]
+import { WxPlusBVisualizer } from '../../../components/visualizers/WxPlusBVisualizer';
 import { getSymbolParts } from '../lib/symbolMapping';
 import '../../../components/CalculationTooltip/CalculationTooltip.css';
 import {InlineMath} from "react-katex";
 
 interface AnimationPanelProps {
-  animationData: TooltipState | null;
-  onClose: () => void;
+    animationData: TooltipState | null;
+    onClose: () => void;
 }
 
 export const AnimationPanel: React.FC<AnimationPanelProps> = ({ animationData, onClose }) => {
@@ -68,16 +68,16 @@ export const AnimationPanel: React.FC<AnimationPanelProps> = ({ animationData, o
         const step = animationData.steps[0];
         const op = step.op === '·' ? '×' : step.op;
 
-        // [NEW] Specific handling for 'wx-plus-b'
+        // [MODIFIED] Specific handling for 'wx-plus-b'
         if (animationData.opType === 'wx-plus-b' && animationData.steps.length === 2) {
-             const matmulStep = animationData.steps[0];
-             const addStep = animationData.steps[1];
-             return <WxPlusBVisualizer
+            const matmulStep = animationData.steps[0];
+            const addStep = animationData.steps[1];
+            return <WxPlusBVisualizer
                 sourceVectorsA={matmulStep.aSources!}
                 sourceVectorB={matmulStep.bSources![0]}
                 biasVector={addStep.bSources![0]}
                 resultSymbolInfo={getSymbolParts(animationData.target.name)}
-             />;
+            />;
         }
 
 

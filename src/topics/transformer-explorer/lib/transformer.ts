@@ -14,31 +14,31 @@ const createVectorFrom1DArray = (data: number[]): Vector => {
 };
 
 const addMatrices = (A: Matrix, B: Matrix): Matrix => {
-  return A.map((row, i) =>
-    row.map((val, j) => val + B[i][j])
-  );
+    return A.map((row, i) =>
+        row.map((val, j) => val + B[i][j])
+    );
 };
 
 const multiplyMatrices = (A: Matrix, B: Matrix): Matrix => {
-  const rowsA = A.length;
-  if (rowsA === 0) return [];
-  const colsA = A[0].length;
-  if (colsA === 0) return A.map(() => []);
-  const colsB = B[0]?.length ?? 0;
-  if (colsB === 0) return A.map(() => []);
+    const rowsA = A.length;
+    if (rowsA === 0) return [];
+    const colsA = A[0].length;
+    if (colsA === 0) return A.map(() => []);
+    const colsB = B[0]?.length ?? 0;
+    if (colsB === 0) return A.map(() => []);
 
-  const result: Matrix = Array(rowsA).fill(0).map(() => Array(colsB).fill(0));
+    const result: Matrix = Array(rowsA).fill(0).map(() => Array(colsB).fill(0));
 
-  for (let i = 0; i < rowsA; i++) {
-    for (let j = 0; j < colsB; j++) {
-      let sum = 0;
-      for (let k = 0; k < colsA; k++) {
-        sum += A[i][k] * B[k][j];
-      }
-      result[i][j] = sum;
+    for (let i = 0; i < rowsA; i++) {
+        for (let j = 0; j < colsB; j++) {
+            let sum = 0;
+            for (let k = 0; k < colsA; k++) {
+                sum += A[i][k] * B[k][j];
+            }
+            result[i][j] = sum;
+        }
     }
-  }
-  return result;
+    return result;
 };
 
 const scaleMatrix = (A: Matrix, scalar: number): Matrix => {
@@ -139,7 +139,7 @@ export const calculateTransformer = (inputText: string, dims: Dims): Transformer
         const ConcatOutput = headOutputs.reduce((acc, current) => acc.map((row, rIdx) => [...row, ...current[rIdx]]), Array(encoder_seq_len).fill(0).map(() => []));
         const Wo = createMatrixFrom2DArray(weights.encoderLayers[i].mha.Wo);
         const mha_output = multiplyMatrices(ConcatOutput, Wo);
-        const mha: MultiHeadAttentionData = { heads, Wo, output: mha_output };
+        const mha: MultiHeadAttentionData = { heads, Wo, ConcatOutput, output: mha_output };
         const add_norm_1_output = layerNorm(addMatrices(encoder_input, mha_output));
         const W1 = createMatrixFrom2DArray(weights.encoderLayers[i].ffn.W1);
         const b1 = createVectorFrom1DArray(weights.encoderLayers[i].ffn.b1);
@@ -188,12 +188,12 @@ export const calculateTransformer = (inputText: string, dims: Dims): Transformer
         const masked_ConcatOutput = masked_mha_headOutputs.reduce((acc, current) => acc.map((row, rIdx) => [...row, ...current[rIdx]]), Array(decoder_seq_len).fill(0).map(() => []));
         const masked_Wo = createMatrixFrom2DArray(decWeights.masked_mha.Wo);
         const masked_mha_output = multiplyMatrices(masked_ConcatOutput, masked_Wo);
-        const masked_mha: MultiHeadAttentionData = { heads: masked_mha_heads, Wo: masked_Wo, output: masked_mha_output };
+        const masked_mha: MultiHeadAttentionData = { heads: masked_mha_heads, Wo: masked_Wo, ConcatOutput: masked_ConcatOutput, output: masked_mha_output };
         const dec_add_norm_1_output = layerNorm(addMatrices(decoder_input, masked_mha_output));
 
         const enc_dec_mha_heads: AttentionHeadData[] = [];
         const enc_dec_mha_headOutputs: Matrix[] = [];
-         for (let j = 0; j < h; j++) {
+        for (let j = 0; j < h; j++) {
             const Wq = createMatrixFrom2DArray(decWeights.enc_dec_mha.heads[j].Wq);
             const Wk = createMatrixFrom2DArray(decWeights.enc_dec_mha.heads[j].Wk);
             const Wv = createMatrixFrom2DArray(decWeights.enc_dec_mha.heads[j].Wv);
@@ -211,7 +211,7 @@ export const calculateTransformer = (inputText: string, dims: Dims): Transformer
         const enc_dec_ConcatOutput = enc_dec_mha_headOutputs.reduce((acc, current) => acc.map((row, rIdx) => [...row, ...current[rIdx]]), Array(decoder_seq_len).fill(0).map(() => []));
         const enc_dec_Wo = createMatrixFrom2DArray(decWeights.enc_dec_mha.Wo);
         const enc_dec_mha_output = multiplyMatrices(enc_dec_ConcatOutput, enc_dec_Wo);
-        const enc_dec_mha: MultiHeadAttentionData = { heads: enc_dec_mha_heads, Wo: enc_dec_Wo, output: enc_dec_mha_output };
+        const enc_dec_mha: MultiHeadAttentionData = { heads: enc_dec_mha_heads, Wo: enc_dec_Wo, ConcatOutput: enc_dec_ConcatOutput, output: enc_dec_mha_output };
         const dec_add_norm_2_output = layerNorm(addMatrices(dec_add_norm_1_output, enc_dec_mha_output));
 
         const W1 = createMatrixFrom2DArray(decWeights.ffn.W1);

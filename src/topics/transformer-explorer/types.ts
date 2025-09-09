@@ -8,42 +8,43 @@ export type CalculationComponent = GenericCalculationComponent;
 
 // Extend the generic ElementIdentifier with topic-specific fields
 export interface ElementIdentifier extends GenericElementIdentifier {
-  matrixSymbol?: string;
-  matrixDims?: string;
-  tokenId?: number;
-  tokenStr?: string;
-  probValue?: number;
+    matrixSymbol?: string;
+    matrixDims?: string;
+    tokenId?: number;
+    tokenStr?: string;
+    probValue?: number;
 }
 
 export interface HighlightSource extends ElementIdentifier {
-  highlightRow?: boolean;
-  highlightCol?: boolean;
-  highlightProbCol?: boolean;
+    highlightRow?: boolean;
+    highlightCol?: boolean;
+    highlightProbCol?: boolean;
 }
 
 export interface HighlightState {
-  activeComponent: string | null;
-  activeResidual: string | null;
-  target: ElementIdentifier | null;
-  sources: HighlightSource[];
-  destinations?: HighlightSource[];
+    activeComponent: string | null;
+    activeResidual: string | null;
+    target: ElementIdentifier | null;
+    sources: HighlightSource[];
+    destinations?: HighlightSource[];
 }
 
 export interface AttentionHeadData {
-  Wq: Matrix;
-  Wk: Matrix;
-  Wv: Matrix;
-  Q: Matrix;
-  K: Matrix;
-  V: Matrix;
-  Scores: Matrix;
-  ScaledScores: Matrix;
-  AttentionWeights: Matrix;
-  HeadOutput: Matrix;
+    Wq: Matrix;
+    Wk: Matrix;
+    Wv: Matrix;
+    Q: Matrix;
+    K: Matrix;
+    V: Matrix;
+    Scores: Matrix;
+    ScaledScores: Matrix;
+    AttentionWeights: Matrix;
+    HeadOutput: Matrix;
 }
 
 export interface MultiHeadAttentionData {
     heads: AttentionHeadData[];
+    ConcatOutput: Matrix;
     Wo: Matrix;
     output: Matrix;
 }

@@ -44,7 +44,7 @@ export const RMSNormVisualizer: React.FC<RMSNormVisualizerProps> = ({ inputVecto
     highlight: { borderColor: '#fd7e14', backgroundColor: 'rgba(253, 126, 20, 0.1)', transform: 'scale(1.1)' },
     connector: { fontSize: '2em', color: '#6c757d', margin: '5px 0', transition: 'opacity 0.3s ease' },
     scalar: { padding: '8px 15px', fontSize: '1.1em', fontWeight: 'bold', border: '1px solid #ced4da', borderRadius: '8px', backgroundColor: '#e9ecef', transition: 'all 0.3s ease' },
-    controls: { display: 'flex', gap: '10px', marginTop: '10px' },
+    controls: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '10px' },
     button: { padding: '8px 16px', fontSize: '1em', cursor: 'pointer', border: '1px solid #6c757d', borderRadius: '4px', backgroundColor: '#fff' },
     playingButton: { backgroundColor: '#6c757d', color: '#fff' },
   };
@@ -113,8 +113,9 @@ export const RMSNormVisualizer: React.FC<RMSNormVisualizerProps> = ({ inputVecto
         {renderVector(calculations.normalized, 'normalized')}
       </div>
       <div style={styles.controls}>
-        <button onClick={play} style={{ ...styles.button, ...(isPlaying ? styles.playingButton : {}) }}>Play</button>
-        <button onClick={pause} style={styles.button}>Pause</button>
+        <button onClick={() => setStepManually(currentStep - 1)} disabled={currentStep <= 0} style={styles.button}>上一步</button>
+        <button onClick={isPlaying ? pause : play} style={{ ...styles.button, ...(isPlaying ? styles.playingButton : {}) }}>{isPlaying ? 'Pause' : 'Play'}</button>
+        <button onClick={() => setStepManually(currentStep + 1)} disabled={currentStep >= steps.length - 1} style={styles.button}>下一步</button>
         <button onClick={reset} style={styles.button}>Reset</button>
       </div>
        <input

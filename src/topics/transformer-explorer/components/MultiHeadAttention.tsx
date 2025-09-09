@@ -53,9 +53,9 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
     const vCols = headData.V[0]?.length || 0;
     const breakHeadOutput = attnWeightsCols > 8 || vCols > 8 || (attnWeightsCols + vCols > 15);
 
-    const headOutputCols = headData.HeadOutput[0]?.length || 0;
+    const concatOutputCols = data.ConcatOutput[0]?.length || 0;
     const woCols = data.Wo[0]?.length || 0;
-    const breakFinalProj = (headOutputCols * numHeads) > 8 || woCols > 8 || ((headOutputCols * numHeads) + woCols > 15);
+    const breakFinalProj = concatOutputCols > 8 || woCols > 8 || (concatOutputCols + woCols > 15);
 
 
     return (
@@ -66,22 +66,22 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                 <div className="viz-formula-group">
                     <div className="viz-step-title">1. Generate Q, K, V (Showing Head 0 as example)</div>
                     <div className={`viz-formula-row ${breakQ ? 'vertical' : ''}`}>
-                       <span>(Input) ×</span>
-                       <Matrix name={HNe.Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
-                       <span>=</span>
-                       <Matrix name={HNe.Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
-                    </div>
-                     <div className={`viz-formula-row ${breakK ? 'vertical' : ''}`}>
-                       <span>(Input) ×</span>
-                       <Matrix name={HNe.Wk} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
+                        <span>(Input) ×</span>
+                        <Matrix name={HNe.Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
                         <span>=</span>
-                       <Matrix name={HNe.K} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
+                        <Matrix name={HNe.Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                     </div>
-                     <div className={`viz-formula-row ${breakV ? 'vertical' : ''}`}>
-                       <span>(Input) ×</span>
-                       <Matrix name={HNe.Wv} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
+                    <div className={`viz-formula-row ${breakK ? 'vertical' : ''}`}>
+                        <span>(Input) ×</span>
+                        <Matrix name={HNe.Wk} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
                         <span>=</span>
-                       <Matrix name={HNe.V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                        <Matrix name={HNe.K} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                    <div className={`viz-formula-row ${breakV ? 'vertical' : ''}`}>
+                        <span>(Input) ×</span>
+                        <Matrix name={HNe.Wv} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
+                        <span>=</span>
+                        <Matrix name={HNe.V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                 </div>
 
@@ -122,20 +122,30 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
                 <div className="arrow-down">↓</div>
 
                 <div className="viz-formula-group">
-                    <div className="viz-step-title">3. Concat & Final Projection</div>
+                    <div className="viz-step-title">3. Concat Heads</div>
                     <div className="viz-formula-row">
-                       <InlineMath math="\text{Concat}(" />
+                        <InlineMath math="\text{Concat}(" />
                         {renderConcatHeads()}
-                       <InlineMath math=")" />
-                     </div>
+                        <InlineMath math=")" />
+                    </div>
+                    <div className="arrow-down">=</div>
+                    <div className="viz-formula-row">
+                        <Matrix name={LN.ConcatOutput} data={data.ConcatOutput} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                </div>
 
-                     <div className={`viz-formula-row ${breakFinalProj ? 'vertical' : ''}`}>
-                       <span>(Concatenated) ×</span>
-                       <Matrix name={LN.Wo} data={data.Wo} highlight={highlight} onElementClick={onElementClick} />
-                     </div>
-                     <div className="arrow-down">=</div>
-                     <div className="viz-formula-row">
-                       <Matrix name={LN.mha_output} data={data.output} highlight={highlight} onElementClick={onElementClick} />
+                <div className="arrow-down">↓</div>
+
+                <div className="viz-formula-group">
+                    <div className="viz-step-title">4. Final Projection</div>
+                    <div className={`viz-formula-row ${breakFinalProj ? 'vertical' : ''}`}>
+                        <Matrix name={LN.ConcatOutput} data={data.ConcatOutput} highlight={highlight} onElementClick={onElementClick} />
+                        <span className="op-symbol">×</span>
+                        <Matrix name={LN.Wo} data={data.Wo} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                    <div className="arrow-down">=</div>
+                    <div className="viz-formula-row">
+                        <Matrix name={LN.mha_output} data={data.output} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                 </div>
             </div>

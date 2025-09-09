@@ -20,6 +20,7 @@ export const MATRIX_NAMES = {
         encoder_input: `encoder.${layerIndex}.encoder_input`,
         mha_output: `encoder.${layerIndex}.mha.output`,
         Wo: `encoder.${layerIndex}.mha.Wo`,
+        ConcatOutput: `encoder.${layerIndex}.mha.ConcatOutput`,
         add_norm_1_output: `encoder.${layerIndex}.add_norm_1_output`,
         W1: `encoder.${layerIndex}.ffn.W1`, b1: `encoder.${layerIndex}.ffn.b1`,
         Intermediate: `encoder.${layerIndex}.ffn.Intermediate`, Activated: `encoder.${layerIndex}.ffn.Activated`,
@@ -43,10 +44,12 @@ export const MATRIX_NAMES = {
 
         masked_mha_output: `decoder.${layerIndex}.masked_mha.output`,
         Wo_masked: `decoder.${layerIndex}.masked_mha.Wo`,
+        ConcatOutput_masked: `decoder.${layerIndex}.masked_mha.ConcatOutput`,
         add_norm_1_output: `decoder.${layerIndex}.add_norm_1_output`,
 
         enc_dec_mha_output: `decoder.${layerIndex}.enc_dec_mha.output`,
         Wo_enc_dec: `decoder.${layerIndex}.enc_dec_mha.Wo`,
+        ConcatOutput_enc_dec: `decoder.${layerIndex}.enc_dec_mha.ConcatOutput`,
         add_norm_2_output: `decoder.${layerIndex}.add_norm_2_output`,
 
         W1: `decoder.${layerIndex}.ffn.W1`, b1: `decoder.${layerIndex}.ffn.b1`,

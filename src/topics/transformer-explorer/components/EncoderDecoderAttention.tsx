@@ -21,6 +21,8 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
     const headData = data.heads[headIndex];
     const isActive = highlight.activeComponent === 'enc_dec_mha';
     const numHeads = data.heads.length;
+    const LNd = MATRIX_NAMES.decoderLayer(layerIndex);
+    const HNd_encdec = MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex);
 
     const renderConcatHeads = () => {
         const headsToShow = [];
@@ -40,14 +42,14 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
             <div className="component-body">
                 <div className="viz-formula-group">
                     <div className="viz-step-title">1. Prepare Inputs</div>
-                     <div className="viz-formula-row">
+                    <div className="viz-formula-row">
                         <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px'}}>
-                           <span style={{fontWeight: 'bold'}}>Q Input (from Decoder)</span>
-                           <Matrix name={MATRIX_NAMES.decoderLayer(layerIndex).add_norm_1_output} data={decoderAddNorm1Output} highlight={highlight} onElementClick={onElementClick} />
+                            <span style={{fontWeight: 'bold'}}>Q Input (from Decoder)</span>
+                            <Matrix name={MATRIX_NAMES.decoderLayer(layerIndex).add_norm_1_output} data={decoderAddNorm1Output} highlight={highlight} onElementClick={onElementClick} />
                         </div>
                         <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px'}}>
-                           <span style={{fontWeight: 'bold'}}>K & V Input (from Encoder)</span>
-                           <Matrix name={MATRIX_NAMES.finalEncoderOutput} data={finalEncoderOutput} highlight={highlight} onElementClick={onElementClick} />
+                            <span style={{fontWeight: 'bold'}}>K & V Input (from Encoder)</span>
+                            <Matrix name={MATRIX_NAMES.finalEncoderOutput} data={finalEncoderOutput} highlight={highlight} onElementClick={onElementClick} />
                         </div>
                     </div>
                 </div>
@@ -56,23 +58,23 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
 
                 <div className="viz-formula-group">
                     <div className="viz-step-title">2. Generate Q, K, V (Head 0)</div>
-                     <div className="viz-formula-row">
-                       <span>(Q Input) ×</span>
-                       <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
-                       <span>=</span>
-                       <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
-                    </div>
-                     <div className="viz-formula-row">
-                       <span>(K Input) ×</span>
-                       <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Wk} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
+                    <div className="viz-formula-row">
+                        <span>(Q Input) ×</span>
+                        <Matrix name={HNd_encdec.Wq} data={headData.Wq} highlight={highlight} onElementClick={onElementClick} />
                         <span>=</span>
-                       <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).K} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
+                        <Matrix name={HNd_encdec.Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                     </div>
-                     <div className="viz-formula-row">
-                       <span>(V Input) ×</span>
-                       <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Wv} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
+                    <div className="viz-formula-row">
+                        <span>(K Input) ×</span>
+                        <Matrix name={HNd_encdec.Wk} data={headData.Wk} highlight={highlight} onElementClick={onElementClick} />
                         <span>=</span>
-                       <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                        <Matrix name={HNd_encdec.K} data={headData.K} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                    <div className="viz-formula-row">
+                        <span>(V Input) ×</span>
+                        <Matrix name={HNd_encdec.Wv} data={headData.Wv} highlight={highlight} onElementClick={onElementClick} />
+                        <span>=</span>
+                        <Matrix name={HNd_encdec.V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                 </div>
 
@@ -80,46 +82,59 @@ export const EncoderDecoderAttention: React.FC<EncDecAttentionProps> = ({ baseNa
 
                 <div className="viz-formula-group">
                     <div className="viz-step-title">3. Scaled Dot-Product Attention (Head 0)</div>
-                     <div className="viz-formula-row">
-                        <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                    <div className="viz-formula-row">
+                        <Matrix name={HNd_encdec.Q} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
                         <InlineMath math="\times" />
-                        <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).K} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
+                        <Matrix name={HNd_encdec.K} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
                     </div>
                     <div className="arrow-down">=</div>
                     <div className="viz-formula-row">
-                         <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).Scores} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
+                        <Matrix name={HNd_encdec.Scores} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Scale by } / \sqrt{d_k}}" /></div>
                     <div className="viz-formula-row">
-                         <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
+                        <Matrix name={HNd_encdec.ScaledScores} data={headData.ScaledScores} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
                     <div className="arrow-down"><InlineMath math="\xrightarrow{\text{Softmax}}" /></div>
 
                     <div className="viz-formula-row">
-                        <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
+                        <Matrix name={HNd_encdec.AttentionWeights} data={headData.AttentionWeights} highlight={highlight} onElementClick={onElementClick}/>
                         <InlineMath math="\times" />
-                        <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                        <Matrix name={HNd_encdec.V} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
                     </div>
-                     <div className="arrow-down">=</div>
+                    <div className="arrow-down">=</div>
                     <div className="viz-formula-row">
-                         <Matrix name={MATRIX_NAMES.encDecMhaHead(layerIndex, headIndex).HeadOutput} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick}/>
+                        <Matrix name={HNd_encdec.HeadOutput} data={headData.HeadOutput} highlight={highlight} onElementClick={onElementClick}/>
                     </div>
                 </div>
 
                 <div className="arrow-down">↓</div>
 
                 <div className="viz-formula-group">
-                    <div className="viz-step-title">4. Concat & Final Projection</div>
-                     <div className="viz-formula-row">
+                    <div className="viz-step-title">4. Concat Heads</div>
+                    <div className="viz-formula-row">
+                        <InlineMath math="\text{Concat}(" />
                         {renderConcatHeads()}
-                     </div>
-                     <div className="viz-formula-row">
-                       <span>(Concatenated) ×</span>
-                       <Matrix name={MATRIX_NAMES.decoderLayer(layerIndex).Wo_enc_dec} data={data.Wo} highlight={highlight} onElementClick={onElementClick} />
-                     </div>
-                     <div className="arrow-down">=</div>
-                     <div className="viz-formula-row">
-                       <Matrix name={MATRIX_NAMES.decoderLayer(layerIndex).enc_dec_mha_output} data={data.output} highlight={highlight} onElementClick={onElementClick} />
+                        <InlineMath math=")" />
+                    </div>
+                    <div className="arrow-down">=</div>
+                    <div className="viz-formula-row">
+                        <Matrix name={LNd.ConcatOutput_enc_dec} data={data.ConcatOutput} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                </div>
+
+                <div className="arrow-down">↓</div>
+
+                <div className="viz-formula-group">
+                    <div className="viz-step-title">5. Final Projection</div>
+                    <div className="viz-formula-row">
+                        <Matrix name={LNd.ConcatOutput_enc_dec} data={data.ConcatOutput} highlight={highlight} onElementClick={onElementClick} />
+                        <span className="op-symbol">×</span>
+                        <Matrix name={LNd.Wo_enc_dec} data={data.Wo} highlight={highlight} onElementClick={onElementClick} />
+                    </div>
+                    <div className="arrow-down">=</div>
+                    <div className="viz-formula-row">
+                        <Matrix name={LNd.enc_dec_mha_output} data={data.output} highlight={highlight} onElementClick={onElementClick} />
                     </div>
                 </div>
             </div>

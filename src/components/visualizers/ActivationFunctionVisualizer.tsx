@@ -1,129 +1,126 @@
 // FILE: src/components/visualizers/ActivationFunctionVisualizer.tsx
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Vector, ActivationFunctionType, ActivationStep } from './types';
 import { formatNumber, useAnimationController } from './utils';
 import { InlineMath } from 'react-katex';
 
 interface ActivationFunctionVisualizerProps {
-  inputVector: Vector;
-  functionType: ActivationFunctionType;
-  inputLabel?: string;
-  outputLabel?: string;
+    inputVector: Vector;
+    functionType: ActivationFunctionType;
+    inputLabel?: string;
+    outputLabel?: string;
 }
 
 export const ActivationFunctionVisualizer: React.FC<ActivationFunctionVisualizerProps> = ({ inputVector, functionType, inputLabel = "Input", outputLabel = "Output" }) => {
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  const functions = {
-    relu: (x: number) => Math.max(0, x),
-    gelu: (x: number) => 0.5 * x * (1 + Math.tanh(Math.sqrt(2 / Math.PI) * (x + 0.044715 * Math.pow(x, 3)))),
-    silu: (x: number) => x / (1 + Math.exp(-x)),
-  };
+    const functions = {
+        relu: (x: number) => Math.max(0, x),
+        gelu: (x: number) => 0.5 * x * (1 + Math.tanh(Math.sqrt(2 / Math.PI) * (x + 0.044715 * Math.pow(x, 3)))),
+        silu: (x: number) => x / (1 + Math.exp(-x)),
+    };
 
-  const outputVector = useMemo(() => inputVector.map(functions[functionType]), [inputVector, functionType]);
+    const outputVector = useMemo(() => inputVector.map(functions[functionType]), [inputVector, functionType]);
 
-  const steps: ActivationStep[] = useMemo(() => {
-    const generatedSteps: ActivationStep[] = [{ type: 'start' }];
-    inputVector.forEach((_, i) => {
-        generatedSteps.push({ type: 'process', index: i });
-    });
-    generatedSteps.push({ type: 'finish' });
-    return generatedSteps;
-  }, [inputVector]);
+    const steps: ActivationStep[] = useMemo(() => {
+        const generatedSteps: ActivationStep[] = [{ type: 'start' }];
+        inputVector.forEach((_, i) => {
+            generatedSteps.push({ type: 'process', index: i });
+        });
+        generatedSteps.push({ type: 'finish' });
+        return generatedSteps;
+    }, [inputVector]);
 
-  const { currentStep, isPlaying, play, pause, reset, setStepManually } = useAnimationController(steps.length, 600);
-  const currentAnimState = steps[currentStep] || { type: 'idle' };
-  const activeIndex = (currentAnimState.type === 'process') ? (currentAnimState as any).index : (currentAnimState.type === 'finish' ? inputVector.length - 1 : -1);
-  const lastCalculatedIndex = (currentAnimState.type === 'finish') ? inputVector.length - 1 : activeIndex;
+    const { currentStep, isPlaying, play, pause, reset, setStepManually } = useAnimationController(steps.length, 600);
+    const currentAnimState = steps[currentStep] || { type: 'idle' };
+    const activeIndex = (currentAnimState.type === 'process') ? (currentAnimState as any).index : (currentAnimState.type === 'finish' ? inputVector.length - 1 : -1);
+    const lastCalculatedIndex = (currentAnimState.type === 'finish') ? inputVector.length - 1 : activeIndex;
 
+    const displayIndex = hoveredIndex !== null ? hoveredIndex : activeIndex;
 
-  const styles: { [key: string]: React.CSSProperties } = {
-    container: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6' },
-    title: { margin: '0 0 10px 0', fontSize: '1.2em', fontWeight: 'bold', textTransform: 'uppercase' },
-    mainArea: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', width: '100%' },
-    vectorSection: { display: 'flex', width: '100%', gap: '15px', alignItems: 'center' },
-    label: { fontWeight: 'bold', color: '#495057', fontSize: '1.5em', width: '80px', textAlign: 'right' },
-    vectorGroup: { flex: 1, minWidth: 0 },
-    vectorScroll: { overflowX: 'auto', padding: '5px' },
-    vectorContainer: { display: 'flex', flexDirection: 'column', gap: '2px' },
-    vector: { display: 'flex', gap: '5px', width: 'max-content' },
-    vectorIndices: { display: 'flex', gap: '5px' },
-    indexLabel: { width: '60px', height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#6c757d', fontSize: '0.8em', fontFamily: 'monospace', boxSizing: 'border-box' },
-    element: { width: '60px', height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease', boxSizing: 'border-box' },
-    highlight: { transform: 'scale(1.15)', borderColor: '#4a90e2', backgroundColor: 'rgba(74, 144, 226, 0.1)' },
-    calculationBox: { height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', border: '1px solid #dee2e6', borderRadius: '8px', padding: '10px 20px', fontSize: '1.2em', transition: 'opacity 0.3s', fontFamily: 'monospace' },
-    controls: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '10px' },
-    button: { padding: '8px 16px', fontSize: '1em', cursor: 'pointer', border: '1px solid #6c757d', borderRadius: '4px', backgroundColor: '#fff' },
-    playingButton: { backgroundColor: '#6c757d', color: '#fff' },
-  };
+    const elementWidth = '60px';
 
-  const activeInput = activeIndex > -1 ? inputVector[activeIndex] : null;
-  const activeOutput = activeIndex > -1 ? outputVector[activeIndex] : null;
-  const calculationString = activeInput !== null && activeOutput !== null
-    ? `max(0, ${formatNumber(activeInput, 2)}) = ${formatNumber(activeOutput, 2)}`
-    : '...';
+    const styles: { [key: string]: React.CSSProperties } = {
+        container: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', padding: '20px', fontFamily: 'sans-serif', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #dee2e6' },
+        title: { margin: '0 0 10px 0', fontSize: '1.2em', fontWeight: 'bold', textTransform: 'uppercase' },
+        mainArea: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', width: '100%' },
+        vectorSection: { display: 'flex', width: '100%', gap: '15px', alignItems: 'center' },
+        label: { fontWeight: 'bold', color: '#495057', fontSize: '1.5em', width: '80px', textAlign: 'right' },
+        vectorGroup: { flex: 1, minWidth: 0 },
+        vectorScroll: { overflowX: 'auto', padding: '5px' },
+        vector: { display: 'flex', gap: '5px', width: 'max-content' },
+        elementColumn: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' },
+        indexLabel: { width: elementWidth, height: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#495057', fontSize: '0.8em', fontFamily: 'monospace', boxSizing: 'border-box', backgroundColor: '#f0f2f5', border: '1px solid #dee2e6', borderRadius: '4px' },
+        element: { width: elementWidth, height: '30px', display: 'flex', justifyContent: 'center', alignItems: 'center', border: '1px solid #ced4da', borderRadius: '4px', backgroundColor: '#fff', transition: 'all 0.3s ease', boxSizing: 'border-box', cursor: 'pointer' },
+        highlightAnim: { transform: 'scale(1.15)', borderColor: '#4a90e2', backgroundColor: 'rgba(74, 144, 226, 0.1)' },
+        highlightHover: { borderColor: '#f5a623', backgroundColor: 'rgba(245, 166, 35, 0.1)' },
+        calculationBox: { height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', border: '1px solid #dee2e6', borderRadius: '8px', padding: '10px 20px', fontSize: '1.2em', transition: 'opacity 0.3s, background-color 0.3s', fontFamily: 'monospace' },
+        controls: { display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '10px' },
+        button: { padding: '8px 16px', fontSize: '1em', cursor: 'pointer', border: '1px solid #6c757d', borderRadius: '4px', backgroundColor: '#fff' },
+        playingButton: { backgroundColor: '#6c757d', color: '#fff' },
+    };
 
-  return (
-    <div style={styles.container}>
-      <h3 style={styles.title}>{functionType} Activation</h3>
-      <div style={styles.mainArea}>
+    const activeInput = displayIndex > -1 ? inputVector[displayIndex] : null;
+    const activeOutput = displayIndex > -1 ? outputVector[displayIndex] : null;
+    const calculationString = activeInput !== null && activeOutput !== null
+        ? `max(0, ${formatNumber(activeInput, 2)}) = ${formatNumber(activeOutput, 2)}`
+        : '...';
+
+    const renderVector = (vec: Vector, label: string, isOutput: boolean) => (
         <div style={styles.vectorSection}>
-          <div style={styles.label}><InlineMath>{inputLabel}</InlineMath></div>
-          <div style={styles.vectorGroup}>
-            <div style={styles.vectorScroll}>
-              <div style={styles.vectorContainer}>
-                <div style={styles.vector}>
-                  {inputVector.map((val, i) => (
-                    <div key={`in-${i}`} style={{ ...styles.element, ...(activeIndex === i ? styles.highlight : {}) }}>
-                      {formatNumber(val, 2)}
+            <div style={styles.label}><InlineMath>{label}</InlineMath></div>
+            <div style={styles.vectorGroup}>
+                <div style={styles.vectorScroll}>
+                    <div style={styles.vector}>
+                        {vec.map((val, i) => (
+                            <div key={i} style={styles.elementColumn}>
+                                <div style={styles.indexLabel}>{i}</div>
+                                <div
+                                    style={{
+                                        ...styles.element,
+                                        ...(displayIndex === i ? (hoveredIndex === i ? styles.highlightHover : styles.highlightAnim) : {}),
+                                        opacity: isOutput && i > lastCalculatedIndex && hoveredIndex === null ? 0.3 : 1
+                                    }}
+                                    onMouseEnter={() => setHoveredIndex(i)}
+                                    onMouseLeave={() => setHoveredIndex(null)}
+                                >
+                                    {isOutput && i > lastCalculatedIndex && hoveredIndex === null ? '?' : formatNumber(val, 2)}
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                  ))}
                 </div>
-                <div style={styles.vectorIndices}>
-                   {inputVector.map((_, i) => <div key={i} style={styles.indexLabel}>{i}</div>)}
-                </div>
-              </div>
             </div>
-          </div>
         </div>
+    );
 
-        <div style={{ ...styles.calculationBox, opacity: activeIndex > -1 ? 1 : 0.2 }}>
-            {calculationString}
-        </div>
+    return (
+        <div style={styles.container}>
+            <h3 style={styles.title}>{functionType} Activation</h3>
+            <div style={styles.mainArea}>
+                {renderVector(inputVector, inputLabel!, false)}
 
-        <div style={styles.vectorSection}>
-          <div style={styles.label}><InlineMath>{outputLabel}</InlineMath></div>
-          <div style={styles.vectorGroup}>
-            <div style={styles.vectorScroll}>
-              <div style={styles.vectorContainer}>
-                <div style={styles.vector}>
-                  {outputVector.map((val, i) => (
-                    <div key={`out-${i}`} style={{ ...styles.element, ...(activeIndex === i ? styles.highlight : {}), opacity: i > lastCalculatedIndex ? 0.3 : 1 }}>
-                      {i > lastCalculatedIndex ? '?' : formatNumber(val, 2)}
-                    </div>
-                  ))}
+                <div style={{ ...styles.calculationBox, opacity: displayIndex > -1 ? 1 : 0.2, backgroundColor: hoveredIndex !== null ? 'rgba(245, 166, 35, 0.05)' : '#fff' }}>
+                    {calculationString}
                 </div>
-                <div style={styles.vectorIndices}>
-                  {outputVector.map((_, i) => <div key={i} style={styles.indexLabel}>{i}</div>)}
-                </div>
-              </div>
+
+                {renderVector(outputVector, outputLabel!, true)}
             </div>
-          </div>
+            <div style={styles.controls}>
+                <button onClick={() => setStepManually(currentStep - 1)} disabled={currentStep <= 0} style={styles.button}>上一步</button>
+                <button onClick={isPlaying ? pause : play} style={{ ...styles.button, ...(isPlaying ? styles.playingButton : {}) }}>{isPlaying ? 'Pause' : 'Play'}</button>
+                <button onClick={() => setStepManually(currentStep + 1)} disabled={currentStep >= steps.length - 1} style={styles.button}>下一步</button>
+                <button onClick={reset} style={styles.button}>Reset</button>
+            </div>
+            <input
+                type="range"
+                min={-1}
+                max={steps.length - 1}
+                value={currentStep}
+                onChange={e => setStepManually(parseInt(e.target.value))}
+                style={{width: '80%', cursor: 'pointer', marginTop: '10px'}}
+            />
         </div>
-      </div>
-       <div style={styles.controls}>
-        <button onClick={play} style={{ ...styles.button, ...(isPlaying ? styles.playingButton : {}) }}>Play</button>
-        <button onClick={pause} style={styles.button}>Pause</button>
-        <button onClick={reset} style={styles.button}>Reset</button>
-      </div>
-      <input
-        type="range"
-        min={-1}
-        max={steps.length - 1}
-        value={currentStep}
-        onChange={e => setStepManually(parseInt(e.target.value))}
-        style={{width: '80%', cursor: 'pointer', marginTop: '10px'}}
-      />
-    </div>
-  );
+    );
 };
 // END OF FILE: src/components/visualizers/ActivationFunctionVisualizer.tsx
