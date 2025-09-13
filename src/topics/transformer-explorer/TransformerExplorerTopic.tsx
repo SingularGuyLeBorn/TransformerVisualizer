@@ -22,7 +22,7 @@ export const TransformerExplorerTopic: React.FC = () => {
     const [viewMode, setViewMode] = useState<ViewMode>('none');
     const [activeElement, setActiveElement] = useState<ElementIdentifier | null>(null);
 
-    const { primarySize, separatorProps, containerProps } = useSplitPane(window.innerWidth * 0.55);
+    const { primarySize, separatorProps, containerProps } = useSplitPane(window.innerWidth * 0.45);
 
     const transformerData: TransformerData | null = useTransformer(inputText, dims);
 

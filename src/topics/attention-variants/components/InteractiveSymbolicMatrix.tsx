@@ -61,6 +61,8 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
     const containerClassName = isPlaceholder ? 'placeholder-matrix' : '';
 
     const matrixGrid = (
+        // [MODIFIED] Renamed symbolic-matrix-grid to matrix-grid to share styles
+        // but kept symbolic-specific styles inside symbolic-matrix-grid for element sizing
         <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
             {/* Top-left corner & Column Headers */}
             {shouldShowHeaders && <div key="corner" />}
@@ -99,7 +101,8 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
     return (
         <div className={wrapperClasses.join(' ')}>
             <div className="matrix-label-side"><InlineMath math={`${mathSymbol}`} /></div>
-            <div className={containerClassName}>
+            {/* [MODIFIED] Wrap grid in the .matrix-container to get shared border/bg style */}
+            <div className={`${containerClassName} matrix-container`}>
                 {matrixGrid}
             </div>
             <div className="matrix-label-container">

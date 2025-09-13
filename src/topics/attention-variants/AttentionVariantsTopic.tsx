@@ -35,7 +35,7 @@ export const AttentionVariantsTopic: React.FC = () => {
     const vizRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
     const explanationRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
 
-    const { primarySize, separatorProps, containerProps } = useSplitPane(window.innerWidth * 0.55);
+    const { primarySize, separatorProps, containerProps } = useSplitPane(window.innerWidth * 0.45);
 
     const attentionData: AttentionData | null = useAttention(dims);
 

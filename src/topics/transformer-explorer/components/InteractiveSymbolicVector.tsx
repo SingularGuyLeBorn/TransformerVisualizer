@@ -8,65 +8,71 @@ import { InteractiveSymbolicElement } from './InteractiveSymbolicElement';
 import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 
 interface InteractiveSymbolicVectorProps {
-  name: string;
-  data: VectorType;
-  highlight: HighlightState;
-  onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
-  sideLabel?: boolean; // For explicit override
+    name: string;
+    data: VectorType;
+    highlight: HighlightState;
+    onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+    sideLabel?: boolean; // For explicit override
 }
 
 export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps> = React.memo(({ name, data, highlight, onSymbolClick, sideLabel = false }) => {
-  const displayCols = data.length;
-  const symbol = getSymbolParts(name);
+    const displayCols = data.length;
+    const symbol = getSymbolParts(name);
 
-  let focusCol = -1;
-  if (highlight.target?.name === name) {
-    focusCol = highlight.target.col;
-  }
-
-  const visibleColIndices = getVisibleIndices(displayCols, focusCol);
-
-  const gridElements = visibleColIndices.map((c, cIdx) => {
-    if (c === ELLIPSIS) {
-        return <div key={`ellipsis-c-${cIdx}`} className="symbolic-ellipsis">…</div>;
+    let focusCol = -1;
+    if (highlight.target?.name === name) {
+        focusCol = highlight.target.col;
     }
 
-    return (
-        <InteractiveSymbolicElement
-            key={`elem-${c}`}
-            name={name}
-            base={symbol.base}
-            subscript={symbol.subscript}
-            col={c}
-            highlight={highlight}
-            onClick={(event) => onSymbolClick({ name, row: 0, col: c }, event)}
-        />
-    );
-  });
+    const visibleColIndices = getVisibleIndices(displayCols, focusCol);
 
-  let mathSymbol = symbol.base;
+    const gridElements = visibleColIndices.map((c, cIdx) => {
+        if (c === ELLIPSIS) {
+            return <div key={`ellipsis-c-${cIdx}`} className="symbolic-ellipsis">…</div>;
+        }
 
-  const subscriptParts = [];
-  if (symbol.subscript) {
-    subscriptParts.push(symbol.subscript);
-  }
-  subscriptParts.push(`1 \\times ${displayCols}`);
-  mathSymbol += `_{${subscriptParts.join(',')}}`;
+        return (
+            <InteractiveSymbolicElement
+                key={`elem-${c}`}
+                name={name}
+                base={symbol.base}
+                subscript={symbol.subscript}
+                col={c}
+                highlight={highlight}
+                onClick={(event) => onSymbolClick({ name, row: 0, col: c }, event)}
+            />
+        );
+    });
 
-  const matrixGrid = (
-      <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: `repeat(${gridElements.length}, auto)` }}>
-        {gridElements}
-      </div>
-  );
+    let mathSymbol = symbol.base;
 
-  return (
-    <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`}>
-        <div className="matrix-label-side"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
-        <div className="symbolic-matrix-container">
-            {matrixGrid}
+    const subscriptParts = [];
+    if (symbol.subscript) {
+        subscriptParts.push(symbol.subscript);
+    }
+    subscriptParts.push(`1 \\times ${displayCols}`);
+    mathSymbol += `_{${subscriptParts.join(',')}}`;
+
+    const matrixGrid = (
+        <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: `repeat(${gridElements.length}, auto)` }}>
+            {gridElements}
         </div>
-        <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
-    </div>
-  );
+    );
+
+    return (
+        <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`}>
+            {/* [MODIFIED] Applied the .matrix-symbol-tag wrapper */}
+            <div className="matrix-label-side">
+                <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
+            </div>
+            <div className="symbolic-matrix-container">
+                {matrixGrid}
+            </div>
+            {/* [MODIFIED] Applied the .matrix-symbol-tag wrapper */}
+            <div className="matrix-label-container">
+                <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
+            </div>
+        </div>
+    );
 });
 // END OF FILE: src/topics/transformer-explorer/components/InteractiveSymbolicVector.tsx

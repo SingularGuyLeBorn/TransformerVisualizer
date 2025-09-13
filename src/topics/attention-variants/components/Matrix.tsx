@@ -65,37 +65,40 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
 
 
     const matrixGrid = (
-        <div className="matrix-grid" data-name={name} style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
-            {shouldShowHeaders && <div key="corner" />}
-            {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
-                <div key={`ch-${cIdx}`} className="matrix-header-item">{c}</div>
-            ))}
-            {visibleRowIndices.map((r, rIdx) => (
-                <React.Fragment key={`row-frag-${rIdx}`}>
-                    {shouldShowHeaders && <div className="matrix-header-item">{r}</div>}
-                    {visibleColIndices.map((c, cIdx) => {
-                        if (r === ELLIPSIS) {
-                            return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
-                        }
-                        if (c === ELLIPSIS) {
-                            return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
-                        }
-                        const originalRow = isTransposed ? c : r;
-                        const originalCol = isTransposed ? r : c;
-                        return (
-                            <Element
-                                key={`${name}-${originalRow}-${originalCol}`}
-                                name={name}
-                                row={originalRow}
-                                col={originalCol}
-                                value={data[originalRow][originalCol]}
-                                highlight={highlight}
-                                onElementClick={onElementClick}
-                            />
-                        );
-                    })}
-                </React.Fragment>
-            ))}
+        // [MODIFIED] Add the matrix-container wrapper for styles
+        <div className="matrix-container">
+            <div className="matrix-grid" data-name={name} style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
+                {shouldShowHeaders && <div key="corner" />}
+                {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
+                    <div key={`ch-${cIdx}`} className="matrix-header-item">{c}</div>
+                ))}
+                {visibleRowIndices.map((r, rIdx) => (
+                    <React.Fragment key={`row-frag-${rIdx}`}>
+                        {shouldShowHeaders && <div className="matrix-header-item">{r}</div>}
+                        {visibleColIndices.map((c, cIdx) => {
+                            if (r === ELLIPSIS) {
+                                return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
+                            }
+                            if (c === ELLIPSIS) {
+                                return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
+                            }
+                            const originalRow = isTransposed ? c : r;
+                            const originalCol = isTransposed ? r : c;
+                            return (
+                                <Element
+                                    key={`${name}-${originalRow}-${originalCol}`}
+                                    name={name}
+                                    row={originalRow}
+                                    col={originalCol}
+                                    value={data[originalRow][originalCol]}
+                                    highlight={highlight}
+                                    onElementClick={onElementClick}
+                                />
+                            );
+                        })}
+                    </React.Fragment>
+                ))}
+            </div>
         </div>
     );
 
