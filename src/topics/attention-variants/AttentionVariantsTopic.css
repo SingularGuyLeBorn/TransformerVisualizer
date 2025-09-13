@@ -66,7 +66,7 @@
     padding: 20px;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    /* [CORE FIX] REMOVED 'align-items: center;' which was the root cause of the bug. */
     gap: 20px;
 }
 
@@ -108,8 +108,15 @@
     background-color: rgba(0,0,0,0.015);
     display: flex;
     flex-direction: column;
-    align-items: center;
+    /* [FIXED] REMOVED 'align-items: center;' which caused wide children to be clipped on the left. */
+    /* Child elements like titles are now centered using their own properties (e.g., text-align). */
+    gap: 10px;
 }
+
+.attention-calculation-step > p {
+    text-align: center;
+}
+
 
 .step-title {
     width: 100%;
@@ -122,79 +129,68 @@
     border-bottom: 1px dashed var(--border-color);
 }
 
-.viz-row, .explanation-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
+.viz-formula-group {
     width: 100%;
-    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 15px 10px;
+    border: 1px solid #eef;
+    border-radius: 8px;
+    background-color: rgba(0,0,0,0.015);
+    box-sizing: border-box;
     margin-bottom: 10px;
 }
 
-.viz-row.vertical, .explanation-row.vertical {
+.viz-formula-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: max-content;
+    padding: 0 10px;
+}
+.viz-formula-row.vertical {
     flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
 }
 
-/* [FIXED & CRITICAL] Added scroll wrapper for wide matrices in explanation, following transformer-explorer's pattern. */
-.matrix-scroll-wrapper {
-    overflow-x: auto; /* Enable horizontal scrolling */
-    padding: 5px; /* Add some internal spacing */
-    flex-shrink: 1;  /* Allow the item to shrink */
-    flex-grow: 1;    /* Allow the item to grow and fill space */
-    min-width: 0;    /* CRITICAL: Allows shrinking below content size */
-    display: flex;   /* Use flexbox for internal alignment */
-    flex-direction: column; /* Stack matrix and label vertically */
-    align-items: center;    /* Center them horizontally */
+.viz-formula-row > * {
+    flex-shrink: 0;
 }
 
-.explanation-row p {
-    flex-basis: 100%;
-    text-align: center;
-    color: #606266;
-    margin: 5px 0 15px 0;
+/* [REWORKED] The matrix wrapper is now a simple container. */
+.matrix-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
 }
 
-.placeholder-matrix {
-    opacity: 0.3;
-}
-
+/* Default: side label is hidden, bottom label is shown */
 .matrix-wrapper .matrix-label-side { display: none; }
-.matrix-wrapper .matrix-label,
 .matrix-wrapper .matrix-label-container {
     display: flex;
-}
-
-.matrix-wrapper > .matrix-label {
+    justify-content: center;
     margin-top: 8px;
 }
 
-.matrix-wrapper.side-label,
-.viz-row.vertical .matrix-wrapper,
-.explanation-row.vertical .matrix-wrapper,
-.explanation-row > .matrix-wrapper:only-child {
+/* When `side-label` class is added, switch visibility */
+.matrix-wrapper.side-label {
     flex-direction: row;
     align-items: center;
     gap: 12px;
 }
+.matrix-wrapper.side-label .matrix-label-side { display: flex; flex-shrink: 0; }
+.matrix-wrapper.side-label .matrix-label-container { display: none; }
 
-.matrix-wrapper.side-label .matrix-label-side,
-.viz-row.vertical .matrix-wrapper .matrix-label-side,
-.explanation-row.vertical .matrix-wrapper .matrix-label-side,
-.explanation-row > .matrix-wrapper:only-child .matrix-label-side {
-    display: flex;
+/* When `label-bottom` class is added, force bottom label (overrides side-label) */
+.matrix-wrapper.label-bottom {
+    flex-direction: column;
+    align-items: center;
 }
+.matrix-wrapper.label-bottom .matrix-label-side { display: none; }
+.matrix-wrapper.label-bottom .matrix-label-container { display: flex; }
 
-.matrix-wrapper.side-label .matrix-label-container,
-.viz-row.vertical .matrix-wrapper .matrix-label-container,
-.explanation-row.vertical .matrix-wrapper .matrix-label-container,
-.matrix-wrapper.side-label > .matrix-label,
-.viz-row.vertical .matrix-wrapper > .matrix-label,
-.explanation-row.vertical .matrix-wrapper > .matrix-label,
-.explanation-row > .matrix-wrapper:only-child .matrix-label-container,
-.explanation-row > .matrix-wrapper:only-child > .matrix-label {
-    display: none;
-}
 
 .head-group-container {
     display: flex;
@@ -218,5 +214,54 @@
     display: flex;
     gap: 10px;
     margin-top: 10px;
+}
+
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    table-layout: fixed;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+.summary-table th,
+.summary-table td {
+    border: 1px solid var(--border-color);
+    padding: 12px 15px;
+    position: relative;
+    overflow: hidden;
+    resize: both;
+    min-width: 100px;
+}
+.summary-table th {
+    background-color: var(--component-header-bg);
+    font-weight: bold;
+    text-align: center;
+}
+.summary-table td {
+    vertical-align: top;
+}
+.summary-table th::after,
+.summary-table td::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 10px;
+    height: 10px;
+    background:
+            linear-gradient(to top left,
+            transparent 45%,
+            #ccc 45%,
+            #ccc 55%,
+            transparent 55%
+            );
+    cursor: nwse-resize;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+.summary-table th:hover::after,
+.summary-table td:hover::after {
+    opacity: 1;
 }
 /* END OF FILE: src/topics/attention-variants/AttentionVariantsTopic.css */

@@ -57,12 +57,6 @@ export const AttentionVariantsTopic: React.FC = () => {
                     setTooltip(newCalculationData);
                 }
             }
-        } else {
-            setTooltip(null);
-            setAnimationData(null);
-            if (activeComponent) {
-                setHighlight({ target: null, sources: [], activeComponent });
-            }
         }
     }, [viewMode, activeElement, attentionData, dims, activeComponent]);
 

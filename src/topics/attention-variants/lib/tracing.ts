@@ -1,20 +1,20 @@
 // FILE: src/topics/attention-variants/lib/tracing.ts
 import { TooltipState } from '../../../components/CalculationTooltip/types';
-// [FIXED] Corrected import from StandardAttentionData to AttentionVariantData
 import { HighlightState, ElementIdentifier, AttentionData, HighlightSource, AttentionVariantData } from '../types';
 import { getSymbolParts } from './symbolMapping';
 
 const getMatrixByName = (name: string, data: AttentionData): number[][] | undefined => {
     const parts = name.split('.');
-    if (parts.length < 2) return undefined;
+    if (parts.length === 0) return undefined;
 
     const variant = parts[0] as 'mha' | 'mqa' | 'gqa' | 'mla';
-    const conceptualName = name.split('.').pop() || '';
+    const component = parts[1];
+    const conceptualName = parts[parts.length - 1];
 
     const headIndexMatch = name.match(/heads\.(\d+)/);
     const headIndex = headIndexMatch ? parseInt(headIndexMatch[1], 10) : 0;
 
-    if (conceptualName === 'input') return data.input;
+    if (name === `${variant}.input`) return data.input;
 
     // Handle MLA-specific matrices first
     if(variant === 'mla') {
@@ -25,24 +25,23 @@ const getMatrixByName = (name: string, data: AttentionData): number[][] | undefi
         if(name === 'mla.Wc') return data.Wc;
         if(name === 'mla.Wc_prime') return data.Wc_prime;
         if(name === 'mla.W_k_rope') return data.W_k_rope;
-        if(name.startsWith('mla.W_q_rope')) return data.W_q_rope[headIndex];
-        if(name.startsWith('mla.W_v_mla')) return data.W_v_mla[headIndex];
+        if(component === 'W_q_rope') return data.W_q_rope[headIndex];
+        if(component === 'W_v_mla') return data.W_v_mla[headIndex];
         if(name === 'mla.output') return mlaData.FinalOutput;
         if(name === 'mla.combined') return mlaData.CombinedOutput;
-        if (name.includes('.heads.')) {
+        if(name === 'mla.wo') return data.Wo; // Assume shared Wo for simplicity for now
+        if (component === 'heads') {
             const headData = mlaData.heads[headIndex];
             if (!headData) return undefined;
             return headData[conceptualName as keyof typeof headData] as number[][] | undefined;
         }
-        // Fallback for MLA .wo, etc.
-        if (conceptualName === 'wo') return data.Wo;
     }
 
     if (variant !== 'mha' && variant !== 'gqa' && variant !== 'mqa') return undefined;
     const variantData = data[variant] as AttentionVariantData;
     if (!variantData) return undefined;
 
-    if (name.includes('.heads.')) {
+    if (component === 'heads') {
         const headData = variantData.heads[headIndex];
         if (!headData) return undefined;
         return headData[conceptualName as keyof typeof headData] as number[][] | undefined;
@@ -52,8 +51,8 @@ const getMatrixByName = (name: string, data: AttentionData): number[][] | undefi
     if (conceptualName === 'combined') return variantData.CombinedOutput;
     if (conceptualName === 'output') return variantData.FinalOutput;
 
-    if(parts[1]?.startsWith('w')) {
-        const type = parts[1].charAt(1);
+    if(component?.startsWith('w')) {
+        const type = component.charAt(1);
         const index = parseInt(parts[2] || '0', 10);
         if (type === 'q') return data.Wq[index];
         if (type === 'k') return data.Wk[index];
@@ -75,74 +74,71 @@ export const generateTooltipData = (element: ElementIdentifier, data: AttentionD
 
     const conceptualName = name.split('.').pop() || '';
 
-    if (conceptualName === 'output' || conceptualName === 'combined') {
+    if (['output', 'combined', 'Q', 'K', 'V', 'Scores', 'Output', 'C_q_prime', 'C_kv', 'K_rope'].includes(conceptualName)) {
         opType = 'matmul';
-        const headOutputSources = sources.filter(s => s.name.includes('.Output'));
-        const woSource = sources.find(s => s.name.endsWith('.wo'));
+        const sourceRow = sources.find(s => s.highlightRow);
+        const sourceCol = sources.find(s => s.highlightCol);
 
-        if (headOutputSources.length > 0 && woSource) {
-            const aSources = headOutputSources
-                .sort((a, b) => parseInt(a.name.match(/heads\.(\d+)/)![1]) - parseInt(b.name.match(/heads\.(\d+)/)![1]))
-                .map(source => {
-                    const headIndex = parseInt(source.name.match(/heads\.(\d+)/)![1]);
-                    const symbol = getSymbolParts(source.name);
-                    symbol.subscript = headIndex.toString(); // Ensure subscript is correct
-                    return {
-                        data: getMatrixByName(source.name, data)![source.row],
-                        symbolInfo: symbol
-                    };
-                });
-            const bSources = [{
-                data: getMatrixByName(woSource.name, data)!.map(r => r[woSource.col]),
-                symbolInfo: getSymbolParts(woSource.name)
-            }];
-            const vecA = aSources.flatMap(s => s.data);
-            const vecB = bSources[0].data;
+        if (sourceRow && sourceCol) {
+            const matrixA = getMatrixByName(sourceRow.name, data);
+            const matrixB = getMatrixByName(sourceCol.name, data);
 
-            steps.push({
-                a: vecA, b: vecB, op: '·', result: targetValue,
-                aSources, bSources,
-                aSymbolInfo: getSymbolParts(name),
-                bSymbolInfo: getSymbolParts(woSource.name),
-            });
-        }
-    } else if (['Q', 'K', 'V', 'Scores', 'Output', 'C_q_prime', 'C_kv', 'K_rope'].includes(conceptualName)) {
-        opType = 'matmul';
-        const source1 = sources.find(s => s.highlightRow);
-        const source2 = sources.find(s => s.highlightCol);
-        if (source1 && source2) {
-            const matrixA = getMatrixByName(source1.name, data);
-            const matrixB = getMatrixByName(source2.name, data);
             if (matrixA && matrixB) {
-                const vecA = matrixA[source1.row];
-                const vecB = matrixB.map(r => r[source2.col]);
-                const aSources = [{ data: vecA, symbolInfo: getSymbolParts(source1.name) }];
-                const bSources = [{ data: vecB, symbolInfo: getSymbolParts(source2.name) }];
+                const vecA = matrixA[sourceRow.row];
+                const vecB = matrixB.map(r => r[sourceCol.col]);
+
+                let aSources, bSources;
+
+                // Handle 'combined' output by splitting the source row vector
+                if (sourceRow.name.endsWith('.combined')) {
+                    const numHeads = data[element.variant].heads.length;
+                    const d_head = matrixA[0].length / numHeads;
+                    aSources = [];
+                    for (let i = 0; i < numHeads; i++) {
+                        const headOutputName = `${element.variant}.heads.${i}.Output`;
+                        aSources.push({
+                            data: vecA.slice(i * d_head, (i + 1) * d_head),
+                            symbolInfo: getSymbolParts(headOutputName)
+                        });
+                    }
+                } else {
+                    aSources = [{ data: vecA, symbolInfo: getSymbolParts(sourceRow.name) }];
+                }
+
+                bSources = [{ data: vecB, symbolInfo: getSymbolParts(sourceCol.name) }];
+
                 steps.push({
                     a: vecA, b: vecB, op: '·', result: targetValue,
                     aSources, bSources,
-                    aSymbolInfo: getSymbolParts(source1.name),
-                    bSymbolInfo: getSymbolParts(source2.name)
+                    aSymbolInfo: getSymbolParts(sourceRow.name),
+                    bSymbolInfo: getSymbolParts(sourceCol.name)
                 });
             }
         }
     } else if (conceptualName === 'Weights') {
         opType = 'softmax';
-        const scoresName = sources.find(s => s.name.endsWith('.Scores'))?.name;
-        if(scoresName){
-            const matrixA = getMatrixByName(scoresName, data);
+        const scoresSource = sources.find(s => s.name.endsWith('.Scores'));
+        if(scoresSource){
+            const matrixA = getMatrixByName(scoresSource.name, data);
             if(matrixA) {
                 const vecA = matrixA[row];
                 steps.push({
                     a: vecA, b: [], op: 'softmax', result: targetValue,
-                    aSymbolInfo: getSymbolParts(scoresName), bSymbolInfo: { base: '' },
+                    aSymbolInfo: getSymbolParts(scoresSource.name), bSymbolInfo: { base: '' },
                     aLabel: 'Scores', resultLabel: 'Weights'
                 });
             }
         }
     }
 
-    if (steps.length === 0) return null;
+    if (steps.length === 0) {
+        opType = 'info';
+        steps.push({
+            a: [], b: [], op: '', result: targetValue,
+            aSymbolInfo: {base: 'Info'}, bSymbolInfo: {base: ''},
+            title: 'This value is a direct weight or was generated by a complex operation not yet visualizable (e.g., MLA Q/K/V reconstruction).'
+        });
+    }
 
     const symbol = getSymbolParts(name);
     element.symbol = `${symbol.base}${symbol.subscript ? `_{${symbol.subscript}}` : ''}${symbol.superscript ? `^{${symbol.superscript}}` : ''}`;
@@ -200,7 +196,7 @@ export const createBackwardHighlight = (element: ElementIdentifier, data: Attent
         }
         else if (conceptualName === 'Scores') {
             sources.push({ ...element, name: `${variant}.heads.${headIndex}.Q`, row: row, col: -1, highlightRow: true });
-            sources.push({ ...element, name: `${variant}.heads.${headIndex}.K`, row: col, col: -1, highlightRow: true });
+            sources.push({ ...element, name: `${variant}.heads.${headIndex}.K`, row: col, col: -1, highlightRow: true }); // [FIXED] K's row is the target's col
         }
         else if (['Q', 'K', 'V'].includes(conceptualName)) {
             const type = conceptualName.toLowerCase() as 'q' | 'k' | 'v';

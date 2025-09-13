@@ -4,9 +4,10 @@ import { HighlightState, ElementIdentifier } from '../types';
 import { InteractiveSymbolicMatrix } from './InteractiveSymbolicMatrix';
 import 'katex/dist/katex.min.css';
 import { BlockMath, InlineMath } from 'react-katex';
+import { MLASymbolicViz } from './MLASymbolicViz';
 
 interface ExplanationProps {
-    dims: { n_q_heads: number, n_kv_heads: number, d_head: number, d_model: number, seq_len: number };
+    dims: { n_q_heads: number, n_kv_heads: number, d_head: number, d_model: number, seq_len: number, d_c: number, d_c_prime: number, d_rope: number };
     highlight: HighlightState;
     onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
     onComponentClick: (componentId: string) => void;
@@ -30,86 +31,88 @@ const renderVariantExplanation = (
     const combined_name = `${variant}.combined`;
     const final_output_name = `${variant}.output`;
 
-    const threshold = 8;
-    const break_qkv_proj = (d_model + d_head + d_head) > threshold;
-    const break_scores = (d_head + seq_len + seq_len) > threshold;
-    const break_output = (seq_len + d_head + d_head) > threshold;
-    const break_final = (n_q_heads * d_head + d_model + d_model) > threshold;
+    const break_qkv_proj = (d_model + d_head + d_head) > 8;
+    const break_scores = (d_head + seq_len + seq_len) > 8;
+    const break_output = (seq_len + d_head + d_head) > 8;
+    const break_final = (n_q_heads * d_head + d_model + d_model) > 8;
 
     return (
-        <>
-            <div className="attention-calculation-step">
-                <div className="step-title">1. 线性投影与多头拆分</div>
-                <p>输入 <strong>H</strong> 乘以权重矩阵 <strong>W</strong> 生成Q, K, V。在MHA中，每个头都有独立的 <InlineMath math="W_{Q,h}, W_{K,h}, W_{V,h}"/>。而在GQA/MQA中，K, V的权重矩阵是分组共享或完全共享的。Q的权重矩阵在所有变体中始终是每个头独立的。</p>
-                {/* [FIXED] Wrapped every matrix in a scroll wrapper */}
-                <div className={`explanation-row ${break_qkv_proj ? 'vertical' : ''}`}>
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+        <div className="attention-calculation-step">
+            <div className="step-title">1. 线性投影与多头拆分</div>
+            <p>输入张量 <strong>H</strong> (代表了富含上下文信息的词向量序列) 通过乘以三个独立的、可学习的权重矩阵 <strong>W</strong>，分别被线性投影到三个不同的子空间，生成查询 (Query, <strong>Q</strong>)、键 (Key, <strong>K</strong>) 和值 (Value, <strong>V</strong>) 矩阵。在MHA中，每个头都有独立的 <InlineMath math="W_{Q,h}, W_{K,h}, W_{V,h}"/>。而在GQA/MQA中，K, V的权重矩阵是分组共享或完全共享的。Q的权重矩阵在所有变体中始终是每个头独立的。</p>
+            <div className="viz-formula-group">
+                <div className={`viz-formula-row ${break_qkv_proj ? 'vertical' : ''}`}>
+                    <InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={`${variant}.wq.0`} rows={d_model} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={`${variant}.wq.0`} rows={d_model} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                 </div>
-                <div className={`explanation-row ${break_qkv_proj ? 'vertical' : ''}`}>
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+            </div>
+            <div className="viz-formula-group">
+                <div className={`viz-formula-row ${break_qkv_proj ? 'vertical' : ''}`}>
+                    <InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={`${variant}.wk.0`} rows={d_model} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={`${variant}.wk.0`} rows={d_model} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={k_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={k_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                 </div>
-                <div className={`explanation-row ${break_qkv_proj ? 'vertical' : ''}`}>
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+            </div>
+            <div className="viz-formula-group">
+                <div className={`viz-formula-row ${break_qkv_proj ? 'vertical' : ''}`}>
+                    <InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={`${variant}.wv.0`} rows={d_model} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={`${variant}.wv.0`} rows={d_model} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={v_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={v_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                 </div>
             </div>
 
-            <div className="attention-calculation-step">
-                <div className="step-title">2. 计算注意力分数 (Scaled Dot-Product)</div>
-                <p>此步骤计算每个查询向量与所有键向量的相似度。点积结果越大，表示关联性越强。除以 <InlineMath math="\sqrt{d_{\text{head}}}" /> 是为了防止梯度在训练中过小或过大，保持数值稳定性。</p>
-                <BlockMath math={"\\text{Scores}_h = \\frac{Q_h K_{\\text{group}(h)}^T}{\\sqrt{d_{\\text{head}}}}"} />
-                {/* [FIXED] Wrapped every matrix in a scroll wrapper */}
-                <div className={`explanation-row ${break_scores ? 'vertical' : ''}`}>
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+            <div className="step-title">2. 计算注意力分数 (Scaled Dot-Product)</div>
+            <p>首先，通过计算每个查询向量与所有键向量的点积来评估它们的相似度。这个结果（原始分数）越大，表示两个向量的关联性越强。然后，为了防止梯度在训练中过小或过大以保持数值稳定性，将这些分数除以 <InlineMath math="\sqrt{d_{\text{head}}}" /> 进行缩放。</p>
+            <BlockMath math={"\\text{Scores}_h = \\frac{Q_h K_{\\text{group}(h)}^T}{\\sqrt{d_{\\text{head}}}}"} />
+            <div className="viz-formula-group">
+                <div className={`viz-formula-row ${break_scores ? 'vertical' : ''}`}>
+                    <InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={k_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} transpose={true} /></div>
+                    <InteractiveSymbolicMatrix name={k_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} transpose={true} />
                     <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={scores_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={scores_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} />
                 </div>
-                <p>然后，应用Softmax函数将原始分数转换为一个和为1的概率分布，即“注意力权重” <InlineMath math="A_h"/>。</p>
-                <BlockMath math={"A_h = \\text{Softmax}(\\text{Scores}_h)"} />
-                {/* [FIXED] Wrapped every matrix in a scroll wrapper */}
-                <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} sideLabel={true} /></div>
             </div>
-
-            <div className="attention-calculation-step">
-                <div className="step-title">3. 加权求和得到单头输出</div>
-                <p>使用上一步计算出的注意力权重 <InlineMath math="A_h"/> 对值向量 <InlineMath math="V_h"/> 进行加权求和，得到融合了上下文信息的单头输出 <InlineMath math="H_h"/>。</p>
-                {/* [FIXED] Wrapped every matrix in a scroll wrapper */}
-                <div className={`explanation-row ${break_output ? 'vertical' : ''}`}>
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={v_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={output_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+            <p>接下来，应用Softmax函数将缩放后的原始分数矩阵 <InlineMath math="\text{Scores}_h"/> 转换为一个和为1的概率分布。这个新的矩阵被称为“注意力权重” <InlineMath math="A_h"/>，它的每个元素表示一个查询向量应该对相应的值向量“关注”多少。</p>
+            <BlockMath math={"A_h = \\text{Softmax}(\\text{Scores}_h)"} />
+            <div className="viz-formula-group">
+                <div className="viz-formula-row">
+                    <InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} sideLabel={true} />
                 </div>
             </div>
 
-            <div className="attention-calculation-step">
-                <div className="step-title">4. 合并与最终投影</div>
-                <p>将所有 <InlineMath math="N_q"/> 个头的输出 <InlineMath math="H_h"/> 拼接（Concatenate）起来，然后通过一个最终的线性投影矩阵 <InlineMath math="W^O"/> 将其维度变回 <InlineMath math="d_{\text{model}}"/>，得到该子层的最终输出 <InlineMath math="Z"/>。</p>
-                <BlockMath math={"Z = \\text{Concat}(\\text{head}_0, ..., \\text{head}_{N_q-1}) W_O"} />
-                {/* [FIXED] Wrapped every matrix in a scroll wrapper */}
-                <div className={`explanation-row ${break_final ? 'vertical' : ''}`}>
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={combined_name} rows={seq_len} cols={n_q_heads * d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+            <div className="step-title">3. 加权求和得到单头输出</div>
+            <p>使用上一步计算出的注意力权重 <InlineMath math="A_h"/> 对值向量 <InlineMath math="V_h"/> 进行加权求和。这里的矩阵乘法，本质上是对 <InlineMath math="V"/> 矩阵中所有词的向量进行一次加权平均。注意力权重矩阵 <InlineMath math="A_h"/> 的每一行都提供了一组权重，指导如何将所有词的“内容”(V)混合起来，从而为当前词生成一个全新的、富含上下文信息的向量表示。</p>
+            <div className="viz-formula-group">
+                <div className={`viz-formula-row ${break_output ? 'vertical' : ''}`}>
+                    <InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={`${variant}.wo`} rows={n_q_heads * d_head} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={v_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={final_output_name} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={output_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                 </div>
             </div>
-        </>
+
+            <div className="step-title">4. 合并与最终投影</div>
+            <p>将所有 <InlineMath math="N_q"/> 个头的输出 <InlineMath math="H_h"/> 拼接（Concatenate）起来，然后通过一个最终的线性投影矩阵 <InlineMath math="W^O"/> 将其维度变回 <InlineMath math="d_{\text{model}}"/>，得到该子层的最终输出 <InlineMath math="Z"/>。这个输出 <InlineMath math="Z"/> 已经融合了丰富的上下文信息。在完整的Transformer层中，这个输出通常会再经过一个前馈神经网络（FFN）层。FFN会对每个位置的向量独立地进行一次复杂的非线性变换，可以理解为模型在融合了上下文信息后，对每个词的含义进行一次独立的“深入思考和加工”，从而极大地增强了模型的表达能力。</p>
+            <BlockMath math={"Z = \\text{Concat}(\\text{head}_0, ..., \\text{head}_{N_q-1}) W_O"} />
+            <div className="viz-formula-group">
+                <div className={`viz-formula-row ${break_final ? 'vertical' : ''}`}>
+                    <InteractiveSymbolicMatrix name={combined_name} rows={seq_len} cols={n_q_heads * d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
+                    <BlockMath math="\times" />
+                    <InteractiveSymbolicMatrix name={`${variant}.wo`} rows={n_q_heads * d_head} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                    <BlockMath math="=" />
+                    <InteractiveSymbolicMatrix name={final_output_name} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                </div>
+            </div>
+        </div>
     )
 }
 
@@ -227,48 +230,14 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
             </div>
 
             <div className="attention-variant-section active-component" ref={el => refs.current['mla'] = el}>
-                <div className="component-header" onClick={() => onComponentClick('mla')}>MLA (Multi-head Latent Attention)</div>
+                <div className="component-header" onClick={() => onComponentClick('mla')}>MLA (Multi-head Latent Attention) - 符号推导</div>
                 <div className="component-body">
-                    <div className="explanation-subsection">
-                        <h5>出现原因与设计思路</h5>
-                        <p><strong>GQA的局限:</strong> 尽管MQA和GQA在KV Cache优化方面取得了显著进展，但它们仍受限于将原始高维KV信息直接绑定到注意力头的数量。当追求更长的上下文时，即使是GQA的KV Cache仍然可能过大。</p>
-                        <p><strong>低秩压缩与矩阵吸收:</strong> MLA (来自DeepSeek-V2) 是一种更激进的优化。其核心思想是：</p>
-                        <ul>
-                            <li><strong>低秩压缩KV:</strong> MLA假设Key和Value的原始高维表示中存在大量冗余，其有效信息可以被压缩到一个低维的“潜在空间”。它通过一个下投影矩阵将每个token的 <InlineMath math="d_{model}"/> 维隐藏状态投影成一个极小的共享潜在向量 <InlineMath math="\boldsymbol{c}^{KV}"/>。KV Cache只存储这些低维向量。</li>
-                            <li><strong>“矩阵吸收”实现计算效率:</strong> MLA利用矩阵乘法结合律的巧妙特性，将重建K、V所需的上投影矩阵“吸收”到Query侧的计算中，从而在推理时避免K、V的显式高维重建，直接在低维潜在空间进行部分计算。</li>
-                            <li><strong>解耦RoPE兼容性:</strong> 为兼容“矩阵吸收”技巧，MLA将Q、K向量解耦为<strong>内容(Content)部分</strong>和<strong>RoPE部分</strong>。内容部分采用低秩压缩；RoPE部分则独立处理，通常采用类似MQA的共享K方式。</li>
-                        </ul>
-                    </div>
-                    <div className="explanation-subsection">
-                        <h5>实现方法与数学推导 (训练阶段)</h5>
-                        <p>在训练阶段，MLA通过多个投影矩阵将输入<InlineMath math="\boldsymbol{x}_i"/>转换为解耦的Q, K, V。Q和K都被分成了内容部分（content, 上标C）和位置部分（RoPE, 上标R）。</p>
-                        <BlockMath math={`
-                        \\begin{gathered} 
-                        \\boldsymbol{c}'_i = \\boldsymbol{x}_i \\boldsymbol{W}'_c \\quad (\\text{Q Latent}) \\\\
-                        \\boldsymbol{c}_i = \\boldsymbol{x}_i \\boldsymbol{W}_c \\quad (\\text{KV Latent}) \\\\
-                        \\boldsymbol{q}_i^{(s)} = [\\boldsymbol{c}'_i\\boldsymbol{W}_{qc}^{(s)}, \\boldsymbol{c}'_i\\boldsymbol{W}_{qr}^{(s)}\\boldsymbol{\\mathcal{R}}_i] \\\\ 
-                        \\boldsymbol{k}_i^{(s)} = [\\boldsymbol{c}_i\\boldsymbol{W}_{kc}^{(s)}, \\boldsymbol{x}_i\\boldsymbol{W}_{kr}\\boldsymbol{\\mathcal{R}}_i] \\\\
-                        \\boldsymbol{v}_i^{(s)} = \\boldsymbol{c}_i\\boldsymbol{W}_v^{(s)}
-                        \\end{gathered}
-                    `} />
-                        <p>注意 <InlineMath math="\boldsymbol{k}_i^{(s)}"/> 的RoPE部分直接来自原始输入 <InlineMath math="\boldsymbol{x}_i"/>，而非常见地来自 <InlineMath math="\boldsymbol{c}_i"/>。这是为了后续推理阶段的优化。</p>
-                    </div>
-                    <div className="explanation-subsection">
-                        <h5>实现方法与数学推导 (推理阶段)</h5>
-                        <p>推理阶段是MLA效率提升的核心。通过“矩阵吸收”技巧，它可以避免显式的高维重建K、V。</p>
-                        <p><strong>1. 缓存内容:</strong> 在推理时，MLA只缓存两个低维的、所有头共享的向量：共享内容潜在向量 <InlineMath math="\boldsymbol{c}_j^{KV}"/> 和共享RoPE键向量 <InlineMath math="\boldsymbol{k}_j^R"/>。</p>
-                        <p><strong>2. “矩阵吸收”技巧:</strong> 核心思想是将K侧的升维矩阵预先与Q侧的投影矩阵组合。训练时内容分数计算为 <InlineMath math="\text{score}^C \propto (\boldsymbol{c}_t^Q \boldsymbol{W}_{UQ,h}) \cdot (\boldsymbol{c}_j^{KV} \boldsymbol{W}_{UK,h})^T"/>。在推理时，利用矩阵乘法结合律重排：</p>
-                        {/* [FIXED] Corrected KaTeX syntax for complex subscripts */}
-                        <BlockMath math={"\\text{score}_{t,j}^{(h),C} = \\boldsymbol{c}_t^Q (\\boldsymbol{W}_{UQ,h} \\boldsymbol{W}_{UK,h}^T) (\\boldsymbol{c}_j^{KV})^T"}/>
-                        <p>其中，矩阵 <InlineMath math="\boldsymbol{M}_h^K = \boldsymbol{W}_{UQ,h} \boldsymbol{W}_{UK,h}^T"/> 可以在模型加载后<strong>预先计算并存储</strong>。因此，推理时只需用当前的 <InlineMath math="\boldsymbol{c}_t^Q"/> 与预计算的 <InlineMath math="\boldsymbol{M}_h^K"/> 相乘，再与缓存的 <InlineMath math="\boldsymbol{c}_j^{KV}"/> 计算点积，极大地降低了计算量。</p>
-                    </div>
-                    <div className="explanation-subsection">
-                        <h5>KV Cache: 变化与牺牲</h5>
-                        <p><strong>显存占用:</strong> MLA实现了迄今为止最为极致的KV Cache压缩。其KV Cache只存储低维的潜在向量。</p>
-                        <BlockMath math={"\\text{KV Cache Size (MLA)} \\approx L \\times B \\times S \\times (d_c + d_r) \\times \\text{sizeof(float)}"}/>
-                        <p>以DeepSeek-V2的参数为例(<InlineMath math="d_{model}=7168, d_c=512, d_r=64"/>)，MLA可以将KV Cache大小压缩到MHA的约<strong>1/25</strong>。对于Llama3 70B大小的模型，KV Cache可以从20.97 GB降至约 <strong>0.83 GB</strong>。</p>
-                        <p><strong>牺牲:</strong> MLA的牺牲主要体现在<strong>模型结构和训练的复杂性</strong>。引入了多阶段投影、内容与RoPE解耦等机制，代码实现和理解难度增加，并可能导致训练不稳定，需要特殊的优化策略来稳定训练过程。</p>
-                    </div>
+                    <MLASymbolicViz
+                        dims={dims}
+                        highlight={highlight}
+                        onElementClick={onSymbolClick}
+                        onComponentClick={onComponentClick}
+                    />
                 </div>
             </div>
 

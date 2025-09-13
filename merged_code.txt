@@ -3582,7 +3582,7 @@ export const TopicPage: React.FC = () => {
     padding: 20px;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    /* [CORE FIX] REMOVED 'align-items: center;' which was the root cause of the bug. */
     gap: 20px;
 }
 
@@ -3624,8 +3624,15 @@ export const TopicPage: React.FC = () => {
     background-color: rgba(0,0,0,0.015);
     display: flex;
     flex-direction: column;
-    align-items: center;
+    /* [FIXED] REMOVED 'align-items: center;' which caused wide children to be clipped on the left. */
+    /* Child elements like titles are now centered using their own properties (e.g., text-align). */
+    gap: 10px;
 }
+
+.attention-calculation-step > p {
+    text-align: center;
+}
+
 
 .step-title {
     width: 100%;
@@ -3638,79 +3645,68 @@ export const TopicPage: React.FC = () => {
     border-bottom: 1px dashed var(--border-color);
 }
 
-.viz-row, .explanation-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
+.viz-formula-group {
     width: 100%;
-    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 15px 10px;
+    border: 1px solid #eef;
+    border-radius: 8px;
+    background-color: rgba(0,0,0,0.015);
+    box-sizing: border-box;
     margin-bottom: 10px;
 }
 
-.viz-row.vertical, .explanation-row.vertical {
+.viz-formula-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    width: max-content;
+    padding: 0 10px;
+}
+.viz-formula-row.vertical {
     flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
 }
 
-/* [FIXED & CRITICAL] Added scroll wrapper for wide matrices in explanation, following transformer-explorer's pattern. */
-.matrix-scroll-wrapper {
-    overflow-x: auto; /* Enable horizontal scrolling */
-    padding: 5px; /* Add some internal spacing */
-    flex-shrink: 1;  /* Allow the item to shrink */
-    flex-grow: 1;    /* Allow the item to grow and fill space */
-    min-width: 0;    /* CRITICAL: Allows shrinking below content size */
-    display: flex;   /* Use flexbox for internal alignment */
-    flex-direction: column; /* Stack matrix and label vertically */
-    align-items: center;    /* Center them horizontally */
+.viz-formula-row > * {
+    flex-shrink: 0;
 }
 
-.explanation-row p {
-    flex-basis: 100%;
-    text-align: center;
-    color: #606266;
-    margin: 5px 0 15px 0;
+/* [REWORKED] The matrix wrapper is now a simple container. */
+.matrix-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
 }
 
-.placeholder-matrix {
-    opacity: 0.3;
-}
-
+/* Default: side label is hidden, bottom label is shown */
 .matrix-wrapper .matrix-label-side { display: none; }
-.matrix-wrapper .matrix-label,
 .matrix-wrapper .matrix-label-container {
     display: flex;
-}
-
-.matrix-wrapper > .matrix-label {
+    justify-content: center;
     margin-top: 8px;
 }
 
-.matrix-wrapper.side-label,
-.viz-row.vertical .matrix-wrapper,
-.explanation-row.vertical .matrix-wrapper,
-.explanation-row > .matrix-wrapper:only-child {
+/* When `side-label` class is added, switch visibility */
+.matrix-wrapper.side-label {
     flex-direction: row;
     align-items: center;
     gap: 12px;
 }
+.matrix-wrapper.side-label .matrix-label-side { display: flex; flex-shrink: 0; }
+.matrix-wrapper.side-label .matrix-label-container { display: none; }
 
-.matrix-wrapper.side-label .matrix-label-side,
-.viz-row.vertical .matrix-wrapper .matrix-label-side,
-.explanation-row.vertical .matrix-wrapper .matrix-label-side,
-.explanation-row > .matrix-wrapper:only-child .matrix-label-side {
-    display: flex;
+/* When `label-bottom` class is added, force bottom label (overrides side-label) */
+.matrix-wrapper.label-bottom {
+    flex-direction: column;
+    align-items: center;
 }
+.matrix-wrapper.label-bottom .matrix-label-side { display: none; }
+.matrix-wrapper.label-bottom .matrix-label-container { display: flex; }
 
-.matrix-wrapper.side-label .matrix-label-container,
-.viz-row.vertical .matrix-wrapper .matrix-label-container,
-.explanation-row.vertical .matrix-wrapper .matrix-label-container,
-.matrix-wrapper.side-label > .matrix-label,
-.viz-row.vertical .matrix-wrapper > .matrix-label,
-.explanation-row.vertical .matrix-wrapper > .matrix-label,
-.explanation-row > .matrix-wrapper:only-child .matrix-label-container,
-.explanation-row > .matrix-wrapper:only-child > .matrix-label {
-    display: none;
-}
 
 .head-group-container {
     display: flex;
@@ -3734,6 +3730,55 @@ export const TopicPage: React.FC = () => {
     display: flex;
     gap: 10px;
     margin-top: 10px;
+}
+
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    table-layout: fixed;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+.summary-table th,
+.summary-table td {
+    border: 1px solid var(--border-color);
+    padding: 12px 15px;
+    position: relative;
+    overflow: hidden;
+    resize: both;
+    min-width: 100px;
+}
+.summary-table th {
+    background-color: var(--component-header-bg);
+    font-weight: bold;
+    text-align: center;
+}
+.summary-table td {
+    vertical-align: top;
+}
+.summary-table th::after,
+.summary-table td::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 10px;
+    height: 10px;
+    background:
+            linear-gradient(to top left,
+            transparent 45%,
+            #ccc 45%,
+            #ccc 55%,
+            transparent 55%
+            );
+    cursor: nwse-resize;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+.summary-table th:hover::after,
+.summary-table td:hover::after {
+    opacity: 1;
 }
 /* END OF FILE: src/topics/attention-variants/AttentionVariantsTopic.css */
 
@@ -3802,12 +3847,6 @@ export const AttentionVariantsTopic: React.FC = () => {
                     setTooltip(newCalculationData);
                 }
             }
-        } else {
-            setTooltip(null);
-            setAnimationData(null);
-            if (activeComponent) {
-                setHighlight({ target: null, sources: [], activeComponent });
-            }
         }
     }, [viewMode, activeElement, attentionData, dims, activeComponent]);
 
@@ -3818,12 +3857,7 @@ export const AttentionVariantsTopic: React.FC = () => {
         const newHighlight = createBackwardHighlight(element, attentionData, dims);
         setHighlight({ ...newHighlight, activeComponent: variant });
         setActiveElement(element);
-
-        // [FIXED] Immediately activate decomposition view on first click for better UX
-        if (viewMode === 'none') {
-            setViewMode('decomposition');
-        }
-    }, [attentionData, dims, viewMode]);
+    }, [attentionData, dims]);
 
     const handleComponentClick = useCallback((componentId: string) => {
         setActiveComponent(componentId);
@@ -4395,9 +4429,10 @@ import { HighlightState, ElementIdentifier } from '../types';
 import { InteractiveSymbolicMatrix } from './InteractiveSymbolicMatrix';
 import 'katex/dist/katex.min.css';
 import { BlockMath, InlineMath } from 'react-katex';
+import { MLASymbolicViz } from './MLASymbolicViz';
 
 interface ExplanationProps {
-    dims: { n_q_heads: number, n_kv_heads: number, d_head: number, d_model: number, seq_len: number };
+    dims: { n_q_heads: number, n_kv_heads: number, d_head: number, d_model: number, seq_len: number, d_c: number, d_c_prime: number, d_rope: number };
     highlight: HighlightState;
     onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
     onComponentClick: (componentId: string) => void;
@@ -4421,86 +4456,88 @@ const renderVariantExplanation = (
     const combined_name = `${variant}.combined`;
     const final_output_name = `${variant}.output`;
 
-    const threshold = 8;
-    const break_qkv_proj = (d_model + d_head + d_head) > threshold;
-    const break_scores = (d_head + seq_len + seq_len) > threshold;
-    const break_output = (seq_len + d_head + d_head) > threshold;
-    const break_final = (n_q_heads * d_head + d_model + d_model) > threshold;
+    const break_qkv_proj = (d_model + d_head + d_head) > 8;
+    const break_scores = (d_head + seq_len + seq_len) > 8;
+    const break_output = (seq_len + d_head + d_head) > 8;
+    const break_final = (n_q_heads * d_head + d_model + d_model) > 8;
 
     return (
-        <>
-            <div className="attention-calculation-step">
-                <div className="step-title">1. 线性投影与多头拆分</div>
-                <p>输入 <strong>H</strong> 乘以权重矩阵 <strong>W</strong> 生成Q, K, V。在MHA中，每个头都有独立的 <InlineMath math="W_{Q,h}, W_{K,h}, W_{V,h}"/>。而在GQA/MQA中，K, V的权重矩阵是分组共享或完全共享的。Q的权重矩阵在所有变体中始终是每个头独立的。</p>
-                {/* [FIXED] Wrapped every matrix in a scroll wrapper */}
-                <div className={`explanation-row ${break_qkv_proj ? 'vertical' : ''}`}>
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+        <div className="attention-calculation-step">
+            <div className="step-title">1. 线性投影与多头拆分</div>
+            <p>输入张量 <strong>H</strong> (代表了富含上下文信息的词向量序列) 通过乘以三个独立的、可学习的权重矩阵 <strong>W</strong>，分别被线性投影到三个不同的子空间，生成查询 (Query, <strong>Q</strong>)、键 (Key, <strong>K</strong>) 和值 (Value, <strong>V</strong>) 矩阵。在MHA中，每个头都有独立的 <InlineMath math="W_{Q,h}, W_{K,h}, W_{V,h}"/>。而在GQA/MQA中，K, V的权重矩阵是分组共享或完全共享的。Q的权重矩阵在所有变体中始终是每个头独立的。</p>
+            <div className="viz-formula-group">
+                <div className={`viz-formula-row ${break_qkv_proj ? 'vertical' : ''}`}>
+                    <InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={`${variant}.wq.0`} rows={d_model} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={`${variant}.wq.0`} rows={d_model} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                 </div>
-                <div className={`explanation-row ${break_qkv_proj ? 'vertical' : ''}`}>
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+            </div>
+            <div className="viz-formula-group">
+                <div className={`viz-formula-row ${break_qkv_proj ? 'vertical' : ''}`}>
+                    <InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={`${variant}.wk.0`} rows={d_model} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={`${variant}.wk.0`} rows={d_model} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={k_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={k_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                 </div>
-                <div className={`explanation-row ${break_qkv_proj ? 'vertical' : ''}`}>
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+            </div>
+            <div className="viz-formula-group">
+                <div className={`viz-formula-row ${break_qkv_proj ? 'vertical' : ''}`}>
+                    <InteractiveSymbolicMatrix name={`${variant}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={`${variant}.wv.0`} rows={d_model} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={`${variant}.wv.0`} rows={d_model} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={v_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={v_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                 </div>
             </div>
 
-            <div className="attention-calculation-step">
-                <div className="step-title">2. 计算注意力分数 (Scaled Dot-Product)</div>
-                <p>此步骤计算每个查询向量与所有键向量的相似度。点积结果越大，表示关联性越强。除以 <InlineMath math="\sqrt{d_{\text{head}}}" /> 是为了防止梯度在训练中过小或过大，保持数值稳定性。</p>
-                <BlockMath math={"\\text{Scores}_h = \\frac{Q_h K_{\\text{group}(h)}^T}{\\sqrt{d_{\\text{head}}}}"} />
-                {/* [FIXED] Wrapped every matrix in a scroll wrapper */}
-                <div className={`explanation-row ${break_scores ? 'vertical' : ''}`}>
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+            <div className="step-title">2. 计算注意力分数 (Scaled Dot-Product)</div>
+            <p>首先，通过计算每个查询向量与所有键向量的点积来评估它们的相似度。这个结果（原始分数）越大，表示两个向量的关联性越强。然后，为了防止梯度在训练中过小或过大以保持数值稳定性，将这些分数除以 <InlineMath math="\sqrt{d_{\text{head}}}" /> 进行缩放。</p>
+            <BlockMath math={"\\text{Scores}_h = \\frac{Q_h K_{\\text{group}(h)}^T}{\\sqrt{d_{\\text{head}}}}"} />
+            <div className="viz-formula-group">
+                <div className={`viz-formula-row ${break_scores ? 'vertical' : ''}`}>
+                    <InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={k_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} transpose={true} /></div>
+                    <InteractiveSymbolicMatrix name={k_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} transpose={true} />
                     <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={scores_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={scores_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} />
                 </div>
-                <p>然后，应用Softmax函数将原始分数转换为一个和为1的概率分布，即“注意力权重” <InlineMath math="A_h"/>。</p>
-                <BlockMath math={"A_h = \\text{Softmax}(\\text{Scores}_h)"} />
-                {/* [FIXED] Wrapped every matrix in a scroll wrapper */}
-                <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} sideLabel={true} /></div>
             </div>
-
-            <div className="attention-calculation-step">
-                <div className="step-title">3. 加权求和得到单头输出</div>
-                <p>使用上一步计算出的注意力权重 <InlineMath math="A_h"/> 对值向量 <InlineMath math="V_h"/> 进行加权求和，得到融合了上下文信息的单头输出 <InlineMath math="H_h"/>。</p>
-                {/* [FIXED] Wrapped every matrix in a scroll wrapper */}
-                <div className={`explanation-row ${break_output ? 'vertical' : ''}`}>
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={v_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
-                    <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={output_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+            <p>接下来，应用Softmax函数将缩放后的原始分数矩阵 <InlineMath math="\text{Scores}_h"/> 转换为一个和为1的概率分布。这个新的矩阵被称为“注意力权重” <InlineMath math="A_h"/>，它的每个元素表示一个查询向量应该对相应的值向量“关注”多少。</p>
+            <BlockMath math={"A_h = \\text{Softmax}(\\text{Scores}_h)"} />
+            <div className="viz-formula-group">
+                <div className="viz-formula-row">
+                    <InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} sideLabel={true} />
                 </div>
             </div>
 
-            <div className="attention-calculation-step">
-                <div className="step-title">4. 合并与最终投影</div>
-                <p>将所有 <InlineMath math="N_q"/> 个头的输出 <InlineMath math="H_h"/> 拼接（Concatenate）起来，然后通过一个最终的线性投影矩阵 <InlineMath math="W^O"/> 将其维度变回 <InlineMath math="d_{\text{model}}"/>，得到该子层的最终输出 <InlineMath math="Z"/>。</p>
-                <BlockMath math={"Z = \\text{Concat}(\\text{head}_0, ..., \\text{head}_{N_q-1}) W_O"} />
-                {/* [FIXED] Wrapped every matrix in a scroll wrapper */}
-                <div className={`explanation-row ${break_final ? 'vertical' : ''}`}>
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={combined_name} rows={seq_len} cols={n_q_heads * d_head} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+            <div className="step-title">3. 加权求和得到单头输出</div>
+            <p>使用上一步计算出的注意力权重 <InlineMath math="A_h"/> 对值向量 <InlineMath math="V_h"/> 进行加权求和。这里的矩阵乘法，本质上是对 <InlineMath math="V"/> 矩阵中所有词的向量进行一次加权平均。注意力权重矩阵 <InlineMath math="A_h"/> 的每一行都提供了一组权重，指导如何将所有词的“内容”(V)混合起来，从而为当前词生成一个全新的、富含上下文信息的向量表示。</p>
+            <div className="viz-formula-group">
+                <div className={`viz-formula-row ${break_output ? 'vertical' : ''}`}>
+                    <InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="\times" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={`${variant}.wo`} rows={n_q_heads * d_head} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={v_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                     <BlockMath math="=" />
-                    <div className="matrix-scroll-wrapper"><InteractiveSymbolicMatrix name={final_output_name} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} /></div>
+                    <InteractiveSymbolicMatrix name={output_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
                 </div>
             </div>
-        </>
+
+            <div className="step-title">4. 合并与最终投影</div>
+            <p>将所有 <InlineMath math="N_q"/> 个头的输出 <InlineMath math="H_h"/> 拼接（Concatenate）起来，然后通过一个最终的线性投影矩阵 <InlineMath math="W^O"/> 将其维度变回 <InlineMath math="d_{\text{model}}"/>，得到该子层的最终输出 <InlineMath math="Z"/>。这个输出 <InlineMath math="Z"/> 已经融合了丰富的上下文信息。在完整的Transformer层中，这个输出通常会再经过一个前馈神经网络（FFN）层。FFN会对每个位置的向量独立地进行一次复杂的非线性变换，可以理解为模型在融合了上下文信息后，对每个词的含义进行一次独立的“深入思考和加工”，从而极大地增强了模型的表达能力。</p>
+            <BlockMath math={"Z = \\text{Concat}(\\text{head}_0, ..., \\text{head}_{N_q-1}) W_O"} />
+            <div className="viz-formula-group">
+                <div className={`viz-formula-row ${break_final ? 'vertical' : ''}`}>
+                    <InteractiveSymbolicMatrix name={combined_name} rows={seq_len} cols={n_q_heads * d_head} highlight={highlight} onSymbolClick={onSymbolClick} />
+                    <BlockMath math="\times" />
+                    <InteractiveSymbolicMatrix name={`${variant}.wo`} rows={n_q_heads * d_head} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                    <BlockMath math="=" />
+                    <InteractiveSymbolicMatrix name={final_output_name} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onSymbolClick} />
+                </div>
+            </div>
+        </div>
     )
 }
 
@@ -4618,48 +4655,14 @@ export const Explanation: React.FC<ExplanationProps> = ({ dims, highlight, onSym
             </div>
 
             <div className="attention-variant-section active-component" ref={el => refs.current['mla'] = el}>
-                <div className="component-header" onClick={() => onComponentClick('mla')}>MLA (Multi-head Latent Attention)</div>
+                <div className="component-header" onClick={() => onComponentClick('mla')}>MLA (Multi-head Latent Attention) - 符号推导</div>
                 <div className="component-body">
-                    <div className="explanation-subsection">
-                        <h5>出现原因与设计思路</h5>
-                        <p><strong>GQA的局限:</strong> 尽管MQA和GQA在KV Cache优化方面取得了显著进展，但它们仍受限于将原始高维KV信息直接绑定到注意力头的数量。当追求更长的上下文时，即使是GQA的KV Cache仍然可能过大。</p>
-                        <p><strong>低秩压缩与矩阵吸收:</strong> MLA (来自DeepSeek-V2) 是一种更激进的优化。其核心思想是：</p>
-                        <ul>
-                            <li><strong>低秩压缩KV:</strong> MLA假设Key和Value的原始高维表示中存在大量冗余，其有效信息可以被压缩到一个低维的“潜在空间”。它通过一个下投影矩阵将每个token的 <InlineMath math="d_{model}"/> 维隐藏状态投影成一个极小的共享潜在向量 <InlineMath math="\boldsymbol{c}^{KV}"/>。KV Cache只存储这些低维向量。</li>
-                            <li><strong>“矩阵吸收”实现计算效率:</strong> MLA利用矩阵乘法结合律的巧妙特性，将重建K、V所需的上投影矩阵“吸收”到Query侧的计算中，从而在推理时避免K、V的显式高维重建，直接在低维潜在空间进行部分计算。</li>
-                            <li><strong>解耦RoPE兼容性:</strong> 为兼容“矩阵吸收”技巧，MLA将Q、K向量解耦为<strong>内容(Content)部分</strong>和<strong>RoPE部分</strong>。内容部分采用低秩压缩；RoPE部分则独立处理，通常采用类似MQA的共享K方式。</li>
-                        </ul>
-                    </div>
-                    <div className="explanation-subsection">
-                        <h5>实现方法与数学推导 (训练阶段)</h5>
-                        <p>在训练阶段，MLA通过多个投影矩阵将输入<InlineMath math="\boldsymbol{x}_i"/>转换为解耦的Q, K, V。Q和K都被分成了内容部分（content, 上标C）和位置部分（RoPE, 上标R）。</p>
-                        <BlockMath math={`
-                        \\begin{gathered} 
-                        \\boldsymbol{c}'_i = \\boldsymbol{x}_i \\boldsymbol{W}'_c \\quad (\\text{Q Latent}) \\\\
-                        \\boldsymbol{c}_i = \\boldsymbol{x}_i \\boldsymbol{W}_c \\quad (\\text{KV Latent}) \\\\
-                        \\boldsymbol{q}_i^{(s)} = [\\boldsymbol{c}'_i\\boldsymbol{W}_{qc}^{(s)}, \\boldsymbol{c}'_i\\boldsymbol{W}_{qr}^{(s)}\\boldsymbol{\\mathcal{R}}_i] \\\\ 
-                        \\boldsymbol{k}_i^{(s)} = [\\boldsymbol{c}_i\\boldsymbol{W}_{kc}^{(s)}, \\boldsymbol{x}_i\\boldsymbol{W}_{kr}\\boldsymbol{\\mathcal{R}}_i] \\\\
-                        \\boldsymbol{v}_i^{(s)} = \\boldsymbol{c}_i\\boldsymbol{W}_v^{(s)}
-                        \\end{gathered}
-                    `} />
-                        <p>注意 <InlineMath math="\boldsymbol{k}_i^{(s)}"/> 的RoPE部分直接来自原始输入 <InlineMath math="\boldsymbol{x}_i"/>，而非常见地来自 <InlineMath math="\boldsymbol{c}_i"/>。这是为了后续推理阶段的优化。</p>
-                    </div>
-                    <div className="explanation-subsection">
-                        <h5>实现方法与数学推导 (推理阶段)</h5>
-                        <p>推理阶段是MLA效率提升的核心。通过“矩阵吸收”技巧，它可以避免显式的高维重建K、V。</p>
-                        <p><strong>1. 缓存内容:</strong> 在推理时，MLA只缓存两个低维的、所有头共享的向量：共享内容潜在向量 <InlineMath math="\boldsymbol{c}_j^{KV}"/> 和共享RoPE键向量 <InlineMath math="\boldsymbol{k}_j^R"/>。</p>
-                        <p><strong>2. “矩阵吸收”技巧:</strong> 核心思想是将K侧的升维矩阵预先与Q侧的投影矩阵组合。训练时内容分数计算为 <InlineMath math="\text{score}^C \propto (\boldsymbol{c}_t^Q \boldsymbol{W}_{UQ,h}) \cdot (\boldsymbol{c}_j^{KV} \boldsymbol{W}_{UK,h})^T"/>。在推理时，利用矩阵乘法结合律重排：</p>
-                        {/* [FIXED] Corrected KaTeX syntax for complex subscripts */}
-                        <BlockMath math={"\\text{score}_{t,j}^{(h),C} = \\boldsymbol{c}_t^Q (\\boldsymbol{W}_{UQ,h} \\boldsymbol{W}_{UK,h}^T) (\\boldsymbol{c}_j^{KV})^T"}/>
-                        <p>其中，矩阵 <InlineMath math="\boldsymbol{M}_h^K = \boldsymbol{W}_{UQ,h} \boldsymbol{W}_{UK,h}^T"/> 可以在模型加载后<strong>预先计算并存储</strong>。因此，推理时只需用当前的 <InlineMath math="\boldsymbol{c}_t^Q"/> 与预计算的 <InlineMath math="\boldsymbol{M}_h^K"/> 相乘，再与缓存的 <InlineMath math="\boldsymbol{c}_j^{KV}"/> 计算点积，极大地降低了计算量。</p>
-                    </div>
-                    <div className="explanation-subsection">
-                        <h5>KV Cache: 变化与牺牲</h5>
-                        <p><strong>显存占用:</strong> MLA实现了迄今为止最为极致的KV Cache压缩。其KV Cache只存储低维的潜在向量。</p>
-                        <BlockMath math={"\\text{KV Cache Size (MLA)} \\approx L \\times B \\times S \\times (d_c + d_r) \\times \\text{sizeof(float)}"}/>
-                        <p>以DeepSeek-V2的参数为例(<InlineMath math="d_{model}=7168, d_c=512, d_r=64"/>)，MLA可以将KV Cache大小压缩到MHA的约<strong>1/25</strong>。对于Llama3 70B大小的模型，KV Cache可以从20.97 GB降至约 <strong>0.83 GB</strong>。</p>
-                        <p><strong>牺牲:</strong> MLA的牺牲主要体现在<strong>模型结构和训练的复杂性</strong>。引入了多阶段投影、内容与RoPE解耦等机制，代码实现和理解难度增加，并可能导致训练不稳定，需要特殊的优化策略来稳定训练过程。</p>
-                    </div>
+                    <MLASymbolicViz
+                        dims={dims}
+                        highlight={highlight}
+                        onElementClick={onSymbolClick}
+                        onComponentClick={onComponentClick}
+                    />
                 </div>
             </div>
 
@@ -4783,98 +4786,188 @@ import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 import { getSymbolParts } from '../lib/symbolMapping';
 
 interface InteractiveSymbolicMatrixProps {
-  name: string;
-  rows: number;
-  cols: number;
-  highlight: HighlightState;
-  onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
-  transpose?: boolean;
-  isPlaceholder?: boolean;
-  sideLabel?: boolean; // For explicit side-labeling
+    name: string;
+    rows: number;
+    cols: number;
+    highlight: HighlightState;
+    onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+    transpose?: boolean;
+    isPlaceholder?: boolean;
+    sideLabel?: boolean; // For explicit side-labeling
 }
 
 export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps> = React.memo(({ name, rows, cols, highlight, onSymbolClick, transpose = false, isPlaceholder = false, sideLabel = false }) => {
-  const symbol = getSymbolParts(name);
-  const variant = name.split('.')[0] as ElementIdentifier['variant'];
+    const symbol = getSymbolParts(name);
+    const variant = name.split('.')[0] as ElementIdentifier['variant'];
 
-  const displayRows = transpose ? cols : rows;
-  const displayCols = transpose ? rows : cols;
+    // [NEW] Logic for dynamic label positioning
+    const useBottomLabel = cols > 8;
+    const wrapperClasses = ['matrix-wrapper'];
+    if (sideLabel && !useBottomLabel) {
+        wrapperClasses.push('side-label');
+    }
+    if (useBottomLabel) {
+        wrapperClasses.push('label-bottom');
+    }
 
-  let focusRow = -1;
-  let focusCol = -1;
+    const displayRows = transpose ? cols : rows;
+    const displayCols = transpose ? rows : cols;
 
-  if (highlight.target?.name === name) {
-    focusRow = highlight.target.row;
-    focusCol = highlight.target.col;
-  }
+    let focusRow = -1;
+    let focusCol = -1;
 
-  const isTargetMatrix = !!highlight.target && highlight.target.name === name;
-  const isSourceMatrix = highlight.sources.some(s => s.name === name);
-  const shouldShowHeaders = isTargetMatrix || isSourceMatrix;
+    if (highlight.target?.name === name) {
+        focusRow = highlight.target.row;
+        focusCol = highlight.target.col;
+    }
 
-  const visibleRowIndices = getVisibleIndices(displayRows, transpose ? focusCol : focusRow);
-  const visibleColIndices = getVisibleIndices(displayCols, transpose ? focusRow : focusCol);
+    const isTargetMatrix = !!highlight.target && highlight.target.name === name;
+    const isSourceMatrix = highlight.sources.some(s => s.name === name);
+    const shouldShowHeaders = isTargetMatrix || isSourceMatrix;
 
-  let mathSymbol = symbol.base;
-  if (symbol.superscript) mathSymbol += `^{${symbol.superscript}}`;
-  if (transpose) mathSymbol += '^T';
+    const visibleRowIndices = getVisibleIndices(displayRows, transpose ? focusCol : focusRow);
+    const visibleColIndices = getVisibleIndices(displayCols, transpose ? focusRow : focusCol);
 
-  const subscriptParts = [];
-  if (symbol.subscript) subscriptParts.push(symbol.subscript);
-  subscriptParts.push(`${rows} \\times ${cols}`);
-  mathSymbol += `_{${subscriptParts.join(',')}}`;
+    let mathSymbol = symbol.base;
+    if (symbol.superscript) mathSymbol += `^{${symbol.superscript}}`;
+    if (transpose) mathSymbol += '^T';
 
-  const containerClassName = `symbolic-matrix-container ${isPlaceholder ? 'placeholder-matrix' : ''}`;
+    const subscriptParts = [];
+    if (symbol.subscript) subscriptParts.push(symbol.subscript);
+    subscriptParts.push(`${rows} \\times ${cols}`);
+    mathSymbol += `_{${subscriptParts.join(',')}}`;
 
-  const matrixGrid = (
-    <div className={containerClassName}>
-       <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
-        {/* Top-left corner & Column Headers */}
-        {shouldShowHeaders && <div key="corner" />}
-        {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
-            <div key={`ch-${cIdx}`} className="symbolic-header-item">{c}</div>
-        ))}
+    const containerClassName = isPlaceholder ? 'placeholder-matrix' : '';
 
-        {/* Row Headers and Matrix Elements */}
-        {visibleRowIndices.map((r, rIdx) => (
-            <React.Fragment key={`row-frag-${rIdx}`}>
-                 {shouldShowHeaders && <div className="symbolic-header-item">{r}</div>}
-                 {visibleColIndices.map((c, cIdx) => {
-                    if (r === ELLIPSIS || c === ELLIPSIS) {
-                      return <div key={`ellipsis-r${rIdx}-c${cIdx}`} className="symbolic-ellipsis">{r === ELLIPSIS && c === ELLIPSIS ? '⋱' : '…'}</div>;
-                    }
-                     const originalRow = transpose ? c : r;
-                     const originalCol = transpose ? r : c;
-                    return (
-                      <InteractiveSymbolicElement
-                        key={`elem-r${r}-c${c}`}
-                        name={name}
-                        base={symbol.base}
-                        subscript={symbol.subscript}
-                        row={originalRow}
-                        col={originalCol}
-                        highlight={highlight}
-                        onClick={(event) => onSymbolClick({ variant, name, row: originalRow, col: originalCol }, event)}
-                      />
-                    );
-                })}
-            </React.Fragment>
-        ))}
-      </div>
-    </div>
-  );
+    const matrixGrid = (
+        <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
+            {/* Top-left corner & Column Headers */}
+            {shouldShowHeaders && <div key="corner" />}
+            {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
+                <div key={`ch-${cIdx}`} className="symbolic-header-item">{c}</div>
+            ))}
 
-  // [MODIFIED] Always render both label structures and let CSS handle visibility
-  return (
-    <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`}>
-        <div className="matrix-label-side"><InlineMath math={`${mathSymbol}`} /></div>
-        {matrixGrid}
-        <div className="matrix-label"><InlineMath math={`${mathSymbol}`} /></div>
-    </div>
-  );
+            {/* Row Headers and Matrix Elements */}
+            {visibleRowIndices.map((r, rIdx) => (
+                <React.Fragment key={`row-frag-${rIdx}`}>
+                    {shouldShowHeaders && <div className="symbolic-header-item">{r}</div>}
+                    {visibleColIndices.map((c, cIdx) => {
+                        if (r === ELLIPSIS || c === ELLIPSIS) {
+                            return <div key={`ellipsis-r${rIdx}-c${cIdx}`} className="symbolic-ellipsis">{r === ELLIPSIS && c === ELLIPSIS ? '⋱' : '…'}</div>;
+                        }
+                        const originalRow = transpose ? c : r;
+                        const originalCol = transpose ? r : c;
+                        return (
+                            <InteractiveSymbolicElement
+                                key={`elem-r${r}-c${c}`}
+                                name={name}
+                                base={symbol.base}
+                                subscript={symbol.subscript}
+                                row={originalRow}
+                                col={originalCol}
+                                highlight={highlight}
+                                onClick={(event) => onSymbolClick({ variant, name, row: originalRow, col: originalCol }, event)}
+                            />
+                        );
+                    })}
+                </React.Fragment>
+            ))}
+        </div>
+    );
+
+    return (
+        <div className={wrapperClasses.join(' ')}>
+            <div className="matrix-label-side"><InlineMath math={`${mathSymbol}`} /></div>
+            <div className={containerClassName}>
+                {matrixGrid}
+            </div>
+            <div className="matrix-label-container">
+                <div className="matrix-label"><InlineMath math={`${mathSymbol}`} /></div>
+            </div>
+        </div>
+    );
 });
-
 // END OF FILE: src/topics/attention-variants/components/InteractiveSymbolicMatrix.tsx
+
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/components/InteractiveSymbolicVector.tsx
+================================================================================
+
+// FILE: src/topics/attention-variants/components/InteractiveSymbolicVector.tsx
+import React from 'react';
+import { HighlightState, ElementIdentifier } from '../types';
+import { InlineMath } from 'react-katex';
+import { Vector as VectorType } from '../types';
+import { getSymbolParts } from '../lib/symbolMapping';
+import { InteractiveSymbolicElement } from './InteractiveSymbolicElement';
+import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
+
+interface InteractiveSymbolicVectorProps {
+    name: string;
+    data: VectorType;
+    highlight: HighlightState;
+    onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+    sideLabel?: boolean; // For explicit override
+}
+
+export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps> = React.memo(({ name, data, highlight, onSymbolClick, sideLabel = false }) => {
+    const displayCols = data.length;
+    const symbol = getSymbolParts(name);
+    const variant = name.split('.')[0] as ElementIdentifier['variant'];
+
+    let focusCol = -1;
+    if (highlight.target?.name === name) {
+        focusCol = highlight.target.col;
+    }
+
+    const visibleColIndices = getVisibleIndices(displayCols, focusCol);
+
+    const gridElements = visibleColIndices.map((c, cIdx) => {
+        if (c === ELLIPSIS) {
+            return <div key={`ellipsis-c-${cIdx}`} className="symbolic-ellipsis">…</div>;
+        }
+
+        return (
+            <InteractiveSymbolicElement
+                key={`elem-${c}`}
+                name={name}
+                base={symbol.base}
+                subscript={symbol.subscript}
+                col={c}
+                highlight={highlight}
+                onClick={(event) => onSymbolClick({ variant, name, row: 0, col: c }, event)}
+            />
+        );
+    });
+
+    let mathSymbol = symbol.base;
+
+    const subscriptParts = [];
+    if (symbol.subscript) {
+        subscriptParts.push(symbol.subscript);
+    }
+    subscriptParts.push(`1 \\times ${displayCols}`);
+    mathSymbol += `_{${subscriptParts.join(',')}}`;
+
+    const matrixGrid = (
+        <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: `repeat(${gridElements.length}, auto)` }}>
+            {gridElements}
+        </div>
+    );
+
+    return (
+        <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`}>
+            <div className="matrix-label-side"><InlineMath math={`${mathSymbol}`} /></div>
+            <div className="symbolic-matrix-container">
+                {matrixGrid}
+            </div>
+            <div className="matrix-label"><InlineMath math={`${mathSymbol}`} /></div>
+        </div>
+    );
+});
+// END OF FILE: src/topics/attention-variants/components/InteractiveSymbolicVector.tsx
 
 
 
@@ -4896,7 +4989,7 @@ interface MatrixProps {
     highlight: HighlightState;
     onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
     sideLabel?: boolean; // For explicit side-labeling when not in a vertical row
-    isTransposed?: boolean; // [FIXED] Added missing prop
+    isTransposed?: boolean;
 }
 
 export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElementClick, sideLabel = false, isTransposed = false }) => {
@@ -4906,6 +4999,17 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
 
     const numRows = data.length;
     const numCols = data[0].length;
+
+    // [NEW] Logic for dynamic label positioning
+    const useBottomLabel = numCols > 8;
+    const wrapperClasses = ['matrix-wrapper'];
+    if (sideLabel && !useBottomLabel) {
+        wrapperClasses.push('side-label');
+    }
+    if (useBottomLabel) {
+        wrapperClasses.push('label-bottom');
+    }
+
 
     const displayRows = isTransposed ? numCols : numRows;
     const displayCols = isTransposed ? numRows : numCols;
@@ -4938,54 +5042,49 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
 
 
     const matrixGrid = (
-        <div className="matrix-container">
-            <div className="matrix-grid" data-name={name} style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
-                {shouldShowHeaders && <div key="corner" />}
-                {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
-                    <div key={`ch-${cIdx}`} className="matrix-header-item">{c}</div>
-                ))}
-                {visibleRowIndices.map((r, rIdx) => (
-                    <React.Fragment key={`row-frag-${rIdx}`}>
-                        {shouldShowHeaders && <div className="matrix-header-item">{r}</div>}
-                        {visibleColIndices.map((c, cIdx) => {
-                            if (r === ELLIPSIS) {
-                                return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
-                            }
-                            if (c === ELLIPSIS) {
-                                return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
-                            }
-                            const originalRow = isTransposed ? c : r;
-                            const originalCol = isTransposed ? r : c;
-                            return (
-                                <Element
-                                    key={`${name}-${originalRow}-${originalCol}`}
-                                    name={name}
-                                    row={originalRow}
-                                    col={originalCol}
-                                    value={data[originalRow][originalCol]}
-                                    highlight={highlight}
-                                    onElementClick={onElementClick}
-                                />
-                            );
-                        })}
-                    </React.Fragment>
-                ))}
-            </div>
+        <div className="matrix-grid" data-name={name} style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
+            {shouldShowHeaders && <div key="corner" />}
+            {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
+                <div key={`ch-${cIdx}`} className="matrix-header-item">{c}</div>
+            ))}
+            {visibleRowIndices.map((r, rIdx) => (
+                <React.Fragment key={`row-frag-${rIdx}`}>
+                    {shouldShowHeaders && <div className="matrix-header-item">{r}</div>}
+                    {visibleColIndices.map((c, cIdx) => {
+                        if (r === ELLIPSIS) {
+                            return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
+                        }
+                        if (c === ELLIPSIS) {
+                            return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
+                        }
+                        const originalRow = isTransposed ? c : r;
+                        const originalCol = isTransposed ? r : c;
+                        return (
+                            <Element
+                                key={`${name}-${originalRow}-${originalCol}`}
+                                name={name}
+                                row={originalRow}
+                                col={originalCol}
+                                value={data[originalRow][originalCol]}
+                                highlight={highlight}
+                                onElementClick={onElementClick}
+                            />
+                        );
+                    })}
+                </React.Fragment>
+            ))}
         </div>
     );
 
-    // [MODIFIED] Always render both label structures and let CSS handle visibility
-    // The `side-label` class here is for explicit override when needed.
     return (
-        <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`} data-name={name}>
-            {/* Side label (hidden by default, shown via CSS context) */}
+        <div className={wrapperClasses.join(' ')} data-name={name}>
             <div className="matrix-label-side">
                 <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
             </div>
 
+            {/* The grid is no longer wrapped in a separate scrolling container */}
             {matrixGrid}
 
-            {/* Bottom label (shown by default, hidden via CSS context) */}
             <div className="matrix-label-container">
                 <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
             </div>
@@ -4997,16 +5096,16 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
 
 
 ================================================================================
-### 文件路径: src/topics/attention-variants/components/MLAViz.tsx
+### 文件路径: src/topics/attention-variants/components/MLANumericViz.tsx
 ================================================================================
 
-// FILE: src/topics/attention-variants/components/MLAViz.tsx
+// FILE: src/topics/attention-variants/components/MLANumericViz.tsx
 import React from 'react';
 import { HighlightState, ElementIdentifier, AttentionData } from '../types';
-import { InteractiveSymbolicMatrix } from './InteractiveSymbolicMatrix';
+import { Matrix } from './Matrix';
 import { BlockMath } from 'react-katex';
 
-interface MLAVizProps {
+interface MLANumericVizProps {
     data: AttentionData;
     dims: any;
     highlight: HighlightState;
@@ -5014,16 +5113,108 @@ interface MLAVizProps {
     onComponentClick: (componentId: string) => void;
 }
 
-export const MLAViz: React.FC<MLAVizProps> = ({ data, dims, highlight, onElementClick, onComponentClick }) => {
+export const MLANumericViz: React.FC<MLANumericVizProps> = ({ data, dims, highlight, onElementClick, onComponentClick }) => {
     const variantName = 'mla';
     const { d_model, d_head, seq_len, n_q_heads, d_c, d_c_prime, d_rope } = dims;
 
-    const break_compress_q = (d_model + d_c_prime) > 15;
-    const break_compress_kv = (d_model + d_c) > 15;
-    const break_k_rope = (d_model + d_rope) > 15;
-    const break_scores = (d_head + d_rope + seq_len + seq_len) > 15;
-    const break_output = (seq_len + d_head + d_head) > 15;
-    const break_final = (n_q_heads * d_head + d_model + d_model) > 15;
+    const break_compress = (d_c_prime + d_c + d_rope) > 15;
+    const break_scores = (d_head + d_rope + seq_len) > 15;
+    const break_output = (seq_len + d_head) > 15;
+    const break_final = (n_q_heads * d_head + d_model) > 15;
+
+    const headData = data.mla.heads[0];
+
+    return (
+        <div className={`attention-variant-section ${highlight.activeComponent === 'mla' ? 'active-component' : ''}`} id="viz-mla">
+            <div className="component-header" onClick={() => onComponentClick('mla')}>MLA (Multi-head Latent Attention) - 数值模拟</div>
+            <div className="component-body">
+                <div className="attention-calculation-step">
+                    <div className="step-title">1. 低秩压缩 (Low-Rank Compression)</div>
+                    <p>将输入H({seq_len}x{d_model})分别投影到Q和KV的低维潜在空间。</p>
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_compress ? 'vertical' : ''}`}>
+                            <Matrix name={`${variantName}.C_q_prime`} data={data.mla.C_q_prime} highlight={highlight} onElementClick={onElementClick} sideLabel={true} />
+                            <Matrix name={`${variantName}.C_kv`} data={data.mla.C_kv} highlight={highlight} onElementClick={onElementClick} sideLabel={true}/>
+                            <Matrix name={`${variantName}.K_rope`} data={data.mla.K_rope} highlight={highlight} onElementClick={onElementClick} sideLabel={true}/>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="attention-calculation-step">
+                    <div className="step-title">2. 注意力计算 (以头 0 为例)</div>
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_scores ? 'vertical' : ''}`}>
+                            <Matrix name={`${variantName}.heads.0.Q`} data={headData.Q} highlight={highlight} onElementClick={onElementClick} />
+                            <BlockMath math="\times" />
+                            <Matrix name={`${variantName}.heads.0.K`} data={headData.K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
+                            <BlockMath math="=" />
+                            <Matrix name={`${variantName}.heads.0.Scores`} data={headData.Scores} highlight={highlight} onElementClick={onElementClick}/>
+                        </div>
+                    </div>
+                    <div className="arrow-down"><BlockMath math="\xrightarrow{\text{Softmax}}" /></div>
+                    <div className="viz-formula-group">
+                        <div className="viz-formula-row">
+                            <Matrix name={`${variantName}.heads.0.Weights`} data={headData.Weights} highlight={highlight} onElementClick={onElementClick} sideLabel={true}/>
+                        </div>
+                    </div>
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_output ? 'vertical' : ''}`}>
+                            <Matrix name={`${variantName}.heads.0.Weights`} data={headData.Weights} highlight={highlight} onElementClick={onElementClick} />
+                            <BlockMath math="\times" />
+                            <Matrix name={`${variantName}.heads.0.V`} data={headData.V} highlight={highlight} onElementClick={onElementClick} />
+                            <BlockMath math="=" />
+                            <Matrix name={`${variantName}.heads.0.Output`} data={headData.Output} highlight={highlight} onElementClick={onElementClick} />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="attention-calculation-step">
+                    <div className="step-title">3. 合并与最终投影</div>
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_final ? 'vertical' : ''}`}>
+                            <Matrix name={`${variantName}.combined`} data={data.mla.CombinedOutput} highlight={highlight} onElementClick={onElementClick} />
+                            <BlockMath math="\times" />
+                            <Matrix name={`${variantName}.wo`} data={data.Wo} highlight={highlight} onElementClick={onElementClick} />
+                            <BlockMath math="=" />
+                            <Matrix name={`${variantName}.output`} data={data.mla.FinalOutput} highlight={highlight} onElementClick={onElementClick} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+// END OF FILE: src/topics/attention-variants/components/MLANumericViz.tsx
+
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/components/MLASymbolicViz.tsx
+================================================================================
+
+// FILE: src/topics/attention-variants/components/MLASymbolicViz.tsx
+import React from 'react';
+import { HighlightState, ElementIdentifier } from '../types';
+import { InteractiveSymbolicMatrix } from './InteractiveSymbolicMatrix';
+import { BlockMath, InlineMath } from 'react-katex';
+
+interface MLASymbolicVizProps {
+    dims: any;
+    highlight: HighlightState;
+    onElementClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+    onComponentClick: (componentId: string) => void;
+}
+
+export const MLASymbolicViz: React.FC<MLASymbolicVizProps> = ({ dims, highlight, onElementClick }) => {
+    const variantName = 'mla';
+    const { d_model, d_head, seq_len, n_q_heads, d_c, d_c_prime, d_rope } = dims;
+
+    const break_compress_q = (d_model + d_c_prime + d_c_prime) > 8;
+    const break_compress_kv = (d_model + d_c + d_c) > 8;
+    const break_k_rope = (d_model + d_rope + d_rope) > 8;
+    const break_scores = (d_head + d_rope + seq_len + seq_len) > 8;
+    const break_output = (seq_len + d_head + d_head) > 8;
+    const break_final = (n_q_heads * d_head + d_model + d_model) > 8;
 
     const q_head_name = `${variantName}.heads.0.Q`;
     const k_head_name = `${variantName}.heads.0.K`;
@@ -5035,91 +5226,103 @@ export const MLAViz: React.FC<MLAVizProps> = ({ data, dims, highlight, onElement
     const final_output_name = `${variantName}.output`;
 
     return (
-        <div className={`attention-variant-section ${highlight.activeComponent === 'mla' ? 'active-component' : ''}`} id="viz-mla">
-            <div className="component-header" onClick={() => onComponentClick('mla')}>MLA (Multi-head Latent Attention) - Symbolic View</div>
-            <div className="component-body">
+        <>
+            <div className="explanation-subsection">
+                <h5>出现原因与设计思路</h5>
+                <p><strong>GQA的局限:</strong> 尽管MQA和GQA在KV Cache优化方面取得了显著进展，但它们仍受限于将原始高维KV信息直接绑定到注意力头的数量。当追求更长的上下文时，即使是GQA的KV Cache仍然可能过大。</p>
+                <p><strong>低秩压缩与矩阵吸收:</strong> MLA (来自DeepSeek-V2) 是一种更激进的优化。其核心思想是：</p>
+                <ul>
+                    <li><strong>低秩压缩KV:</strong> MLA假设Key和Value的原始高维表示中存在大量冗余，其有效信息可以被压缩到一个低维的“潜在空间”。它通过一个下投影矩阵将每个token的 <InlineMath math="d_{model}"/> 维隐藏状态投影成一个极小的共享潜在向量 <InlineMath math="\boldsymbol{c}^{KV}"/>。KV Cache只存储这些低维向量。</li>
+                    <li><strong>“矩阵吸收”实现计算效率:</strong> MLA利用矩阵乘法结合律的巧妙特性，将重建K、V所需的上投影矩阵“吸收”到Query侧的计算中，从而在推理时避免K、V的显式高维重建，直接在低维潜在空间进行部分计算。</li>
+                    <li><strong>解耦RoPE兼容性:</strong> 为兼容“矩阵吸收”技巧，MLA将Q、K向量解耦为<strong>内容(Content)部分</strong>和<strong>RoPE部分</strong>。内容部分采用低秩压缩；RoPE部分则独立处理，通常采用类似MQA的共享K方式。</li>
+                </ul>
+            </div>
+            <div className="explanation-subsection">
+                <h5>交互式公式推导</h5>
                 <div className="attention-calculation-step">
                     <div className="step-title">1. 低秩压缩 (Low-Rank Compression)</div>
-                    <div className={`viz-row ${break_compress_q ? 'vertical' : ''}`}>
-                        <InteractiveSymbolicMatrix name={`${variantName}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onElementClick} />
-                        <BlockMath math="\times" />
-                        <InteractiveSymbolicMatrix name={`${variantName}.Wc_prime`} rows={d_model} cols={d_c_prime} highlight={highlight} onSymbolClick={onElementClick} />
-                        <BlockMath math="=" />
-                        <InteractiveSymbolicMatrix name={`${variantName}.C_q_prime`} rows={seq_len} cols={d_c_prime} highlight={highlight} onSymbolClick={onElementClick} />
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_compress_q ? 'vertical' : ''}`}>
+                            <InteractiveSymbolicMatrix name={`${variantName}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onElementClick} />
+                            <BlockMath math="\times" />
+                            <InteractiveSymbolicMatrix name={`${variantName}.Wc_prime`} rows={d_model} cols={d_c_prime} highlight={highlight} onSymbolClick={onElementClick} />
+                            <BlockMath math="=" />
+                            <InteractiveSymbolicMatrix name={`${variantName}.C_q_prime`} rows={seq_len} cols={d_c_prime} highlight={highlight} onSymbolClick={onElementClick} />
+                        </div>
                     </div>
-                    <div className={`viz-row ${break_compress_kv ? 'vertical' : ''}`}>
-                        <InteractiveSymbolicMatrix name={`${variantName}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onElementClick} />
-                        <BlockMath math="\times" />
-                        <InteractiveSymbolicMatrix name={`${variantName}.Wc`} rows={d_model} cols={d_c} highlight={highlight} onSymbolClick={onElementClick} />
-                        <BlockMath math="=" />
-                        <InteractiveSymbolicMatrix name={`${variantName}.C_kv`} rows={seq_len} cols={d_c} highlight={highlight} onSymbolClick={onElementClick} />
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_compress_kv ? 'vertical' : ''}`}>
+                            <InteractiveSymbolicMatrix name={`${variantName}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onElementClick} />
+                            <BlockMath math="\times" />
+                            <InteractiveSymbolicMatrix name={`${variantName}.Wc`} rows={d_model} cols={d_c} highlight={highlight} onSymbolClick={onElementClick} />
+                            <BlockMath math="=" />
+                            <InteractiveSymbolicMatrix name={`${variantName}.C_kv`} rows={seq_len} cols={d_c} highlight={highlight} onSymbolClick={onElementClick} />
+                        </div>
                     </div>
-                    <div className={`viz-row ${break_k_rope ? 'vertical' : ''}`}>
-                        <InteractiveSymbolicMatrix name={`${variantName}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onElementClick} />
-                        <BlockMath math="\times" />
-                        <InteractiveSymbolicMatrix name={`${variantName}.W_k_rope`} rows={d_model} cols={d_rope} highlight={highlight} onSymbolClick={onElementClick} />
-                        <BlockMath math="=" />
-                        <InteractiveSymbolicMatrix name={`${variantName}.K_rope`} rows={seq_len} cols={d_rope} highlight={highlight} onSymbolClick={onElementClick} />
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_k_rope ? 'vertical' : ''}`}>
+                            <InteractiveSymbolicMatrix name={`${variantName}.input`} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onElementClick} />
+                            <BlockMath math="\times" />
+                            <InteractiveSymbolicMatrix name={`${variantName}.W_k_rope`} rows={d_model} cols={d_rope} highlight={highlight} onSymbolClick={onElementClick} />
+                            <BlockMath math="=" />
+                            <InteractiveSymbolicMatrix name={`${variantName}.K_rope`} rows={seq_len} cols={d_rope} highlight={highlight} onSymbolClick={onElementClick} />
+                        </div>
                     </div>
-                </div>
 
-                <div className="arrow-down">↓</div>
-
-                <div className="attention-calculation-step">
                     <div className="step-title">2. 重建 Q, K, V (以头 0 为例)</div>
                     <p>Q, K, V 通过上投影矩阵从低维潜在向量重建。注意K的RoPE部分直接来自输入H。</p>
-                    <div className={`viz-row`}>
-                        <InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onElementClick} sideLabel={true}/>
-                        <InteractiveSymbolicMatrix name={k_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onElementClick} sideLabel={true}/>
-                        <InteractiveSymbolicMatrix name={v_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onElementClick} sideLabel={true}/>
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row`}>
+                            <InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onElementClick} sideLabel={true}/>
+                            <InteractiveSymbolicMatrix name={k_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onElementClick} sideLabel={true}/>
+                            <InteractiveSymbolicMatrix name={v_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onElementClick} sideLabel={true}/>
+                        </div>
                     </div>
-                </div>
 
-                <div className="arrow-down">↓</div>
-
-                <div className="attention-calculation-step">
                     <div className="step-title">3. 计算注意力分数 (头 0)</div>
-                    <div className={`viz-row ${break_scores ? 'vertical' : ''}`}>
-                        <InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onElementClick} />
-                        <BlockMath math="\times" />
-                        <InteractiveSymbolicMatrix name={k_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onElementClick} transpose={true}/>
-                        <BlockMath math="=" />
-                        <InteractiveSymbolicMatrix name={scores_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onElementClick} />
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_scores ? 'vertical' : ''}`}>
+                            <InteractiveSymbolicMatrix name={q_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onElementClick} />
+                            <BlockMath math="\times" />
+                            <InteractiveSymbolicMatrix name={k_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onElementClick} transpose={true}/>
+                            <BlockMath math="=" />
+                            <InteractiveSymbolicMatrix name={scores_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onElementClick} />
+                        </div>
                     </div>
-                    <div className="arrow-down"><BlockMath math="\xrightarrow{\text{Softmax}}" /></div>
-                    <InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onElementClick} sideLabel={true}/>
-                </div>
+                    <div className="viz-formula-group">
+                        <div className="arrow-down"><BlockMath math="\xrightarrow{\text{Softmax}}" /></div>
+                        <div className="viz-formula-row">
+                            <InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onElementClick} sideLabel={true}/>
+                        </div>
+                    </div>
 
-                <div className="arrow-down">↓</div>
-
-                <div className="attention-calculation-step">
                     <div className="step-title">4. 加权求和 (头 0)</div>
-                    <div className={`viz-row ${break_output ? 'vertical' : ''}`}>
-                        <InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onElementClick} />
-                        <BlockMath math="\times" />
-                        <InteractiveSymbolicMatrix name={v_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onElementClick} />
-                        <BlockMath math="=" />
-                        <InteractiveSymbolicMatrix name={output_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onElementClick} />
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_output ? 'vertical' : ''}`}>
+                            <InteractiveSymbolicMatrix name={weights_name} rows={seq_len} cols={seq_len} highlight={highlight} onSymbolClick={onElementClick} />
+                            <BlockMath math="\times" />
+                            <InteractiveSymbolicMatrix name={v_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onElementClick} />
+                            <BlockMath math="=" />
+                            <InteractiveSymbolicMatrix name={output_head_name} rows={seq_len} cols={d_head} highlight={highlight} onSymbolClick={onElementClick} />
+                        </div>
                     </div>
-                </div>
 
-                <div className="arrow-down">↓</div>
-
-                <div className="attention-calculation-step">
                     <div className="step-title">5. 合并与最终投影</div>
-                    <div className={`viz-row ${break_final ? 'vertical' : ''}`}>
-                        <InteractiveSymbolicMatrix name={combined_name} rows={seq_len} cols={n_q_heads * d_head} highlight={highlight} onSymbolClick={onElementClick} />
-                        <BlockMath math="\times" />
-                        <InteractiveSymbolicMatrix name={`${variantName}.wo`} rows={n_q_heads * d_head} cols={d_model} highlight={highlight} onSymbolClick={onElementClick} />
-                        <BlockMath math="=" />
-                        <InteractiveSymbolicMatrix name={final_output_name} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onElementClick} />
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_final ? 'vertical' : ''}`}>
+                            <InteractiveSymbolicMatrix name={combined_name} rows={seq_len} cols={n_q_heads * d_head} highlight={highlight} onSymbolClick={onElementClick} />
+                            <BlockMath math="\times" />
+                            <InteractiveSymbolicMatrix name={`${variantName}.wo`} rows={n_q_heads * d_head} cols={d_model} highlight={highlight} onSymbolClick={onElementClick} />
+                            <BlockMath math="=" />
+                            <InteractiveSymbolicMatrix name={final_output_name} rows={seq_len} cols={d_model} highlight={highlight} onSymbolClick={onElementClick} />
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 };
-// END OF FILE: src/topics/attention-variants/components/MLAViz.tsx
+// END OF FILE: src/topics/attention-variants/components/MLASymbolicViz.tsx
 
 
 
@@ -5133,7 +5336,7 @@ import { AttentionData, HighlightState, ElementIdentifier, AttentionVariantData 
 import { Matrix } from './Matrix';
 import { BlockMath } from 'react-katex';
 import 'katex/dist/katex.min.css';
-import { MLAViz } from './MLAViz';
+import { MLANumericViz } from './MLANumericViz';
 
 interface VizProps {
     data: AttentionData;
@@ -5143,8 +5346,6 @@ interface VizProps {
     onComponentClick: (componentId: string) => void;
     refs: React.MutableRefObject<{ [key: string]: HTMLDivElement | null }>;
 }
-
-const GROUP_COLORS = ['#3498db', '#2ecc71', '#e74c3c', '#9b59b6', '#f1c40f', '#1abc9c', '#d35400', '#34495e'];
 
 const StandardAttentionViz: React.FC<{
     variantName: 'mha' | 'mqa' | 'gqa';
@@ -5158,71 +5359,82 @@ const StandardAttentionViz: React.FC<{
 }> = ({ variantName, title, variantData, commonData, dims, highlight, onElementClick, onComponentClick }) => {
 
     const { d_model, d_head, seq_len, n_q_heads } = dims;
-    const n_kv_heads = variantName === 'mqa' ? 1 : (variantName === 'gqa' ? dims.n_kv_heads : n_q_heads);
-    const q_heads_per_kv = n_q_heads / n_kv_heads;
-
-    const break_final = (n_q_heads * d_head + d_model + d_model) > 15;
-    const numHeadsToShow = Math.min(n_q_heads, 4);
+    const break_qkv_proj = (d_model + d_head) > 15;
+    const break_scores = (d_head + seq_len) > 15;
+    const break_output = (seq_len + d_head) > 15;
+    const break_final = (n_q_heads * d_head + d_model) > 15;
 
     return (
         <div className={`attention-variant-section ${highlight.activeComponent === variantName ? 'active-component' : ''}`} id={`viz-${variantName}`}>
             <div className="component-header" onClick={() => onComponentClick(variantName)}>{title}</div>
             <div className="component-body">
-
                 <div className="attention-calculation-step">
-                    <div className="step-title">1. 生成 Q, K, V 头</div>
-                    <p>输入 H ({seq_len}x{d_model}) 乘以各头独立的权重矩阵，生成 Q, K, V 头。</p>
-                    <div className="head-group-container" style={{borderColor: '#ccc'}}>
-                        <div className="q-heads-grid">
-                            {Array.from({length: numHeadsToShow}).map((_, i) => {
-                                const headIndex = i < 2 ? i : n_q_heads - (numHeadsToShow - i);
-                                const kv_group_index = Math.floor(headIndex / q_heads_per_kv);
-                                const groupColor = GROUP_COLORS[kv_group_index % GROUP_COLORS.length];
-                                return (
-                                    <div key={headIndex} className="head-group-container" style={{borderColor: groupColor}}>
-                                        <Matrix name={`${variantName}.heads.${headIndex}.Q`} data={variantData.heads[headIndex].Q} highlight={highlight} onElementClick={onElementClick} />
-                                    </div>
-                                )
-                            })}
+                    <div className="step-title">1. 生成 Q, K, V 头 (以头 0 为例)</div>
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_qkv_proj ? 'vertical' : ''}`}>
+                            <Matrix name={`${variantName}.input`} data={commonData.input} highlight={highlight} onElementClick={onElementClick} />
+                            <BlockMath math="\times" />
+                            <Matrix name={`${variantName}.wq.0`} data={commonData.Wq[0]} highlight={highlight} onElementClick={onElementClick} />
+                            <BlockMath math="=" />
+                            <Matrix name={`${variantName}.heads.0.Q`} data={variantData.heads[0].Q} highlight={highlight} onElementClick={onElementClick} />
                         </div>
-                        <div className="kv-head-pair">
-                            {Array.from({length: Math.min(n_kv_heads, 4)}).map((_, i) => {
-                                const kv_head_idx = i < 2 ? i : n_kv_heads - (Math.min(n_kv_heads, 4) - i);
-                                const groupColor = GROUP_COLORS[kv_head_idx % GROUP_COLORS.length];
-                                return (
-                                    <div key={kv_head_idx} className="head-group-container" style={{borderColor: groupColor, borderStyle: 'solid'}}>
-                                        <Matrix name={`${variantName}.heads.${kv_head_idx * q_heads_per_kv}.K`} data={variantData.heads[kv_head_idx * q_heads_per_kv].K} highlight={highlight} onElementClick={onElementClick} />
-                                        <Matrix name={`${variantName}.heads.${kv_head_idx * q_heads_per_kv}.V`} data={variantData.heads[kv_head_idx * q_heads_per_kv].V} highlight={highlight} onElementClick={onElementClick} />
-                                    </div>
-                                )
-                            })}
+                    </div>
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_qkv_proj ? 'vertical' : ''}`}>
+                            <Matrix name={`${variantName}.input`} data={commonData.input} highlight={highlight} onElementClick={onElementClick} />
+                            <BlockMath math="\times" />
+                            <Matrix name={`${variantName}.wk.0`} data={commonData.Wk[0]} highlight={highlight} onElementClick={onElementClick} />
+                            <BlockMath math="=" />
+                            <Matrix name={`${variantName}.heads.0.K`} data={variantData.heads[0].K} highlight={highlight} onElementClick={onElementClick} />
+                        </div>
+                    </div>
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_qkv_proj ? 'vertical' : ''}`}>
+                            <Matrix name={`${variantName}.input`} data={commonData.input} highlight={highlight} onElementClick={onElementClick} />
+                            <BlockMath math="\times" />
+                            <Matrix name={`${variantName}.wv.0`} data={commonData.Wv[0]} highlight={highlight} onElementClick={onElementClick} />
+                            <BlockMath math="=" />
+                            <Matrix name={`${variantName}.heads.0.V`} data={variantData.heads[0].V} highlight={highlight} onElementClick={onElementClick} />
                         </div>
                     </div>
                 </div>
-                <div className="arrow-down">↓</div>
                 <div className="attention-calculation-step">
                     <div className="step-title">2. 注意力计算 (以头 0 为例)</div>
-                    <div className={`viz-row`}>
-                        <Matrix name={`${variantName}.heads.0.Q`} data={variantData.heads[0].Q} highlight={highlight} onElementClick={onElementClick} />
-                        <BlockMath math="\times" />
-                        <Matrix name={`${variantName}.heads.0.K`} data={variantData.heads[0].K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
-                        <BlockMath math="\xrightarrow{\text{Softmax}}" />
-                        <Matrix name={`${variantName}.heads.0.Weights`} data={variantData.heads[0].Weights} highlight={highlight} onElementClick={onElementClick}/>
-                        <BlockMath math="\times" />
-                        <Matrix name={`${variantName}.heads.0.V`} data={variantData.heads[0].V} highlight={highlight} onElementClick={onElementClick} />
-                        <BlockMath math="=" />
-                        <Matrix name={`${variantName}.heads.0.Output`} data={variantData.heads[0].Output} highlight={highlight} onElementClick={onElementClick} />
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_scores ? 'vertical' : ''}`}>
+                            <Matrix name={`${variantName}.heads.0.Q`} data={variantData.heads[0].Q} highlight={highlight} onElementClick={onElementClick} />
+                            <BlockMath math="\times" />
+                            <Matrix name={`${variantName}.heads.0.K`} data={variantData.heads[0].K} highlight={highlight} onElementClick={onElementClick} isTransposed={true}/>
+                            <BlockMath math="=" />
+                            <Matrix name={`${variantName}.heads.0.Scores`} data={variantData.heads[0].Scores} highlight={highlight} onElementClick={onElementClick}/>
+                        </div>
+                    </div>
+                    <div className="arrow-down"><BlockMath math="\xrightarrow{\text{Softmax}}" /></div>
+                    <div className="viz-formula-group">
+                        <div className="viz-formula-row">
+                            <Matrix name={`${variantName}.heads.0.Weights`} data={variantData.heads[0].Weights} highlight={highlight} onElementClick={onElementClick}/>
+                        </div>
+                    </div>
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_output ? 'vertical' : ''}`}>
+                            <Matrix name={`${variantName}.heads.0.Weights`} data={variantData.heads[0].Weights} highlight={highlight} onElementClick={onElementClick}/>
+                            <BlockMath math="\times" />
+                            <Matrix name={`${variantName}.heads.0.V`} data={variantData.heads[0].V} highlight={highlight} onElementClick={onElementClick} />
+                            <BlockMath math="=" />
+                            <Matrix name={`${variantName}.heads.0.Output`} data={variantData.heads[0].Output} highlight={highlight} onElementClick={onElementClick} />
+                        </div>
                     </div>
                 </div>
-                <div className="arrow-down">↓</div>
                 <div className="attention-calculation-step">
                     <div className="step-title">3. 合并与最终投影</div>
-                    <div className={`viz-row ${break_final ? 'vertical' : ''}`}>
-                        <Matrix name={`${variantName}.combined`} data={variantData.CombinedOutput} highlight={highlight} onElementClick={onElementClick} />
-                        <BlockMath math="\times" />
-                        <Matrix name={`${variantName}.wo`} data={commonData.Wo} highlight={highlight} onElementClick={onElementClick} />
-                        <BlockMath math="=" />
-                        <Matrix name={`${variantName}.output`} data={variantData.FinalOutput} highlight={highlight} onElementClick={onElementClick} />
+                    <div className="viz-formula-group">
+                        <div className={`viz-formula-row ${break_final ? 'vertical' : ''}`}>
+                            <Matrix name={`${variantName}.combined`} data={variantData.CombinedOutput} highlight={highlight} onElementClick={onElementClick} />
+                            <BlockMath math="\times" />
+                            <Matrix name={`${variantName}.wo`} data={commonData.Wo} highlight={highlight} onElementClick={onElementClick} />
+                            <BlockMath math="=" />
+                            <Matrix name={`${variantName}.output`} data={variantData.FinalOutput} highlight={highlight} onElementClick={onElementClick} />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -5246,12 +5458,63 @@ export const Viz: React.FC<VizProps> = ({ data, dims, highlight, onElementClick,
                 <StandardAttentionViz variantName="mqa" title="MQA (Multi-Query Attention)" variantData={data.mqa} commonData={commonData} dims={dims} highlight={highlight} onElementClick={onElementClick} onComponentClick={onComponentClick} />
             </div>
             <div ref={el => refs.current['mla'] = el}>
-                <MLAViz data={data} dims={dims} highlight={highlight} onElementClick={onElementClick} onComponentClick={onComponentClick}/>
+                <MLANumericViz data={data} dims={dims} highlight={highlight} onElementClick={onElementClick} onComponentClick={onComponentClick}/>
             </div>
         </div>
     );
 };
 // END OF FILE: src/topics/attention-variants/components/Viz.tsx
+
+
+
+================================================================================
+### 文件路径: src/topics/attention-variants/config/matrixNames.ts
+================================================================================
+
+// FILE: src/topics/attention-variants/config/matrixNames.ts
+
+// This file is the single source of truth for all matrix and vector names in the Attention Variants topic.
+
+const generateHeadNames = (base: string) => ({
+    Wq: `${base}.Wq`, Wk: `${base}.Wk`, Wv: `${base}.Wv`,
+    Q: `${base}.Q`, K: `${base}.K`, V: `${base}.V`,
+    Scores: `${base}.Scores`,
+    Weights: `${base}.Weights`,
+    Output: `${base}.Output`,
+});
+
+export const matrixNames = {
+    // Common Input
+    input: (variant: string) => `${variant}.input`,
+
+    // Standard Attention Variants (MHA, MQA, GQA)
+    standard: (variant: 'mha' | 'mqa' | 'gqa') => ({
+        wq: (headIndex: number) => `${variant}.wq.${headIndex}`,
+        wk: (headIndex: number) => `${variant}.wk.${headIndex}`,
+        wv: (headIndex: number) => `${variant}.wv.${headIndex}`,
+        wo: `${variant}.wo`,
+        combined: `${variant}.combined`,
+        output: `${variant}.output`,
+        head: (headIndex: number) => generateHeadNames(`${variant}.heads.${headIndex}`),
+    }),
+
+    // Multi-head Latent Attention (MLA)
+    mla: {
+        Wc_prime: 'mla.Wc_prime',
+        Wc: 'mla.Wc',
+        W_k_rope: 'mla.W_k_rope',
+        W_q_rope: (headIndex: number) => `mla.W_q_rope.${headIndex}`,
+        W_v_mla: (headIndex: number) => `mla.W_v_mla.${headIndex}`,
+        C_q_prime: 'mla.C_q_prime',
+        C_kv: 'mla.C_kv',
+        K_rope: 'mla.K_rope',
+        wo: 'mla.wo',
+        combined: 'mla.combined',
+        output: 'mla.output',
+        head: (headIndex: number) => generateHeadNames(`mla.heads.${headIndex}`),
+    }
+};
+// END OF FILE: src/topics/attention-variants/config/matrixNames.ts
 
 
 
@@ -5592,21 +5855,21 @@ export const getSymbolParts = (name: string): SymbolParts => {
 
 // FILE: src/topics/attention-variants/lib/tracing.ts
 import { TooltipState } from '../../../components/CalculationTooltip/types';
-// [FIXED] Corrected import from StandardAttentionData to AttentionVariantData
 import { HighlightState, ElementIdentifier, AttentionData, HighlightSource, AttentionVariantData } from '../types';
 import { getSymbolParts } from './symbolMapping';
 
 const getMatrixByName = (name: string, data: AttentionData): number[][] | undefined => {
     const parts = name.split('.');
-    if (parts.length < 2) return undefined;
+    if (parts.length === 0) return undefined;
 
     const variant = parts[0] as 'mha' | 'mqa' | 'gqa' | 'mla';
-    const conceptualName = name.split('.').pop() || '';
+    const component = parts[1];
+    const conceptualName = parts[parts.length - 1];
 
     const headIndexMatch = name.match(/heads\.(\d+)/);
     const headIndex = headIndexMatch ? parseInt(headIndexMatch[1], 10) : 0;
 
-    if (conceptualName === 'input') return data.input;
+    if (name === `${variant}.input`) return data.input;
 
     // Handle MLA-specific matrices first
     if(variant === 'mla') {
@@ -5617,24 +5880,23 @@ const getMatrixByName = (name: string, data: AttentionData): number[][] | undefi
         if(name === 'mla.Wc') return data.Wc;
         if(name === 'mla.Wc_prime') return data.Wc_prime;
         if(name === 'mla.W_k_rope') return data.W_k_rope;
-        if(name.startsWith('mla.W_q_rope')) return data.W_q_rope[headIndex];
-        if(name.startsWith('mla.W_v_mla')) return data.W_v_mla[headIndex];
+        if(component === 'W_q_rope') return data.W_q_rope[headIndex];
+        if(component === 'W_v_mla') return data.W_v_mla[headIndex];
         if(name === 'mla.output') return mlaData.FinalOutput;
         if(name === 'mla.combined') return mlaData.CombinedOutput;
-        if (name.includes('.heads.')) {
+        if(name === 'mla.wo') return data.Wo; // Assume shared Wo for simplicity for now
+        if (component === 'heads') {
             const headData = mlaData.heads[headIndex];
             if (!headData) return undefined;
             return headData[conceptualName as keyof typeof headData] as number[][] | undefined;
         }
-        // Fallback for MLA .wo, etc.
-        if (conceptualName === 'wo') return data.Wo;
     }
 
     if (variant !== 'mha' && variant !== 'gqa' && variant !== 'mqa') return undefined;
     const variantData = data[variant] as AttentionVariantData;
     if (!variantData) return undefined;
 
-    if (name.includes('.heads.')) {
+    if (component === 'heads') {
         const headData = variantData.heads[headIndex];
         if (!headData) return undefined;
         return headData[conceptualName as keyof typeof headData] as number[][] | undefined;
@@ -5644,8 +5906,8 @@ const getMatrixByName = (name: string, data: AttentionData): number[][] | undefi
     if (conceptualName === 'combined') return variantData.CombinedOutput;
     if (conceptualName === 'output') return variantData.FinalOutput;
 
-    if(parts[1]?.startsWith('w')) {
-        const type = parts[1].charAt(1);
+    if(component?.startsWith('w')) {
+        const type = component.charAt(1);
         const index = parseInt(parts[2] || '0', 10);
         if (type === 'q') return data.Wq[index];
         if (type === 'k') return data.Wk[index];
@@ -5667,74 +5929,71 @@ export const generateTooltipData = (element: ElementIdentifier, data: AttentionD
 
     const conceptualName = name.split('.').pop() || '';
 
-    if (conceptualName === 'output' || conceptualName === 'combined') {
+    if (['output', 'combined', 'Q', 'K', 'V', 'Scores', 'Output', 'C_q_prime', 'C_kv', 'K_rope'].includes(conceptualName)) {
         opType = 'matmul';
-        const headOutputSources = sources.filter(s => s.name.includes('.Output'));
-        const woSource = sources.find(s => s.name.endsWith('.wo'));
+        const sourceRow = sources.find(s => s.highlightRow);
+        const sourceCol = sources.find(s => s.highlightCol);
 
-        if (headOutputSources.length > 0 && woSource) {
-            const aSources = headOutputSources
-                .sort((a, b) => parseInt(a.name.match(/heads\.(\d+)/)![1]) - parseInt(b.name.match(/heads\.(\d+)/)![1]))
-                .map(source => {
-                    const headIndex = parseInt(source.name.match(/heads\.(\d+)/)![1]);
-                    const symbol = getSymbolParts(source.name);
-                    symbol.subscript = headIndex.toString(); // Ensure subscript is correct
-                    return {
-                        data: getMatrixByName(source.name, data)![source.row],
-                        symbolInfo: symbol
-                    };
-                });
-            const bSources = [{
-                data: getMatrixByName(woSource.name, data)!.map(r => r[woSource.col]),
-                symbolInfo: getSymbolParts(woSource.name)
-            }];
-            const vecA = aSources.flatMap(s => s.data);
-            const vecB = bSources[0].data;
+        if (sourceRow && sourceCol) {
+            const matrixA = getMatrixByName(sourceRow.name, data);
+            const matrixB = getMatrixByName(sourceCol.name, data);
 
-            steps.push({
-                a: vecA, b: vecB, op: '·', result: targetValue,
-                aSources, bSources,
-                aSymbolInfo: getSymbolParts(name),
-                bSymbolInfo: getSymbolParts(woSource.name),
-            });
-        }
-    } else if (['Q', 'K', 'V', 'Scores', 'Output', 'C_q_prime', 'C_kv', 'K_rope'].includes(conceptualName)) {
-        opType = 'matmul';
-        const source1 = sources.find(s => s.highlightRow);
-        const source2 = sources.find(s => s.highlightCol);
-        if (source1 && source2) {
-            const matrixA = getMatrixByName(source1.name, data);
-            const matrixB = getMatrixByName(source2.name, data);
             if (matrixA && matrixB) {
-                const vecA = matrixA[source1.row];
-                const vecB = matrixB.map(r => r[source2.col]);
-                const aSources = [{ data: vecA, symbolInfo: getSymbolParts(source1.name) }];
-                const bSources = [{ data: vecB, symbolInfo: getSymbolParts(source2.name) }];
+                const vecA = matrixA[sourceRow.row];
+                const vecB = matrixB.map(r => r[sourceCol.col]);
+
+                let aSources, bSources;
+
+                // Handle 'combined' output by splitting the source row vector
+                if (sourceRow.name.endsWith('.combined')) {
+                    const numHeads = data[element.variant].heads.length;
+                    const d_head = matrixA[0].length / numHeads;
+                    aSources = [];
+                    for (let i = 0; i < numHeads; i++) {
+                        const headOutputName = `${element.variant}.heads.${i}.Output`;
+                        aSources.push({
+                            data: vecA.slice(i * d_head, (i + 1) * d_head),
+                            symbolInfo: getSymbolParts(headOutputName)
+                        });
+                    }
+                } else {
+                    aSources = [{ data: vecA, symbolInfo: getSymbolParts(sourceRow.name) }];
+                }
+
+                bSources = [{ data: vecB, symbolInfo: getSymbolParts(sourceCol.name) }];
+
                 steps.push({
                     a: vecA, b: vecB, op: '·', result: targetValue,
                     aSources, bSources,
-                    aSymbolInfo: getSymbolParts(source1.name),
-                    bSymbolInfo: getSymbolParts(source2.name)
+                    aSymbolInfo: getSymbolParts(sourceRow.name),
+                    bSymbolInfo: getSymbolParts(sourceCol.name)
                 });
             }
         }
     } else if (conceptualName === 'Weights') {
         opType = 'softmax';
-        const scoresName = sources.find(s => s.name.endsWith('.Scores'))?.name;
-        if(scoresName){
-            const matrixA = getMatrixByName(scoresName, data);
+        const scoresSource = sources.find(s => s.name.endsWith('.Scores'));
+        if(scoresSource){
+            const matrixA = getMatrixByName(scoresSource.name, data);
             if(matrixA) {
                 const vecA = matrixA[row];
                 steps.push({
                     a: vecA, b: [], op: 'softmax', result: targetValue,
-                    aSymbolInfo: getSymbolParts(scoresName), bSymbolInfo: { base: '' },
+                    aSymbolInfo: getSymbolParts(scoresSource.name), bSymbolInfo: { base: '' },
                     aLabel: 'Scores', resultLabel: 'Weights'
                 });
             }
         }
     }
 
-    if (steps.length === 0) return null;
+    if (steps.length === 0) {
+        opType = 'info';
+        steps.push({
+            a: [], b: [], op: '', result: targetValue,
+            aSymbolInfo: {base: 'Info'}, bSymbolInfo: {base: ''},
+            title: 'This value is a direct weight or was generated by a complex operation not yet visualizable (e.g., MLA Q/K/V reconstruction).'
+        });
+    }
 
     const symbol = getSymbolParts(name);
     element.symbol = `${symbol.base}${symbol.subscript ? `_{${symbol.subscript}}` : ''}${symbol.superscript ? `^{${symbol.superscript}}` : ''}`;
@@ -5792,7 +6051,7 @@ export const createBackwardHighlight = (element: ElementIdentifier, data: Attent
         }
         else if (conceptualName === 'Scores') {
             sources.push({ ...element, name: `${variant}.heads.${headIndex}.Q`, row: row, col: -1, highlightRow: true });
-            sources.push({ ...element, name: `${variant}.heads.${headIndex}.K`, row: col, col: -1, highlightRow: true });
+            sources.push({ ...element, name: `${variant}.heads.${headIndex}.K`, row: col, col: -1, highlightRow: true }); // [FIXED] K's row is the target's col
         }
         else if (['Q', 'K', 'V'].includes(conceptualName)) {
             const type = conceptualName.toLowerCase() as 'q' | 'k' | 'v';
