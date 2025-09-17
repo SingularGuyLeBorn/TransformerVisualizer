@@ -1,0 +1,287 @@
+/* FILE: src/components/visualization/MatMulVisualizer/MatMulVisualizer.css */
+.matmul-visualizer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.matmul-visualizer .row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  width: 100%;
+}
+
+.matmul-visualizer .vector-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.matmul-visualizer .label {
+  font-weight: bold;
+  color: #495057;
+  font-size: 1.5em;
+  width: 80px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.matmul-visualizer .vector-scroll {
+  overflow-x: auto;
+  padding: 10px 5px;
+  scrollbar-width: thin;
+}
+
+.matmul-visualizer .vector {
+  display: flex;
+  gap: 5px;
+  width: max-content;
+}
+
+.matmul-visualizer .element-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.matmul-visualizer .index-label {
+  width: 60px;
+  height: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #495057;
+  font-size: 0.8em;
+  font-family: monospace;
+  box-sizing: border-box;
+  background-color: #f0f2f5;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+}
+
+.matmul-visualizer .element {
+  width: 60px;
+  height: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  background-color: #fff;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.matmul-visualizer .highlight-anim {
+  transform: scale(1.15);
+  border-color: #4a90e2;
+  background-color: rgba(74, 144, 226, 0.1);
+  font-weight: bold;
+}
+
+.matmul-visualizer .hover-highlight {
+  border-color: #f5a623;
+  background-color: rgba(245, 166, 35, 0.1);
+}
+
+.matmul-visualizer .product-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.matmul-visualizer .products-container {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 20px 5px;
+  scrollbar-width: thin;
+}
+
+.matmul-visualizer .products {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  width: max-content;
+}
+
+.matmul-visualizer .product-term-container {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  position: relative;
+}
+
+.matmul-visualizer .product-term {
+  padding: 5px 10px;
+  border: 1px dashed #adb5bd;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  white-space: nowrap;
+  min-width: 120px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.matmul-visualizer .product-term.visible {
+  opacity: 1;
+}
+
+.matmul-visualizer .product-term.highlight-anim,
+.matmul-visualizer .product-term.hover-highlight {
+  transform: scale(1.05);
+  border-style: solid;
+  border-color: #f5a623;
+  background-color: rgba(245, 166, 35, 0.05);
+}
+
+.matmul-visualizer .product-result {
+  font-size: 0.9em;
+  color: #28a745;
+  font-weight: bold;
+  opacity: 0;
+  transition: opacity 0.3s 0.2s ease;
+  height: 1.2em;
+}
+
+.matmul-visualizer .product-result.visible {
+  opacity: 1;
+}
+
+.matmul-visualizer .plus-symbol {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  font-weight: bold;
+  font-size: 1.5em;
+  color: #6c757d;
+}
+
+.matmul-visualizer .plus-symbol.visible {
+  opacity: 1;
+}
+
+.matmul-visualizer .sum-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+  background-color: white;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  width: calc(100% - 30px);
+}
+
+.matmul-visualizer .sum-row {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  width: 100%;
+}
+
+.matmul-visualizer .sum-label {
+  font-size: 2em;
+  font-weight: bold;
+}
+
+.matmul-visualizer .sum-equation-scroll {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 5px;
+  scrollbar-width: thin;
+}
+
+.matmul-visualizer .sum-equation {
+  display: flex;
+  align-items: center;
+  width: max-content;
+  gap: 8px;
+  font-size: 1.2em;
+  color: #333;
+}
+
+.matmul-visualizer .sum-term {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  transition: all 0.2s;
+  cursor: pointer;
+  background-color: white;
+}
+
+.matmul-visualizer .sum-term.hover-highlight {
+  border-color: #f5a623;
+  background-color: rgba(245, 166, 35, 0.1);
+}
+
+.matmul-visualizer .sum-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 55px;
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+.matmul-visualizer .sum-value {
+  padding: 10px 20px;
+  font-size: 1.3em;
+  font-weight: bold;
+  border: 2px solid #28a745;
+  border-radius: 8px;
+  background-color: rgba(40, 167, 69, 0.1);
+  color: #155724;
+  transition: background-color 0.3s ease;
+}
+
+/* Generic Controls Styles */
+.animation-controls-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  width: 90%;
+}
+.buttons-group {
+  display: flex;
+  gap: 10px;
+}
+.buttons-group button {
+  padding: 8px 16px;
+  font-size: 1em;
+  cursor: pointer;
+  border: 1px solid #6c757d;
+  border-radius: 4px;
+  background-color: #fff;
+  transition: all 0.2s ease;
+}
+.buttons-group button:hover {
+  background-color: #f0f2f5;
+}
+.buttons-group button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.buttons-group button.playing {
+  background-color: #6c757d;
+  color: #fff;
+}
+.timeline-slider {
+  width: 100%;
+  cursor: pointer;
+}
+/* END OF FILE: src/components/visualization/MatMulVisualizer/MatMulVisualizer.css */

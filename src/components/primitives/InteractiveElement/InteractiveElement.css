@@ -1,0 +1,42 @@
+/* FILE: src/components/primitives/InteractiveElement/InteractiveElement.css */
+.interactive-element {
+  min-width: 45px;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  font-family: 'SF Mono', 'Consolas', 'Menlo', monospace;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  padding: 0 5px;
+}
+
+.interactive-element:hover {
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 5;
+}
+
+.interactive-element.target {
+  background-color: var(--highlight-target-bg);
+  color: var(--highlight-target-color);
+  border: 2px solid var(--highlight-target-border);
+  font-weight: bold;
+  transform: scale(1.2);
+  z-index: 10;
+}
+
+.interactive-element.source {
+  background-color: var(--highlight-source-bg);
+  color: var(--highlight-source-color);
+  border: 1.5px solid var(--highlight-source-border);
+  z-index: 2;
+}
+/* END OF FILE: src/components/primitives/InteractiveElement/InteractiveElement.css */

@@ -3041,6 +3041,14 @@ export const useSplitPane = (initialPrimarySize: number, minPrimarySize: number 
 
 
 ================================================================================
+### 文件路径: src/index.css
+================================================================================
+
+
+
+
+
+================================================================================
 ### 文件路径: src/index.tsx
 ================================================================================
 
@@ -3511,6 +3519,14 @@ export const TopicPage: React.FC = () => {
 
 
 ================================================================================
+### 文件路径: src/react-app-env.d.ts
+================================================================================
+
+
+
+
+
+================================================================================
 ### 文件路径: src/topics/attention-variants/AttentionVariantsTopic.css
 ================================================================================
 
@@ -3629,8 +3645,9 @@ export const TopicPage: React.FC = () => {
     gap: 10px;
 }
 
+/* [MODIFIED] Changed text-align to left for paragraph text */
 .attention-calculation-step > p {
-    text-align: center;
+    text-align: left;
 }
 
 
@@ -3645,6 +3662,7 @@ export const TopicPage: React.FC = () => {
     border-bottom: 1px dashed var(--border-color);
 }
 
+/* [MODIFIED] viz-formula-group is now the scrolling container */
 .viz-formula-group {
     width: 100%;
     overflow-x: auto;
@@ -3656,18 +3674,21 @@ export const TopicPage: React.FC = () => {
     margin-bottom: 10px;
 }
 
+/* [MODIFIED] viz-formula-row must now be max-content width to trigger the scrollbar */
 .viz-formula-row {
     display: flex;
     align-items: center;
     gap: 15px;
-    width: max-content;
-    padding: 0 10px;
+    width: max-content; /* This is the key change */
+    padding: 0 10px 0 10px; /* Add some padding for scroll boundaries */
+    min-width: 100%; /* Ensure it at least fills the container if content is small */
+    box-sizing: border-box;
 }
 .viz-formula-row.vertical {
     flex-direction: column;
     align-items: center;
     gap: 10px;
-    width: 100%;
+    width: 100%; /* Vertical rows don't need max-content */
 }
 
 .viz-formula-row > * {
@@ -3780,6 +3801,153 @@ export const TopicPage: React.FC = () => {
 .summary-table td:hover::after {
     opacity: 1;
 }
+
+
+/* --- [NEW STYLES] Ported from transformer-explorer for consistency --- */
+
+/* This container adds the border and background to the matrix grid */
+.matrix-container {
+    display: inline-block;
+    border: 1px solid #ccc;
+    padding: 5px;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+.matrix-grid {
+    display: grid;
+    gap: 3px;
+}
+.symbolic-matrix-grid {
+    display: grid;
+    gap: 2px;
+}
+
+/* Shared matrix element style */
+.matrix-element {
+    width: 45px;
+    height: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    font-family: monospace;
+    font-size: 0.8em;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    position: relative;
+    z-index: 2;
+    font-weight: normal;
+}
+.matrix-ellipsis {
+    width: 45px;
+    height: 25px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #aaa;
+    font-size: 1.2em;
+    font-family: monospace;
+}
+
+.matrix-element:hover {
+    transform: scale(1.1);
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0,123,255,0.5);
+    z-index: 5;
+}
+
+.matrix-element.source {
+    background-color: var(--highlight-source-bg);
+    color: var(--highlight-source-color);
+    border: 1.5px solid var(--highlight-source-border);
+}
+.matrix-element.target {
+    background-color: var(--highlight-target-bg);
+    color: var(--highlight-target-color);
+    border: 1.5px solid var(--highlight-target-border);
+}
+.matrix-element.prob-max {
+    box-shadow: 0 0 8px 2px var(--highlight-target-border);
+    font-weight: bold;
+    transform: scale(1.15);
+    z-index: 6;
+}
+
+/* Shared symbolic element style */
+.symbolic-element, .symbolic-ellipsis {
+    min-width: 60px;
+    min-height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.9em;
+    border-radius: 2px;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    transition: all 0.2s ease-in-out;
+}
+.symbolic-ellipsis {
+    border-style: dashed;
+    color: #aaa;
+}
+.symbolic-element.source {
+    background-color: var(--highlight-source-bg);
+    border-color: var(--highlight-source-border);
+}
+.symbolic-element.target {
+    background-color: var(--highlight-target-bg);
+    border-color: var(--highlight-target-border);
+}
+
+/* Matrix label styles */
+.matrix-label-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+.matrix-label {
+    text-align: center;
+    font-weight: bold;
+    font-family: monospace;
+    font-size: 1.1em;
+    margin: 0;
+}
+.matrix-symbol-tag {
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 3px 7px;
+    border-radius: 5px;
+    font-size: 1.1em;
+    border: 1px solid #ced4da;
+    line-height: 1;
+    font-family: 'Times New Roman', serif;
+}
+.matrix-label-side .matrix-symbol-tag {
+    font-size: 1.2em; /* Make side labels slightly larger */
+}
+
+/* Header item styles */
+.matrix-header-item, .symbolic-header-item {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f0f2f5;
+    color: #909399;
+    font-family: monospace;
+    font-size: 0.8em;
+    font-weight: bold;
+    border-radius: 2px;
+    padding: 2px;
+    box-sizing: border-box;
+    min-height: 15px;
+}
+.symbolic-header-item {
+    background-color: transparent;
+}
 /* END OF FILE: src/topics/attention-variants/AttentionVariantsTopic.css */
 
 
@@ -3825,7 +3993,7 @@ export const AttentionVariantsTopic: React.FC = () => {
     const vizRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
     const explanationRefs = useRef<{[key: string]: HTMLDivElement | null}>({});
 
-    const { primarySize, separatorProps, containerProps } = useSplitPane(window.innerWidth * 0.455);
+    const { primarySize, separatorProps, containerProps } = useSplitPane(window.innerWidth * 0.45);
 
     const attentionData: AttentionData | null = useAttention(dims);
 
@@ -4840,6 +5008,8 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
     const containerClassName = isPlaceholder ? 'placeholder-matrix' : '';
 
     const matrixGrid = (
+        // [MODIFIED] Renamed symbolic-matrix-grid to matrix-grid to share styles
+        // but kept symbolic-specific styles inside symbolic-matrix-grid for element sizing
         <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
             {/* Top-left corner & Column Headers */}
             {shouldShowHeaders && <div key="corner" />}
@@ -4878,7 +5048,8 @@ export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps>
     return (
         <div className={wrapperClasses.join(' ')}>
             <div className="matrix-label-side"><InlineMath math={`${mathSymbol}`} /></div>
-            <div className={containerClassName}>
+            {/* [MODIFIED] Wrap grid in the .matrix-container to get shared border/bg style */}
+            <div className={`${containerClassName} matrix-container`}>
                 {matrixGrid}
             </div>
             <div className="matrix-label-container">
@@ -5042,37 +5213,40 @@ export const Matrix: React.FC<MatrixProps> = ({ name, data, highlight, onElement
 
 
     const matrixGrid = (
-        <div className="matrix-grid" data-name={name} style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
-            {shouldShowHeaders && <div key="corner" />}
-            {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
-                <div key={`ch-${cIdx}`} className="matrix-header-item">{c}</div>
-            ))}
-            {visibleRowIndices.map((r, rIdx) => (
-                <React.Fragment key={`row-frag-${rIdx}`}>
-                    {shouldShowHeaders && <div className="matrix-header-item">{r}</div>}
-                    {visibleColIndices.map((c, cIdx) => {
-                        if (r === ELLIPSIS) {
-                            return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
-                        }
-                        if (c === ELLIPSIS) {
-                            return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
-                        }
-                        const originalRow = isTransposed ? c : r;
-                        const originalCol = isTransposed ? r : c;
-                        return (
-                            <Element
-                                key={`${name}-${originalRow}-${originalCol}`}
-                                name={name}
-                                row={originalRow}
-                                col={originalCol}
-                                value={data[originalRow][originalCol]}
-                                highlight={highlight}
-                                onElementClick={onElementClick}
-                            />
-                        );
-                    })}
-                </React.Fragment>
-            ))}
+        // [MODIFIED] Add the matrix-container wrapper for styles
+        <div className="matrix-container">
+            <div className="matrix-grid" data-name={name} style={{ gridTemplateColumns: shouldShowHeaders ? `auto repeat(${visibleColIndices.length}, auto)` : `repeat(${visibleColIndices.length}, auto)` }}>
+                {shouldShowHeaders && <div key="corner" />}
+                {shouldShowHeaders && visibleColIndices.map((c, cIdx) => (
+                    <div key={`ch-${cIdx}`} className="matrix-header-item">{c}</div>
+                ))}
+                {visibleRowIndices.map((r, rIdx) => (
+                    <React.Fragment key={`row-frag-${rIdx}`}>
+                        {shouldShowHeaders && <div className="matrix-header-item">{r}</div>}
+                        {visibleColIndices.map((c, cIdx) => {
+                            if (r === ELLIPSIS) {
+                                return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
+                            }
+                            if (c === ELLIPSIS) {
+                                return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="matrix-ellipsis">…</div>;
+                            }
+                            const originalRow = isTransposed ? c : r;
+                            const originalCol = isTransposed ? r : c;
+                            return (
+                                <Element
+                                    key={`${name}-${originalRow}-${originalCol}`}
+                                    name={name}
+                                    row={originalRow}
+                                    col={originalCol}
+                                    value={data[originalRow][originalCol]}
+                                    highlight={highlight}
+                                    onElementClick={onElementClick}
+                                />
+                            );
+                        })}
+                    </React.Fragment>
+                ))}
+            </div>
         </div>
     );
 
@@ -8065,95 +8239,101 @@ import { InteractiveSymbolicElement } from './InteractiveSymbolicElement';
 import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 
 interface InteractiveSymbolicMatrixProps {
-  name: string;
-  rows: number;
-  cols: number;
-  highlight: HighlightState;
-  transpose?: boolean;
-  truncate?: boolean;
-  onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
-  sideLabel?: boolean; // For explicit override
+    name: string;
+    rows: number;
+    cols: number;
+    highlight: HighlightState;
+    transpose?: boolean;
+    truncate?: boolean;
+    onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+    sideLabel?: boolean; // For explicit override
 }
 
 export const InteractiveSymbolicMatrix: React.FC<InteractiveSymbolicMatrixProps> = React.memo(({ name, rows, cols, highlight, transpose = false, truncate = true, onSymbolClick, sideLabel = false }) => {
-  const displayRows = transpose ? cols : rows;
-  const displayCols = transpose ? rows : cols;
-  const symbol = getSymbolParts(name);
+    const displayRows = transpose ? cols : rows;
+    const displayCols = transpose ? rows : cols;
+    const symbol = getSymbolParts(name);
 
-  let focusRow = -1;
-  let focusCol = -1;
+    let focusRow = -1;
+    let focusCol = -1;
 
-  if (highlight.target?.name === name) {
-    focusRow = highlight.target.row;
-    focusCol = highlight.target.col;
-  }
+    if (highlight.target?.name === name) {
+        focusRow = highlight.target.row;
+        focusCol = highlight.target.col;
+    }
 
-  const highlightedTarget = (highlight.target?.name === name) ? highlight.target : null;
+    const highlightedTarget = (highlight.target?.name === name) ? highlight.target : null;
 
-  const visibleRowIndices = truncate ? getVisibleIndices(displayRows, transpose ? focusCol : focusRow) : Array.from({ length: displayRows }, (_, i) => i);
-  const visibleColIndices = truncate ? getVisibleIndices(displayCols, transpose ? focusRow : focusCol) : Array.from({ length: displayCols }, (_, i) => i);
+    const visibleRowIndices = truncate ? getVisibleIndices(displayRows, transpose ? focusCol : focusRow) : Array.from({ length: displayRows }, (_, i) => i);
+    const visibleColIndices = truncate ? getVisibleIndices(displayCols, transpose ? focusRow : focusCol) : Array.from({ length: displayCols }, (_, i) => i);
 
-  const isTargetMatrix = !!highlightedTarget;
+    const isTargetMatrix = !!highlightedTarget;
 
-  const gridStyle: React.CSSProperties = {
-      gridTemplateColumns: isTargetMatrix
-          ? `auto repeat(${visibleColIndices.length}, auto)`
-          : `repeat(${visibleColIndices.length}, auto)`,
-  };
+    const gridStyle: React.CSSProperties = {
+        gridTemplateColumns: isTargetMatrix
+            ? `auto repeat(${visibleColIndices.length}, auto)`
+            : `repeat(${visibleColIndices.length}, auto)`,
+    };
 
 
-  let mathSymbol = symbol.base;
-  if (symbol.superscript) mathSymbol += `^{${symbol.superscript}}`;
-  if (transpose) mathSymbol += '^T';
+    let mathSymbol = symbol.base;
+    if (symbol.superscript) mathSymbol += `^{${symbol.superscript}}`;
+    if (transpose) mathSymbol += '^T';
 
-  const subscriptParts = [];
-  if (symbol.subscript) {
-    subscriptParts.push(symbol.subscript);
-  }
-  subscriptParts.push(`${rows} \\times ${cols}`);
-  mathSymbol += `_{${subscriptParts.join(',')}}`;
+    const subscriptParts = [];
+    if (symbol.subscript) {
+        subscriptParts.push(symbol.subscript);
+    }
+    subscriptParts.push(`${rows} \\times ${cols}`);
+    mathSymbol += `_{${subscriptParts.join(',')}}`;
 
-  const matrixGrid = (
-      <div className="symbolic-matrix-grid" style={gridStyle}>
-        {isTargetMatrix && <div key="corner" />}
-        {isTargetMatrix && visibleColIndices.map((c, cIdx) => (
-            <div key={`ch-${cIdx}`} className="symbolic-header-item">{c}</div>
-        ))}
-        {visibleRowIndices.map((r, rIdx) => (
-            <React.Fragment key={`row-frag-${rIdx}`}>
-                {isTargetMatrix && <div className="symbolic-header-item">{r}</div>}
-                {visibleColIndices.map((c, cIdx) => {
-                     if (r === ELLIPSIS) return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="symbolic-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
-                     if (c === ELLIPSIS) return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="symbolic-ellipsis">…</div>;
-                    const originalRow = transpose ? c : r;
-                    const originalCol = transpose ? r : c;
-                    return (
-                        <InteractiveSymbolicElement
-                            key={`elem-r${r}-c${c}`}
-                            name={name}
-                            base={symbol.base}
-                            subscript={symbol.subscript}
-                            row={originalRow}
-                            col={originalCol}
-                            highlight={highlight}
-                            onClick={(event) => onSymbolClick({ name, row: originalRow, col: originalCol }, event)}
-                        />
-                    );
-                })}
-            </React.Fragment>
-        ))}
-      </div>
-  );
-
-  return (
-    <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`}>
-        <div className="matrix-label-side"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
-        <div className="symbolic-matrix-container">
-            {matrixGrid}
+    const matrixGrid = (
+        <div className="symbolic-matrix-grid" style={gridStyle}>
+            {isTargetMatrix && <div key="corner" />}
+            {isTargetMatrix && visibleColIndices.map((c, cIdx) => (
+                <div key={`ch-${cIdx}`} className="symbolic-header-item">{c}</div>
+            ))}
+            {visibleRowIndices.map((r, rIdx) => (
+                <React.Fragment key={`row-frag-${rIdx}`}>
+                    {isTargetMatrix && <div className="symbolic-header-item">{r}</div>}
+                    {visibleColIndices.map((c, cIdx) => {
+                        if (r === ELLIPSIS) return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="symbolic-ellipsis">{c === ELLIPSIS ? '⋱' : '…'}</div>;
+                        if (c === ELLIPSIS) return <div key={`ellipsis-r-${rIdx}-c-${cIdx}`} className="symbolic-ellipsis">…</div>;
+                        const originalRow = transpose ? c : r;
+                        const originalCol = transpose ? r : c;
+                        return (
+                            <InteractiveSymbolicElement
+                                key={`elem-r${r}-c${c}`}
+                                name={name}
+                                base={symbol.base}
+                                subscript={symbol.subscript}
+                                row={originalRow}
+                                col={originalCol}
+                                highlight={highlight}
+                                onClick={(event) => onSymbolClick({ name, row: originalRow, col: originalCol }, event)}
+                            />
+                        );
+                    })}
+                </React.Fragment>
+            ))}
         </div>
-        <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
-    </div>
-  );
+    );
+
+    return (
+        <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`}>
+            {/* [MODIFIED] Applied the .matrix-symbol-tag wrapper */}
+            <div className="matrix-label-side">
+                <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
+            </div>
+            <div className="symbolic-matrix-container">
+                {matrixGrid}
+            </div>
+            {/* [MODIFIED] Applied the .matrix-symbol-tag wrapper */}
+            <div className="matrix-label-container">
+                <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
+            </div>
+        </div>
+    );
 });
 // END OF FILE: src/topics/transformer-explorer/components/InteractiveSymbolicMatrix.tsx
 
@@ -8173,66 +8353,72 @@ import { InteractiveSymbolicElement } from './InteractiveSymbolicElement';
 import { getVisibleIndices, ELLIPSIS } from '../utils/matrixView';
 
 interface InteractiveSymbolicVectorProps {
-  name: string;
-  data: VectorType;
-  highlight: HighlightState;
-  onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
-  sideLabel?: boolean; // For explicit override
+    name: string;
+    data: VectorType;
+    highlight: HighlightState;
+    onSymbolClick: (element: ElementIdentifier, event: React.MouseEvent) => void;
+    sideLabel?: boolean; // For explicit override
 }
 
 export const InteractiveSymbolicVector: React.FC<InteractiveSymbolicVectorProps> = React.memo(({ name, data, highlight, onSymbolClick, sideLabel = false }) => {
-  const displayCols = data.length;
-  const symbol = getSymbolParts(name);
+    const displayCols = data.length;
+    const symbol = getSymbolParts(name);
 
-  let focusCol = -1;
-  if (highlight.target?.name === name) {
-    focusCol = highlight.target.col;
-  }
-
-  const visibleColIndices = getVisibleIndices(displayCols, focusCol);
-
-  const gridElements = visibleColIndices.map((c, cIdx) => {
-    if (c === ELLIPSIS) {
-        return <div key={`ellipsis-c-${cIdx}`} className="symbolic-ellipsis">…</div>;
+    let focusCol = -1;
+    if (highlight.target?.name === name) {
+        focusCol = highlight.target.col;
     }
 
-    return (
-        <InteractiveSymbolicElement
-            key={`elem-${c}`}
-            name={name}
-            base={symbol.base}
-            subscript={symbol.subscript}
-            col={c}
-            highlight={highlight}
-            onClick={(event) => onSymbolClick({ name, row: 0, col: c }, event)}
-        />
-    );
-  });
+    const visibleColIndices = getVisibleIndices(displayCols, focusCol);
 
-  let mathSymbol = symbol.base;
+    const gridElements = visibleColIndices.map((c, cIdx) => {
+        if (c === ELLIPSIS) {
+            return <div key={`ellipsis-c-${cIdx}`} className="symbolic-ellipsis">…</div>;
+        }
 
-  const subscriptParts = [];
-  if (symbol.subscript) {
-    subscriptParts.push(symbol.subscript);
-  }
-  subscriptParts.push(`1 \\times ${displayCols}`);
-  mathSymbol += `_{${subscriptParts.join(',')}}`;
+        return (
+            <InteractiveSymbolicElement
+                key={`elem-${c}`}
+                name={name}
+                base={symbol.base}
+                subscript={symbol.subscript}
+                col={c}
+                highlight={highlight}
+                onClick={(event) => onSymbolClick({ name, row: 0, col: c }, event)}
+            />
+        );
+    });
 
-  const matrixGrid = (
-      <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: `repeat(${gridElements.length}, auto)` }}>
-        {gridElements}
-      </div>
-  );
+    let mathSymbol = symbol.base;
 
-  return (
-    <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`}>
-        <div className="matrix-label-side"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
-        <div className="symbolic-matrix-container">
-            {matrixGrid}
+    const subscriptParts = [];
+    if (symbol.subscript) {
+        subscriptParts.push(symbol.subscript);
+    }
+    subscriptParts.push(`1 \\times ${displayCols}`);
+    mathSymbol += `_{${subscriptParts.join(',')}}`;
+
+    const matrixGrid = (
+        <div className="symbolic-matrix-grid" style={{ gridTemplateColumns: `repeat(${gridElements.length}, auto)` }}>
+            {gridElements}
         </div>
-        <div className="matrix-label"><InlineMath>{`${mathSymbol}`}</InlineMath></div>
-    </div>
-  );
+    );
+
+    return (
+        <div className={`matrix-wrapper ${sideLabel ? 'side-label' : ''}`}>
+            {/* [MODIFIED] Applied the .matrix-symbol-tag wrapper */}
+            <div className="matrix-label-side">
+                <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
+            </div>
+            <div className="symbolic-matrix-container">
+                {matrixGrid}
+            </div>
+            {/* [MODIFIED] Applied the .matrix-symbol-tag wrapper */}
+            <div className="matrix-label-container">
+                <div className="matrix-symbol-tag"><InlineMath math={mathSymbol} /></div>
+            </div>
+        </div>
+    );
 });
 // END OF FILE: src/topics/transformer-explorer/components/InteractiveSymbolicVector.tsx
 
@@ -10825,7 +11011,7 @@ export const TransformerExplorerTopic: React.FC = () => {
     const [viewMode, setViewMode] = useState<ViewMode>('none');
     const [activeElement, setActiveElement] = useState<ElementIdentifier | null>(null);
 
-    const { primarySize, separatorProps, containerProps } = useSplitPane(window.innerWidth * 0.455);
+    const { primarySize, separatorProps, containerProps } = useSplitPane(window.innerWidth * 0.45);
 
     const transformerData: TransformerData | null = useTransformer(inputText, dims);
 

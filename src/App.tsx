@@ -1,10 +1,10 @@
 // FILE: src/App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-// [FIXED] Corrected import paths based on our new flat 'pages' directory structure
 import { HomePage } from './pages/HomePage/HomePage';
 import { TopicPage } from './pages/TopicPage/TopicPage';
-import './App.css'; // Global styles remain
+import { DirectoryPage } from './pages/DirectoryPage/DirectoryPage'; // [新增] 导入目录页面
+import './App.css';
 
 function App() {
   return (
@@ -17,6 +17,8 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/topic/:topicId" element={<TopicPage />} />
+            {/* [新增] 添加新页面的路由 */}
+            <Route path="/directory" element={<DirectoryPage />} />
           </Routes>
         </main>
       </div>
@@ -59,5 +61,4 @@ if (!document.getElementById('app-global-styles')) {
 
 
 export default App;
-
 // END OF FILE: src/App.tsx

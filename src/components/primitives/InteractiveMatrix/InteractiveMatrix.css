@@ -1,0 +1,62 @@
+/* FILE: src/components/primitives/InteractiveMatrix/InteractiveMatrix.css */
+.interactive-matrix-wrapper {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.interactive-matrix-container {
+  display: inline-block;
+  border: 1px solid #dcdfe6;
+  padding: 6px;
+  border-radius: 6px;
+  background-color: #f9fafb;
+}
+
+.interactive-matrix-grid {
+  display: grid;
+  gap: 3px;
+}
+
+.matrix-header-item,
+.matrix-ellipsis {
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'SF Mono', 'Consolas', 'Menlo', monospace;
+  font-size: 0.8em;
+  color: #909399;
+}
+
+.matrix-header-item {
+  background-color: #f0f2f5;
+  border-radius: 2px;
+  font-weight: 600;
+  min-width: 45px;
+}
+
+.matrix-ellipsis {
+  font-size: 1.2em;
+}
+
+.matrix-label-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Times New Roman', serif;
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.matrix-symbol {
+  background-color: #e9ecef;
+  color: #495057;
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid #ced4da;
+  line-height: 1;
+}
+/* END OF FILE: src/components/primitives/InteractiveMatrix/InteractiveMatrix.css */

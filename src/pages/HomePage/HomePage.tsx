@@ -7,8 +7,11 @@ import './HomePage.css';
 const TAG_COLORS = ['color-1', 'color-2', 'color-3', 'color-4', 'color-5'];
 
 const TopicCard: React.FC<{ topic: Topic }> = ({ topic }) => {
+    // [修改] 如果id是'directory'，则使用不同的链接
+    const linkTo = topic.id === 'directory' ? '/directory' : `/topic/${topic.id}`;
+
     return (
-        <Link to={`/topic/${topic.id}`} className="topic-card-link">
+        <Link to={linkTo} className="topic-card-link">
             <div className="topic-card">
                 <div className="topic-card-header">
                     <div className="topic-card-tags">
@@ -57,5 +60,4 @@ export const HomePage: React.FC = () => {
         </div>
     );
 };
-
 // END OF FILE: src/pages/HomePage/HomePage.tsx
