@@ -1,0 +1,126 @@
+/* FILE: src/components/visualization/MambaVisualizer/MambaVisualizer.css */
+.mamba-visualizer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.mamba-title {
+    font-size: 1.4em;
+    font-weight: 600;
+    color: #343a40;
+    margin-bottom: 10px;
+}
+
+.mamba-io-row {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    gap: 20px;
+}
+
+.mamba-vector-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.mamba-vector-label {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.mamba-vector {
+    display: flex;
+    gap: 4px;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+}
+
+.mamba-element {
+    width: 50px;
+    height: 28px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #e0e0e0;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 0.9em;
+    transition: all 0.3s ease;
+}
+
+.mamba-element.active, .mamba-element.highlight-state {
+    transform: scale(1.15);
+    border-color: #4a90e2;
+    background-color: rgba(74, 144, 226, 0.1);
+}
+
+.mamba-element.highlight-output {
+    border-color: #28a745;
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+.ssm-scan-container {
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    width: 100%;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.ssm-scan-title {
+    text-align: center;
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.ssm-equation {
+    font-family: 'Times New Roman', serif;
+    font-size: 1.3em;
+    text-align: center;
+    padding: 15px;
+    background: #f1f3f5;
+    border-radius: 6px;
+    margin-bottom: 20px;
+}
+
+.ssm-params {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    text-align: center;
+    font-family: monospace;
+    margin-bottom: 20px;
+}
+
+.ssm-param-item {
+    padding: 8px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background: #f8f9fa;
+}
+
+.ssm-param-item .label {
+    font-weight: bold;
+}
+
+.ssm-param-item .value {
+    color: #e63946;
+    font-weight: bold;
+}
+/* END OF FILE: src/components/visualization/MambaVisualizer/MambaVisualizer.css */

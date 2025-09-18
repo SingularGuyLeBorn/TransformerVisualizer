@@ -1,0 +1,103 @@
+/* FILE: src/components/visualization/LoRAVisualizer/LoRAVisualizer.css */
+.lora-visualizer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.lora-visualizer .lora-title {
+    font-size: 1.4em;
+    font-weight: 600;
+    color: #344a40;
+    margin-bottom: 10px;
+}
+
+.lora-visualizer .lora-flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+}
+
+.lora-visualizer .lora-branch {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+    flex-wrap: wrap;
+}
+
+.lora-visualizer .lora-main-path,
+.lora-visualizer .lora-side-path {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.lora-visualizer .lora-side-path {
+    padding: 15px;
+    border: 2px dashed #4a90e2;
+    border-radius: 12px;
+    background-color: rgba(74, 144, 226, 0.05);
+}
+
+.lora-visualizer .path-label {
+    font-weight: bold;
+    color: #4a5568;
+}
+
+.lora-visualizer .lora-matrices {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.lora-visualizer .connector {
+    font-size: 2em;
+    color: #6c757d;
+    font-weight: bold;
+}
+
+/* [ENHANCEMENT] Added styles for frozen/trainable visual distinction */
+.lora-visualizer .frozen .interactive-matrix-container {
+    background-color: #e9ecef;
+    border-color: #ced4da;
+}
+
+.lora-visualizer .frozen .interactive-element {
+    background-color: #f8f9fa;
+    opacity: 0.7; /* Make frozen elements look disabled */
+}
+
+.lora-visualizer .trainable .interactive-matrix-container {
+    border-color: #f5a623;
+    background-color: rgba(245, 166, 35, 0.05);
+    box-shadow: 0 0 8px rgba(245, 166, 35, 0.3);
+}
+
+.lora-visualizer .trainable .matrix-symbol {
+    background-color: #fffbe6;
+    border-color: #f5a623;
+}
+
+.lora-visualizer .delta .interactive-matrix-container {
+    border-color: #28a745;
+    background-color: rgba(40, 167, 69, 0.05);
+}
+
+.lora-visualizer .delta .matrix-symbol {
+    background-color: #e9f7ef;
+    border-color: #28a745;
+}
+/* END OF FILE: src/components/visualization/LoRAVisualizer/LoRAVisualizer.css */

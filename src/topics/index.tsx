@@ -2,7 +2,10 @@
 import React from 'react';
 import { TransformerExplorerTopic } from './transformer-explorer/TransformerExplorerTopic';
 import { AttentionVariantsTopic } from './attention-variants/AttentionVariantsTopic';
-import { RefactoredAttentionVariantsTopic } from './refactored-attention-variants/AttentionVariantsTopic'; // [新增] 导入新专题
+import { RefactoredAttentionVariantsTopic } from './refactored-attention-variants/AttentionVariantsTopic';
+import { RefactoredTransformerExplorerTopic } from './refactored-transformer-explorer/TransformerExplorerTopic';
+import { ComponentShowcaseTopic } from './component-showcase/ComponentShowcaseTopic';
+import { ComputationGraphShowcase } from './computation-graph-showcase/ComputationGraphShowcase';
 
 export interface Topic {
     id: string;
@@ -13,17 +16,40 @@ export interface Topic {
     component: React.FC;
 }
 
-// [新增] 为目录页创建一个占位组件
 const DirectoryPlaceholder: React.FC = () => <div>目录页</div>;
 
 export const topics: Topic[] = [
     {
+        id: 'component-showcase',
+        title: '通用组件展厅',
+        description: '一个用于集中展示和测试所有已完成的通用可视化组件的页面。在这里，您可以直观地看到每个组件的最新效果。',
+        date: '持续更新',
+        tags: ['Components', 'Showcase', 'Dev'],
+        component: ComponentShowcaseTopic,
+    },
+    {
+        id: 'computation-graph-showcase',
+        title: '计算图展厅',
+        description: '展示可拖拽节点（DraggableNode）组件，这是未来构建完全交互式计算图编辑器的第一步。',
+        date: '2025年9月10日',
+        tags: ['Components', 'Graph', 'Dev'],
+        component: ComputationGraphShowcase,
+    },
+    {
         id: 'refactored-attention-variants',
         title: '[新版] 多头注意力变体 (组件化重构)',
-        description: '【推荐】使用全新的通用组件库重构。展示了从MHA到MLA的演进，验证了新组件的复用性和强大功能。',
-        date: '2025年9月8日',
-        tags: ['Refactored', 'Components', 'GQA', 'MLA', 'Recommended'],
+        description: '【推荐】一篇深度科普文章，使用通用组件库，详细剖析从MHA到MLA的演进，深入探讨KV Cache优化的核心思想。',
+        date: '2025年9月9日',
+        tags: ['深度文章', 'Attention', 'GQA', 'MLA', '推荐'],
         component: RefactoredAttentionVariantsTopic,
+    },
+    {
+        id: 'refactored-transformer-explorer',
+        title: '[新版] Transformer 深度探索器 (组件化重构)',
+        description: '【推荐】使用通用组件库重构的Transformer可视化工具。内容更详尽，交互更流畅，为您揭示Transformer的内部工作原理。',
+        date: '2025年9月9日',
+        tags: ['深度文章', 'Transformer', '组件化', '推荐'],
+        component: RefactoredTransformerExplorerTopic,
     },
     {
         id: 'directory',
@@ -31,7 +57,7 @@ export const topics: Topic[] = [
         description: '查看本项目所有核心可视化组件的开发计划、当前状态和设计理念，了解项目的整体架构和未来方向。',
         date: '进行中',
         tags: ['Project', 'Roadmap', 'Architecture'],
-        component: DirectoryPlaceholder, // 该组件不会实际渲染，因为路由直接指向DirectoryPage
+        component: DirectoryPlaceholder,
     },
     {
         id: 'attention-variants',

@@ -1,0 +1,149 @@
+/* FILE: src/topics/refactored-transformer-explorer/TransformerExplorerTopic.css */
+/* This file is a copy of the original TransformerExplorerTopic.css to ensure the refactored
+   component is fully self-contained and demonstrates usage of new components. */
+
+.main-layout {
+    display: flex;
+    gap: 20px;
+    flex-grow: 1;
+    overflow: hidden;
+    padding: 20px;
+    min-height: 0;
+    position: relative;
+}
+
+.column {
+    flex: 1;
+    background: var(--component-bg);
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    overflow-y: auto;
+    min-height: 0;
+    min-width: 0;
+}
+
+.column-content {
+    padding: 20px;
+}
+
+.column.left-column {
+    flex: 1.4;
+}
+
+.column h2 {
+    font-size: 1.6em;
+    margin: -20px -20px 20px -20px;
+    padding: 20px 20px 15px 20px;
+    text-align: center;
+    color: #000;
+    position: sticky;
+    top: -21px;
+    background: inherit;
+    z-index: 10;
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 12px 12px 0 0;
+}
+
+.diagram-component {
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    margin-bottom: 15px;
+    background-color: #fdfdfd;
+    transition: all 0.3s ease;
+}
+
+.diagram-component.active {
+    border-color: var(--highlight-formula-border) !important;
+    box-shadow: 0 0 30px var(--highlight-formula-bg) !important;
+}
+
+.component-header {
+    background-color: var(--component-header-bg);
+    padding: 8px 15px;
+    font-weight: bold;
+    font-size: 1.1em;
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+}
+
+.component-body {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.arrow-down {
+    width: 100%;
+    text-align: center;
+    font-size: 24px;
+    color: var(--arrow-color);
+    margin: 5px 0;
+}
+
+.op-symbol {
+    font-size: 1.6em;
+    font-weight: bold;
+    color: #909399;
+    align-self: center;
+    margin: 0 5px;
+}
+
+.math-block {
+    margin-bottom: 25px;
+    padding: 20px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    background: #fff;
+    transition: all 0.3s ease;
+}
+.math-block.active {
+    border-color: var(--highlight-formula-border) !important;
+    box-shadow: 0 0 30px var(--highlight-bg) !important;
+}
+.math-block h3 {
+    margin: -20px -20px 15px -20px;
+    padding: 15px 20px;
+    font-size: 1.25em;
+    color: #000;
+    border-bottom: 1px solid #eee;
+    border-radius: 12px 12px 0 0;
+    background-color: var(--component-header-bg);
+}
+.math-block p, .math-block li, .math-block h5 {
+    line-height: 1.7;
+}
+
+.viz-formula-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 15px 10px;
+    border: 1px solid #eef;
+    border-radius: 8px;
+    background-color: rgba(0,0,0,0.015);
+    gap: 5px;
+    box-sizing: border-box;
+}
+.viz-formula-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    justify-content: center;
+    width: max-content;
+    padding: 0 5px;
+    flex-wrap: nowrap;
+}
+.viz-formula-row.vertical {
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+/* END OF FILE: src/topics/refactored-transformer-explorer/TransformerExplorerTopic.css */

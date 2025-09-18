@@ -23,90 +23,224 @@
     margin: 10px auto 0;
 }
 
-.category-section {
-    margin-bottom: 40px;
+/* [NEW] Overall Progress Bar */
+.overall-progress {
+    margin-bottom: 50px;
+    padding: 25px;
+    border-radius: 12px;
+    background-color: #f0f7ff; /* Light blue background */
+    border: 1px solid #a0cfff;
+    box-shadow: 0 6px 18px rgba(0, 123, 255, 0.1);
 }
 
-.category-title {
+.overall-progress h3 {
+    font-size: 1.8em;
+    color: #007bff;
+    margin: 0 0 15px 0;
+    text-align: center;
+}
+
+.progress-bar-wrapper {
+    width: 100%;
+    background-color: #e9ecef;
+    border-radius: 8px;
+    height: 18px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0; /* Controlled by JS */
+    background-color: #28a745; /* Green */
+    transition: width 0.8s ease-out;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 10px;
+    box-sizing: border-box;
+}
+
+.progress-bar.transition-active {
+    background-color: #007bff; /* Blue during transition */
+}
+
+.progress-text {
+    font-size: 0.9em;
+    font-weight: bold;
+    color: #ffffff; /* White text on bar */
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.category-section {
+    margin-bottom: 50px;
+    border-top: 1px solid #e4e7ed;
+    padding-top: 30px;
+}
+
+.category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.category-header h3 {
     font-size: 2em;
     color: #303133;
-    margin-bottom: 25px;
-    padding-bottom: 10px;
-    border-bottom: 3px solid var(--highlight-color);
-    display: inline-block;
+    margin: 0;
 }
 
+.category-description {
+    font-size: 1.1em;
+    color: #555;
+    margin-top: 10px;
+    margin-bottom: 25px; /* Added margin */
+}
+
+.category-progress-wrapper {
+    width: 200px;
+    height: 12px;
+    background-color: #e9ecef;
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+}
+
+.category-progress-bar {
+    height: 100%;
+    width: 0;
+    background-color: #28a745;
+    transition: width 0.8s ease-out;
+}
+
+.category-progress-text {
+    position: absolute;
+    right: 5px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.8em;
+    font-weight: bold;
+    color: #ffffff;
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.3);
+}
+
+/* [NEW] Component Card Layout */
 .component-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 25px;
+    grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    gap: 30px;
 }
 
 .component-card {
-    background-color: #fff;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.07);
-    padding: 20px;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    border: 1px solid #eef;
+    transition: all 0.2s ease-in-out;
+    overflow: hidden; /* Ensure expanded content stays within bounds */
+}
+
+.component-card.expanded {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    transform: translateY(-5px);
+}
+
+.card-header {
     display: flex;
-    flex-direction: column;
-    transition: all 0.3s ease;
-    border-left: 5px solid;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #eef;
+    cursor: pointer;
 }
 
-.component-card h4 {
-    font-size: 1.3em;
-    margin: 0 0 10px 0;
-    color: #303133;
+.card-title-status {
+    display: flex;
+    align-items: center;
+    gap: 15px;
 }
 
-.component-card p {
-    font-size: 0.95em;
-    line-height: 1.6;
-    color: #606266;
-    flex-grow: 1;
-    margin: 0 0 15px 0;
+.card-title {
+    font-size: 1.4em;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
 }
 
 .status-badge {
-    padding: 4px 10px;
+    padding: 5px 12px;
     border-radius: 15px;
     font-size: 0.8em;
     font-weight: 600;
-    align-self: flex-start;
+    text-transform: uppercase;
 }
 
-/* Status-specific styling */
-.component-card.completed {
-    border-left-color: #67c23a;
-}
-.component-card.completed .status-badge {
-    background-color: #f0f9eb;
-    color: #67c23a;
-}
-.component-card.completed:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+.status-badge.completed { background-color: #f0f9eb; color: #67c23a; }
+.status-badge.in-progress { background-color: #ecf5ff; color: #409eff; }
+.status-badge.planned { background-color: #f4f4f5; color: #909399; }
+
+.expand-toggle {
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    color: #606266;
+    cursor: pointer;
+    transition: transform 0.2s ease;
 }
 
-.component-card.planned {
-    border-left-color: #e4e7ed;
-    background-color: #fcfcfc;
-    opacity: 0.7;
-}
-.component-card.planned .status-badge {
-    background-color: #f4f4f5;
-    color: #909399;
+.expand-toggle.expanded {
+    transform: rotate(180deg);
 }
 
-.component-card.in-progress {
-    border-left-color: #409eff;
+.card-content {
+    padding: 20px;
+    font-size: 0.95em;
+    line-height: 1.6;
+    color: #606266;
 }
-.component-card.in-progress .status-badge {
-    background-color: #ecf5ff;
-    color: #409eff;
+
+.card-details {
+    padding: 0 20px 20px 20px;
+    max-height: 0; /* Controlled by JS for expand/collapse */
+    overflow: hidden;
+    transition: max-height 0.4s ease-out;
 }
-.component-card.in-progress:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+
+.card-details.expanded {
+    max-height: 800px; /* Max height for smooth transition */
+}
+
+.details-section {
+    margin-top: 20px;
+    border-top: 1px dashed #eee;
+    padding-top: 20px;
+}
+
+.details-section h4 {
+    font-size: 1.1em;
+    color: #34495e;
+    margin: 0 0 10px 0;
+    font-weight: 600;
+}
+
+.details-section ul {
+    list-style: disc;
+    padding-left: 20px;
+    margin: 0;
+}
+
+.details-section li {
+    margin-bottom: 8px;
+    color: #606266;
+}
+
+.details-section ul.nitpick-list {
+    list-style-type: '👉';
+    color: #e67e22; /* Highlight nitpicks */
+}
+
+.details-section ul.nitpick-list li {
+    font-weight: 500;
 }
 /* END OF FILE: src/pages/DirectoryPage/DirectoryPage.css */

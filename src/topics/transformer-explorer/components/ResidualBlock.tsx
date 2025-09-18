@@ -1,4 +1,4 @@
-// FILE: src/components/ResidualBlock.tsx
+// FILE: src/components/ResidualAddVisualizer.tsx
 import React from 'react';
 import { ElementIdentifier, HighlightState } from '../types';
 import { InlineMath } from 'react-katex';
@@ -41,4 +41,4 @@ export const ResidualBlock: React.FC<ResidualBlockProps> = ({ id, type, matrixSy
     </div>
   );
 };
-// END OF FILE: src/components/ResidualBlock.tsx
+// END OF FILE: src/components/ResidualAddVisualizer.tsx

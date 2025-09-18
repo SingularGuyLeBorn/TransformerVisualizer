@@ -1,0 +1,79 @@
+/* FILE: src/components/visualization/RMSNormVisualizer/RMSNormVisualizer.css */
+.rmsnorm-visualizer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.rmsnorm-visualizer .step-container {
+    width: 100%;
+    padding: 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    background-color: #fff;
+    text-align: center;
+}
+
+.rmsnorm-visualizer .title {
+    margin: 0 0 10px 0;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.rmsnorm-visualizer .description {
+    margin: 0 0 15px 0;
+    color: #6c757d;
+    min-height: 40px;
+    font-size: 0.95em;
+}
+
+.rmsnorm-visualizer .vector {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    flex-wrap: wrap;
+    padding: 5px;
+}
+
+.rmsnorm-visualizer .element {
+    min-width: 60px;
+    padding: 5px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background-color: #fff;
+    transition: all 0.3s ease;
+}
+
+.rmsnorm-visualizer .highlight {
+    border-color: #fd7e14;
+    background-color: rgba(253, 126, 20, 0.1);
+    transform: scale(1.1);
+}
+
+.rmsnorm-visualizer .connector {
+    font-size: 2em;
+    color: #6c757d;
+    margin: 5px 0;
+    transition: opacity 0.3s ease;
+}
+
+.rmsnorm-visualizer .scalar {
+    padding: 8px 15px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    background-color: #e9ecef;
+    transition: all 0.3s ease;
+}
+/* END OF FILE: src/components/visualization/RMSNormVisualizer/RMSNormVisualizer.css */

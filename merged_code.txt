@@ -8866,10 +8866,10 @@ export const MultiHeadAttention: React.FC<MHAProps> = ({ baseName, data, highlig
 
 
 ================================================================================
-### 文件路径: src/topics/transformer-explorer/components/ResidualBlock.tsx
+### 文件路径: src/topics/transformer-explorer/components/ResidualAddVisualizer.tsx
 ================================================================================
 
-// FILE: src/components/ResidualBlock.tsx
+// FILE: src/components/ResidualAddVisualizer.tsx
 import React from 'react';
 import { ElementIdentifier, HighlightState } from '../types';
 import { InlineMath } from 'react-katex';
@@ -8912,7 +8912,7 @@ export const ResidualBlock: React.FC<ResidualBlockProps> = ({ id, type, matrixSy
     </div>
   );
 };
-// END OF FILE: src/components/ResidualBlock.tsx
+// END OF FILE: src/components/ResidualAddVisualizer.tsx
 
 
 

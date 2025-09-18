@@ -1,0 +1,118 @@
+/* FILE: src/components/visualization/ActivationVisualizer/ActivationVisualizer.css */
+.activation-visualizer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.activation-visualizer .title {
+    margin: 0 0 10px 0;
+    font-size: 1.2em;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.activation-visualizer .main-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+}
+
+.activation-visualizer .vector-section {
+    display: flex;
+    width: 100%;
+    gap: 15px;
+    align-items: center;
+}
+
+.activation-visualizer .label {
+    font-weight: bold;
+    color: #495057;
+    font-size: 1.5em;
+    width: 80px;
+    text-align: right;
+}
+
+.activation-visualizer .vector-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.activation-visualizer .vector-scroll {
+    overflow-x: auto;
+    padding: 5px;
+}
+
+.activation-visualizer .vector {
+    display: flex;
+    gap: 5px;
+    width: max-content;
+}
+
+.activation-visualizer .element-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.activation-visualizer .index-label {
+    width: 60px;
+    height: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #495057;
+    font-size: 0.8em;
+    font-family: monospace;
+    background-color: #f0f2f5;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.activation-visualizer .element {
+    width: 60px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background-color: #fff;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.activation-visualizer .highlight-anim {
+    transform: scale(1.15);
+    border-color: #4a90e2;
+    background-color: rgba(74, 144, 226, 0.1);
+}
+
+.activation-visualizer .highlight-hover {
+    border-color: #f5a623;
+    background-color: rgba(245, 166, 35, 0.1);
+}
+
+.activation-visualizer .calculation-box {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 1.2em;
+    transition: opacity 0.3s, background-color 0.3s;
+    font-family: monospace;
+}
+/* END OF FILE: src/components/visualization/ActivationVisualizer/ActivationVisualizer.css */

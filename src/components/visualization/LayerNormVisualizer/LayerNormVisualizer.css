@@ -1,0 +1,148 @@
+/* FILE: src/components/visualization/LayerNormVisualizer/LayerNormVisualizer.css */
+.layernorm-visualizer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.layernorm-visualizer .step-container {
+    width: 100%;
+    padding: 15px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    background-color: #fff;
+    text-align: center;
+}
+
+.layernorm-visualizer .title {
+    margin: 0 0 10px 0;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+.layernorm-visualizer .description {
+    margin: 0 0 15px 0;
+    color: #6c757d;
+    min-height: 40px;
+    font-size: 0.95em;
+    transition: all 0.3s ease;
+}
+
+.layernorm-visualizer .vector-section {
+    display: flex;
+    width: 100%;
+    gap: 15px;
+    align-items: center;
+}
+
+.layernorm-visualizer .label {
+    font-weight: bold;
+    color: #495057;
+    font-size: 1.2em;
+    width: 100px;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.layernorm-visualizer .vector-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.layernorm-visualizer .vector-scroll {
+    overflow-x: auto;
+    padding: 5px;
+}
+
+.layernorm-visualizer .vector {
+    display: flex;
+    gap: 5px;
+    width: max-content;
+}
+
+.layernorm-visualizer .element-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.layernorm-visualizer .index-label {
+    width: 60px;
+    height: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #495057;
+    font-size: 0.8em;
+    font-family: monospace;
+    background-color: #f0f2f5;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+
+.layernorm-visualizer .element {
+    width: 60px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background-color: #fff;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.layernorm-visualizer .highlight-mean {
+    border-color: #4a90e2;
+    background-color: rgba(74, 144, 226, 0.1);
+    transform: scale(1.1);
+}
+.layernorm-visualizer .highlight-variance {
+    border-color: #f5a623;
+    background-color: rgba(245, 166, 35, 0.1);
+    transform: scale(1.1);
+}
+.layernorm-visualizer .highlight-norm {
+    border-color: #28a745;
+    background-color: rgba(40, 167, 69, 0.1);
+    transform: scale(1.1);
+}
+.layernorm-visualizer .highlight-hover {
+    border-color: #fd7e14;
+    background-color: rgba(253, 126, 20, 0.1);
+}
+
+.layernorm-visualizer .calculation-box {
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #e9ecef;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 8px 15px;
+    font-size: 1em;
+    transition: opacity 0.3s, background-color 0.3s, border-color 0.3s;
+    font-family: monospace;
+    margin: 5px 0;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.layernorm-visualizer .connector {
+    font-size: 2em;
+    color: #6c757d;
+    margin: 5px 0;
+    transition: opacity 0.3s ease;
+}
+/* END OF FILE: src/components/visualization/LayerNormVisualizer/LayerNormVisualizer.css */
